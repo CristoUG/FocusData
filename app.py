@@ -39,6 +39,11 @@ DB = os.path.join(BASE_DIR, "study.db")
 DEFAULT_THEME = "dark"
 DEFAULT_ACCENT = "#3b82f6"
 
+# Carpetas (categorías) de sesiones
+DEFAULT_CATEGORY_NAME = "General"
+DEFAULT_CATEGORY_COLOR = "#6366f1"
+CATEGORY_NAME_MAX = 30
+
 # ── Flask-Login setup ───────────────────────────────────
 
 login_manager = LoginManager()
@@ -107,7 +112,74 @@ def init_db():
         if "user_id" not in session_cols:
             # ALTER no admite NOT NULL sin default en tablas con filas; se añade nullable.
             conn.execute("ALTER TABLE sessions ADD COLUMN user_id INTEGER REFERENCES users(id)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS categories (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id  INTEGER NOT NULL REFERENCES users(id),
+                name     TEXT    NOT NULL,
+                color    TEXT    NOT NULL DEFAULT '#6366f1',
+                archived INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(user_id, name)
+            )
+        """)
+        # Migración: carpetas por sesión y carpeta activa por usuario (nullable, ver nota de user_id).
+        if "category_id" not in session_cols:
+            conn.execute("ALTER TABLE sessions ADD COLUMN category_id INTEGER REFERENCES categories(id)")
+        user_cols = {row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "active_category_id" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN active_category_id INTEGER REFERENCES categories(id)")
+        # Backfill idempotente: usuarios preexistentes reciben la carpeta 'Semestre 1'
+        # y sus sesiones huérfanas se asignan a su primera carpeta.
+        conn.execute("""
+            INSERT OR IGNORE INTO categories (user_id, name)
+            SELECT id, 'Semestre 1' FROM users
+            WHERE id NOT IN (SELECT DISTINCT user_id FROM categories)
+        """)
+        conn.execute("""
+            UPDATE sessions SET category_id = (
+                SELECT id FROM categories c WHERE c.user_id = sessions.user_id ORDER BY c.id LIMIT 1
+            ) WHERE category_id IS NULL AND user_id IS NOT NULL
+        """)
+        conn.execute("""
+            UPDATE users SET active_category_id = (
+                SELECT id FROM categories c WHERE c.user_id = users.id AND c.archived = 0 ORDER BY c.id LIMIT 1
+            ) WHERE active_category_id IS NULL
+        """)
         conn.commit()
+
+def resolve_category(conn, uid, category_id):
+    """Devuelve un category_id válido (del usuario y no archivado) para registrar sesiones.
+
+    Si el recibido no sirve, cae en cascada: carpeta activa del usuario →
+    primera carpeta no archivada → crear la carpeta por defecto. Nunca falla,
+    para no rechazar POST de sesiones de clientes con datos antiguos.
+    """
+    if category_id is not None:
+        row = conn.execute(
+            "SELECT id FROM categories WHERE id = ? AND user_id = ? AND archived = 0",
+            (category_id, uid)
+        ).fetchone()
+        if row:
+            return row["id"]
+    row = conn.execute(
+        """SELECT c.id FROM users u JOIN categories c ON c.id = u.active_category_id
+           WHERE u.id = ? AND c.archived = 0""", (uid,)
+    ).fetchone()
+    if row:
+        return row["id"]
+    row = conn.execute(
+        "SELECT id FROM categories WHERE user_id = ? AND archived = 0 ORDER BY id LIMIT 1", (uid,)
+    ).fetchone()
+    if row:
+        return row["id"]
+    conn.execute(
+        "INSERT OR IGNORE INTO categories (user_id, name) VALUES (?, ?)",
+        (uid, DEFAULT_CATEGORY_NAME)
+    )
+    row = conn.execute(
+        "SELECT id FROM categories WHERE user_id = ? ORDER BY id LIMIT 1", (uid,)
+    ).fetchone()
+    return row["id"]
 
 # ── Auth Routes ─────────────────────────────────────────
 
@@ -136,8 +208,14 @@ def register():
                 "INSERT INTO users (username, password, theme, accent) VALUES (?, ?, ?, ?)",
                 (username, generate_password_hash(password), DEFAULT_THEME, DEFAULT_ACCENT)
             )
-            conn.commit()
             row = conn.execute("SELECT id, username FROM users WHERE username = ?", (username,)).fetchone()
+            # Carpeta inicial del usuario, activa por defecto
+            cur = conn.execute(
+                "INSERT INTO categories (user_id, name) VALUES (?, ?)",
+                (row["id"], DEFAULT_CATEGORY_NAME)
+            )
+            conn.execute("UPDATE users SET active_category_id = ? WHERE id = ?", (cur.lastrowid, row["id"]))
+            conn.commit()
             user = User(row["id"], row["username"])
             login_user(user)
         return jsonify({"ok": True, "username": username})
@@ -170,11 +248,12 @@ def logout():
 @login_required
 def me():
     with get_db() as conn:
-        row = conn.execute("SELECT theme, accent FROM users WHERE id = ?", (current_user.id,)).fetchone()
+        row = conn.execute("SELECT theme, accent, active_category_id FROM users WHERE id = ?", (current_user.id,)).fetchone()
     return jsonify({
         "username": current_user.username,
         "theme": row["theme"] if row else DEFAULT_THEME,
         "accent": row["accent"] if row else DEFAULT_ACCENT,
+        "active_category_id": row["active_category_id"] if row else None,
     })
 
 # Temas válidos y validación del color de acento (#rgb o #rrggbb)
@@ -184,19 +263,146 @@ HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 @app.route("/api/preferences", methods=["POST"])
 @login_required
 def save_preferences():
+    # Actualización parcial: solo se validan y guardan las claves presentes en el JSON.
     data = request.get_json() or {}
-    theme = data.get("theme", DEFAULT_THEME)
-    accent = data.get("accent", DEFAULT_ACCENT)
+    updates, params = [], []
 
-    if theme not in VALID_THEMES:
-        return jsonify({"error": "Tema no válido"}), 400
-    if not isinstance(accent, str) or not HEX_RE.match(accent):
-        return jsonify({"error": "Color de acento no válido"}), 400
+    if "theme" in data:
+        if data["theme"] not in VALID_THEMES:
+            return jsonify({"error": "Tema no válido"}), 400
+        updates.append("theme = ?")
+        params.append(data["theme"])
+    if "accent" in data:
+        if not isinstance(data["accent"], str) or not HEX_RE.match(data["accent"]):
+            return jsonify({"error": "Color de acento no válido"}), 400
+        updates.append("accent = ?")
+        params.append(data["accent"])
 
     with get_db() as conn:
-        conn.execute("UPDATE users SET theme = ?, accent = ? WHERE id = ?", (theme, accent, current_user.id))
+        if "active_category_id" in data:
+            row = conn.execute(
+                "SELECT id FROM categories WHERE id = ? AND user_id = ? AND archived = 0",
+                (data["active_category_id"], current_user.id)
+            ).fetchone()
+            if not row:
+                return jsonify({"error": "Carpeta no válida"}), 400
+            updates.append("active_category_id = ?")
+            params.append(row["id"])
+        if updates:
+            params.append(current_user.id)
+            conn.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", params)
+            conn.commit()
+    return jsonify({"ok": True})
+
+# ── Categorías (carpetas) ───────────────────────────────
+
+def _category_json(row):
+    return {"id": row["id"], "name": row["name"], "color": row["color"], "archived": row["archived"]}
+
+@app.route("/api/categories", methods=["GET"])
+@login_required
+def get_categories():
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT id, name, color, archived FROM categories WHERE user_id = ? ORDER BY archived, name",
+            (current_user.id,)
+        ).fetchall()
+    return jsonify([_category_json(r) for r in rows])
+
+@app.route("/api/categories", methods=["POST"])
+@login_required
+def create_category():
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    color = data.get("color", DEFAULT_CATEGORY_COLOR)
+    if not name or len(name) > CATEGORY_NAME_MAX:
+        return jsonify({"error": f"El nombre debe tener entre 1 y {CATEGORY_NAME_MAX} caracteres"}), 400
+    if not isinstance(color, str) or not HEX_RE.match(color):
+        return jsonify({"error": "Color no válido"}), 400
+    try:
+        with get_db() as conn:
+            cur = conn.execute(
+                "INSERT INTO categories (user_id, name, color) VALUES (?, ?, ?)",
+                (current_user.id, name, color)
+            )
+            conn.commit()
+        return jsonify({"ok": True, "id": cur.lastrowid, "name": name, "color": color, "archived": 0})
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "Ya existe una carpeta con ese nombre"}), 409
+
+@app.route("/api/categories/<int:cid>", methods=["PATCH"])
+@login_required
+def update_category(cid):
+    data = request.get_json() or {}
+    uid = current_user.id
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id, name, color, archived FROM categories WHERE id = ? AND user_id = ?", (cid, uid)
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Carpeta no encontrada"}), 404
+
+        updates, params = [], []
+        if "name" in data:
+            name = (data.get("name") or "").strip()
+            if not name or len(name) > CATEGORY_NAME_MAX:
+                return jsonify({"error": f"El nombre debe tener entre 1 y {CATEGORY_NAME_MAX} caracteres"}), 400
+            updates.append("name = ?")
+            params.append(name)
+        if "color" in data:
+            if not isinstance(data["color"], str) or not HEX_RE.match(data["color"]):
+                return jsonify({"error": "Color no válido"}), 400
+            updates.append("color = ?")
+            params.append(data["color"])
+        if "archived" in data:
+            archived = 1 if data["archived"] else 0
+            if archived and not row["archived"]:
+                others = conn.execute(
+                    "SELECT COUNT(*) FROM categories WHERE user_id = ? AND archived = 0 AND id != ?", (uid, cid)
+                ).fetchone()[0]
+                if others == 0:
+                    return jsonify({"error": "No puedes archivar tu única carpeta activa"}), 400
+            updates.append("archived = ?")
+            params.append(archived)
+
+        if updates:
+            params.extend([cid, uid])
+            try:
+                conn.execute(f"UPDATE categories SET {', '.join(updates)} WHERE id = ? AND user_id = ?", params)
+            except sqlite3.IntegrityError:
+                return jsonify({"error": "Ya existe una carpeta con ese nombre"}), 409
+            # Si se archivó la carpeta activa, mover la activa a otra no archivada
+            if data.get("archived"):
+                conn.execute(
+                    """UPDATE users SET active_category_id = (
+                           SELECT id FROM categories WHERE user_id = ? AND archived = 0 ORDER BY id LIMIT 1
+                       ) WHERE id = ? AND active_category_id = ?""",
+                    (uid, uid, cid)
+                )
+            conn.commit()
+        row = conn.execute(
+            "SELECT id, name, color, archived FROM categories WHERE id = ? AND user_id = ?", (cid, uid)
+        ).fetchone()
+    result = _category_json(row)
+    result["ok"] = True
+    return jsonify(result)
+
+@app.route("/api/sessions/<int:sid>", methods=["PATCH"])
+@login_required
+def update_session(sid):
+    data = request.get_json() or {}
+    uid = current_user.id
+    with get_db() as conn:
+        if not conn.execute("SELECT id FROM sessions WHERE id = ? AND user_id = ?", (sid, uid)).fetchone():
+            return jsonify({"error": "Sesión no encontrada"}), 404
+        cat = conn.execute(
+            "SELECT id, name FROM categories WHERE id = ? AND user_id = ?", (data.get("category_id"), uid)
+        ).fetchone()
+        if not cat:
+            return jsonify({"error": "Carpeta no válida"}), 400
+        conn.execute("UPDATE sessions SET category_id = ? WHERE id = ? AND user_id = ?", (cat["id"], sid, uid))
         conn.commit()
-    return jsonify({"ok": True, "theme": theme, "accent": accent})
+    return jsonify({"ok": True, "category_id": cat["id"], "category_name": cat["name"]})
 
 # ── App Routes ──────────────────────────────────────────
 
@@ -213,17 +419,20 @@ def get_sessions():
     include_breaks = request.args.get("include_breaks", "") in ("1", "true", "yes")
     uid = current_user.id
     with get_db() as conn:
-        q = "SELECT * FROM sessions WHERE user_id = ?" if include_breaks \
-            else "SELECT * FROM sessions WHERE mode != 'break' AND user_id = ?"
+        q = ("SELECT s.*, c.name AS category_name, c.color AS category_color "
+             "FROM sessions s LEFT JOIN categories c ON c.id = s.category_id "
+             "WHERE s.user_id = ?")
+        if not include_breaks:
+            q += " AND s.mode != 'break'"
         params = [uid]
         if days > 0:
             cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
-            q += " AND date >= ?"
+            q += " AND s.date >= ?"
             params.append(cutoff)
         if stype:
-            q += " AND type = ?"
+            q += " AND s.type = ?"
             params.append(stype)
-        q += " ORDER BY ts DESC"
+        q += " ORDER BY s.ts DESC"
         rows = conn.execute(q, params).fetchall()
     return jsonify([dict(r) for r in rows])
 
@@ -234,8 +443,9 @@ def add_session():
     now  = datetime.now()
     uid = current_user.id
     with get_db() as conn:
+        category_id = resolve_category(conn, uid, data.get("category_id"))
         conn.execute(
-            "INSERT INTO sessions (user_id,date,hour,time,minutes,type,mode,ts) VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT INTO sessions (user_id,date,hour,time,minutes,type,mode,ts,category_id) VALUES (?,?,?,?,?,?,?,?,?)",
             (
                 uid,
                 data.get("date", now.strftime("%Y-%m-%d")),
@@ -245,10 +455,11 @@ def add_session():
                 data["type"],
                 data["mode"],
                 data.get("ts", now.isoformat()),
+                category_id,
             )
         )
         conn.commit()
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "category_id": category_id})
 
 @app.route("/api/stats")
 @login_required
@@ -287,11 +498,15 @@ def get_stats():
 def export_csv():
     uid = current_user.id
     with get_db() as conn:
-        rows = conn.execute("SELECT date,time,hour,minutes,type,mode,ts FROM sessions WHERE mode!='break' AND user_id=? ORDER BY ts DESC", (uid,)).fetchall()
+        rows = conn.execute(
+            """SELECT s.date, s.time, s.hour, s.minutes, s.type, s.mode, COALESCE(c.name,'') AS carpeta, s.ts
+               FROM sessions s LEFT JOIN categories c ON c.id = s.category_id
+               WHERE s.mode != 'break' AND s.user_id = ? ORDER BY s.ts DESC""", (uid,)
+        ).fetchall()
     buf = io.StringIO()
     buf.write("\ufeff")          # BOM para Excel
     w = csv.writer(buf)
-    w.writerow(["fecha","hora","hora_num","minutos","tipo","modo","timestamp"])
+    w.writerow(["fecha","hora","hora_num","minutos","tipo","modo","carpeta","timestamp"])
     w.writerows(rows)
     buf.seek(0)
     return send_file(
@@ -306,7 +521,11 @@ def export_csv():
 def export_json():
     uid = current_user.id
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM sessions WHERE user_id=? ORDER BY ts DESC", (uid,)).fetchall()
+        rows = conn.execute(
+            """SELECT s.*, c.name AS category_name FROM sessions s
+               LEFT JOIN categories c ON c.id = s.category_id
+               WHERE s.user_id = ? ORDER BY s.ts DESC""", (uid,)
+        ).fetchall()
     data = json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2)
     return send_file(
         io.BytesIO(data.encode("utf-8")),

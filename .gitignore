@@ -6,5 +6,5 @@ __pycache__/
 *.pyc
 
 # Datos locales y secretos
-study.db
+study.db*
 .secret_key

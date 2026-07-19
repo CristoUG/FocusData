@@ -536,8 +536,43 @@
     .log-filters select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
     .log-filters .spacer { flex: 1; }
     
-    .btn-danger { 
-      background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.2); 
+    /* Selects de carpeta (header, timer, log) — mismo look que los filtros del log */
+    .cat-select {
+      font-size: 14px; padding: 8px 12px; border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.3);
+      color: var(--text-main); font-family: var(--font-sans); outline: none; cursor: pointer;
+      max-width: 200px;
+    }
+    .cat-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+    .header-cat { display: flex; align-items: center; gap: 8px; }
+    .header-cat .ti { color: var(--text-muted); }
+    .timer-cat-wrap { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
+    .timer-cat-wrap label { font-size: 13px; color: var(--text-muted); }
+
+    /* Gestión de carpetas (Ajustes) */
+    .cat-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; }
+    .cat-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .cat-row .cat-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+    .cat-row .cat-name { font-weight: 500; }
+    .cat-row.archived .cat-name { color: var(--text-muted); text-decoration: line-through; }
+    .cat-row .spacer { flex: 1; }
+    .cat-action {
+      background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm);
+      padding: 6px 10px; font-size: 13px; color: var(--text-muted); cursor: pointer;
+      font-family: var(--font-sans); transition: all 0.2s;
+    }
+    .cat-action:hover { color: var(--text-main); border-color: var(--accent); }
+    .cat-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .cat-form input[type="text"] {
+      flex: 1; min-width: 160px; padding: 10px 14px; border-radius: var(--radius-sm);
+      border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3);
+      color: var(--text-main); font-family: var(--font-sans); font-size: 14px; outline: none;
+    }
+    .cat-form input[type="text"]:focus { border-color: var(--accent); }
+    .cat-form input[type="color"] { width: 42px; height: 38px; border: none; background: transparent; cursor: pointer; }
+
+    .btn-danger {
+      background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.2);
       border-radius: var(--radius-sm); padding: 10px 16px; font-size: 14px; font-weight: 500;
       color: var(--danger); cursor: pointer; font-family: var(--font-sans); transition: all 0.3s;
       display: flex; align-items: center; gap: 6px;
@@ -714,6 +749,12 @@
       <div class="user-avatar"><i class="ti ti-user"></i></div>
       <span>Hola, <span class="user-name" id="user-display">...</span></span>
     </div>
+    <div class="header-cat">
+      <i class="ti ti-folder" aria-hidden="true"></i>
+      <select id="global-category-filter" class="cat-select" onchange="setGlobalFilter(this.value)" aria-label="Filtrar por carpeta">
+        <option value="">Todas las carpetas</option>
+      </select>
+    </div>
     <a href="/logout" class="btn-logout"><i class="ti ti-logout"></i> Cerrar sesión</a>
   </div>
   <div class="tabs">
@@ -745,6 +786,10 @@
 
         <div class="custom-type-wrap" id="custom-type-wrap">
           <input type="text" id="custom-type-input" class="custom-type-input" placeholder="¿Qué vas a estudiar?" maxlength="30" oninput="updateCustomType()">
+        </div>
+        <div class="timer-cat-wrap">
+          <label for="active-category-select"><i class="ti ti-folder" aria-hidden="true"></i> Carpeta</label>
+          <select id="active-category-select" class="cat-select" onchange="setActiveCategory(this.value)"></select>
         </div>
         <div class="type-recos-label" id="type-recos-label" style="display:none;">Recomendados</div>
         <div class="session-type" id="type-recos"></div>
@@ -909,6 +954,16 @@
       </div>
     </div>
 
+    <div class="chart-card card">
+      <h3><i class="ti ti-folder" aria-hidden="true"></i> Carpetas</h3>
+      <div class="cat-list" id="category-list"></div>
+      <div class="cat-form">
+        <input type="text" id="new-cat-name" maxlength="30" placeholder="Nueva carpeta (ej. Semestre 2)" onkeydown="if(event.key==='Enter')createCategory()">
+        <input type="color" id="new-cat-color" value="#6366f1" aria-label="Color de la carpeta">
+        <button class="btn-secondary" style="padding: 10px 16px; font-size: 14px;" onclick="createCategory()"><i class="ti ti-plus" aria-hidden="true"></i> Crear</button>
+      </div>
+    </div>
+
     <button class="btn-primary full-width" id="btn-save-prefs" onclick="savePreferences()">
       <i class="ti ti-device-floppy"></i> Guardar apariencia
     </button>
@@ -922,6 +977,17 @@
 const STORAGE_KEY = 'studylog_v1';
 let db = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+
+// ── Carpetas (categorías) ──
+let categories = [];          // [{id, name, color, archived}]
+let activeCategoryId = null;  // carpeta donde se registran las nuevas sesiones
+let filterCategoryId = '';    // filtro global de análisis ('' = todas)
+
+const categoryById = id => categories.find(c => c.id === +id);
+// Vista de `db` con el filtro global aplicado; stats/log/export consumen esto.
+const filteredDb = () => filterCategoryId
+  ? db.filter(r => String(r.category_id) === String(filterCategoryId))
+  : db;
 
 // Helper: local date string YYYY-MM-DD (avoids toISOString() which uses UTC)
 function localDateStr(d) {
@@ -1138,7 +1204,13 @@ function phaseComplete() {
 function logSession(minutes, type, mode) {
   const now = new Date();
   const ts = localISOString(now);
-  const session = { id: Date.now(), date: localDateStr(now), hour: now.getHours(), time: now.toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'}), minutes, type, mode, ts };
+  const cat = categoryById(activeCategoryId);
+  const session = {
+    id: Date.now(), date: localDateStr(now), hour: now.getHours(),
+    time: now.toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'}),
+    minutes, type, mode, ts,
+    category_id: activeCategoryId, category_name: cat ? cat.name : ''
+  };
   db.push(session);
   save(); updateSideInfo(); renderTypeRecos();
 
@@ -1146,7 +1218,7 @@ function logSession(minutes, type, mode) {
   fetch('/api/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ minutes, type, mode, date: session.date, hour: session.hour, time: session.time, ts })
+    body: JSON.stringify({ minutes, type, mode, date: session.date, hour: session.hour, time: session.time, ts, category_id: activeCategoryId })
   }).catch(err => console.error('Error guardando en backend:', err));
 }
 
@@ -1244,10 +1316,10 @@ let radarChartInst = null;
 const STREAK_MIN_MIN = 1;   // un día cuenta para la racha con >= 1 min estudiado
 const IRS_MIN_MIN = 20;     // un día es "regular" con >= 20 min estudiados
 
-// Minutos de estudio (sin descansos) agrupados por fecha
+// Minutos de estudio (sin descansos) agrupados por fecha, respetando el filtro global
 function studyMinutesByDate() {
   const map = {};
-  db.filter(r => r.mode !== 'break').forEach(r => {
+  filteredDb().filter(r => r.mode !== 'break').forEach(r => {
     map[r.date] = (map[r.date] || 0) + r.minutes;
   });
   return map;
@@ -1301,7 +1373,7 @@ function computeIRS() {
 // Ratio de Descanso Activo: minutos de descanso / minutos de estudio
 function computeRDA() {
   let study = 0, brk = 0;
-  db.forEach(r => { if (r.mode === 'break') brk += r.minutes; else study += r.minutes; });
+  filteredDb().forEach(r => { if (r.mode === 'break') brk += r.minutes; else study += r.minutes; });
   return { ratio: study > 0 ? Math.round(brk / study * 100) : 0, study, brk };
 }
 
@@ -1405,7 +1477,7 @@ function makeBarAxisOptions() {
 }
 function renderStats() {
   const today = new Date();
-  const studyRecs = db.filter(r => r.mode !== 'break');
+  const studyRecs = filteredDb().filter(r => r.mode !== 'break');
   const totalMins = studyRecs.reduce((a,r) => a + r.minutes, 0);
   const weekAgo = new Date(today); weekAgo.setDate(today.getDate()-7);
   const weekMins = studyRecs.filter(r => new Date(r.date) >= weekAgo).reduce((a,r) => a+r.minutes, 0);
@@ -1521,19 +1593,30 @@ function renderStats() {
   renderRadar(typeTotals);
 }
 
+// Select de carpeta por fila para reasignar; las filas aún no sincronizadas
+// (sin id de servidor) muestran solo el nombre hasta el próximo sync.
+function catSelectHtml(r) {
+  if (r.remote_id == null) return r.category_name || '—';
+  const options = categories
+    .filter(c => !c.archived || c.id === +r.category_id)
+    .map(c => `<option value="${c.id}" ${c.id === +r.category_id ? 'selected' : ''}>${c.name}${c.archived ? ' (archivada)' : ''}</option>`)
+    .join('');
+  return `<select class="cat-select" onchange="reassignSession('${r.ts}', this.value)" aria-label="Carpeta de la sesión">${options}</select>`;
+}
+
 function renderLog() {
   const filterType = document.getElementById('filter-type').value;
   const filterDays = +document.getElementById('filter-days').value;
   const today = new Date();
-  let recs = [...db].filter(r => r.mode !== 'break').reverse();
+  let recs = [...filteredDb()].filter(r => r.mode !== 'break').reverse();
   if (filterType) recs = recs.filter(r => r.type === filterType);
   if (filterDays > 0) { const cutoff = new Date(today); cutoff.setDate(today.getDate()-filterDays); recs = recs.filter(r => new Date(r.date) >= cutoff); }
-  
+
   const wrap = document.getElementById('log-table-wrap');
   if (!recs.length) { wrap.innerHTML = '<div class="empty-state"><i class="ti ti-calendar-off" aria-hidden="true"></i>No hay sesiones registradas</div>'; return; }
-  
-  wrap.innerHTML = `<table><thead><tr><th>Fecha</th><th>Hora</th><th>Duración</th><th>Tipo</th><th>Modo</th></tr></thead><tbody>` +
-    recs.map(r => `<tr><td>${r.date}</td><td>${r.time}</td><td><strong>${r.minutes} min</strong></td><td>${r.type}</td><td><span class="badge badge-${r.mode}">${r.mode}</span></td></tr>`).join('') +
+
+  wrap.innerHTML = `<table><thead><tr><th>Fecha</th><th>Hora</th><th>Duración</th><th>Tipo</th><th>Carpeta</th><th>Modo</th></tr></thead><tbody>` +
+    recs.map(r => `<tr><td>${r.date}</td><td>${r.time}</td><td><strong>${r.minutes} min</strong></td><td>${r.type}</td><td>${catSelectHtml(r)}</td><td><span class="badge badge-${r.mode}">${r.mode}</span></td></tr>`).join('') +
     `</tbody></table>`;
 }
 
@@ -1543,7 +1626,7 @@ function clearLog() {
 }
 
 function exportCSV() {
-  const rows = [['fecha','hora','minutos','tipo','modo'], ...db.map(r => [r.date,r.time,r.minutes,r.type,r.mode])];
+  const rows = [['fecha','hora','minutos','tipo','carpeta','modo'], ...filteredDb().map(r => [r.date,r.time,r.minutes,r.type,r.category_name || '',r.mode])];
   const csv = rows.map(r => r.join(',')).join('\n');
   const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'estudio_' + localDateStr() + '.csv'; a.click();
@@ -1628,6 +1711,158 @@ function savePreferences() {
     .finally(() => { btn.disabled = false; });
 }
 
+// ── Carpetas: carga, selectores y CRUD ──
+
+function loadCategories() {
+  return fetch('/api/categories')
+    .then(r => r.ok ? r.json() : [])
+    .then(data => {
+      if (!Array.isArray(data)) return;
+      categories = data;
+      renderCategoryUI();
+    })
+    .catch(err => console.error('Error cargando carpetas:', err));
+}
+
+function renderCategoryUI() {
+  // Filtro global (todas las carpetas, incluidas archivadas)
+  const filterSel = document.getElementById('global-category-filter');
+  filterSel.innerHTML = '<option value="">Todas las carpetas</option>' + categories
+    .map(c => `<option value="${c.id}">${c.name}${c.archived ? ' (archivada)' : ''}</option>`)
+    .join('');
+  filterSel.value = filterCategoryId;
+  if (filterSel.value !== filterCategoryId) { filterCategoryId = ''; filterSel.value = ''; }
+
+  // Selector de carpeta activa del Timer (solo no archivadas)
+  const activeSel = document.getElementById('active-category-select');
+  const active = categories.filter(c => !c.archived);
+  activeSel.innerHTML = active.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if (!categoryById(activeCategoryId) || categoryById(activeCategoryId).archived) {
+    activeCategoryId = active.length ? active[0].id : null;
+  }
+  if (activeCategoryId != null) activeSel.value = activeCategoryId;
+
+  // Lista de gestión en Ajustes
+  const list = document.getElementById('category-list');
+  if (!categories.length) {
+    list.innerHTML = '<div class="empty-state"><i class="ti ti-folder-off"></i>Sin carpetas aún</div>';
+  } else {
+    list.innerHTML = categories.map(c => `
+      <div class="cat-row${c.archived ? ' archived' : ''}">
+        <span class="cat-dot" style="background:${c.color}"></span>
+        <span class="cat-name">${c.name}</span>
+        <span class="spacer"></span>
+        <button class="cat-action" onclick="renameCategory(${c.id})"><i class="ti ti-pencil" aria-hidden="true"></i> Renombrar</button>
+        <button class="cat-action" onclick="toggleArchive(${c.id})">
+          <i class="ti ti-${c.archived ? 'archive-off' : 'archive'}" aria-hidden="true"></i> ${c.archived ? 'Restaurar' : 'Archivar'}
+        </button>
+      </div>`).join('');
+  }
+
+  // Refrescar selects de reasignación si el log está visible
+  if (document.getElementById('tab-log').classList.contains('active')) renderLog();
+}
+
+function setActiveCategory(id) {
+  activeCategoryId = +id;
+  fetch('/api/preferences', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active_category_id: activeCategoryId })
+  }).then(r => r.json()).then(d => {
+    if (!d.ok) toast(d.error || 'No se pudo guardar la carpeta activa');
+  }).catch(() => toast('Error de conexión'));
+}
+
+function setGlobalFilter(id) {
+  filterCategoryId = id;
+  if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+  if (document.getElementById('tab-log').classList.contains('active')) renderLog();
+}
+
+function reassignSession(ts, catId) {
+  const rec = db.find(r => r.ts === ts);
+  if (!rec || rec.remote_id == null) return;
+  fetch(`/api/sessions/${rec.remote_id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category_id: +catId })
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      rec.category_id = d.category_id;
+      rec.category_name = d.category_name;
+      save();
+      toast('Sesión movida a ' + d.category_name + ' ✓');
+      renderLog();
+    } else {
+      toast(d.error || 'No se pudo mover la sesión');
+      renderLog();
+    }
+  }).catch(() => { toast('Error de conexión'); renderLog(); });
+}
+
+function createCategory() {
+  const nameInput = document.getElementById('new-cat-name');
+  const name = nameInput.value.trim();
+  const color = document.getElementById('new-cat-color').value;
+  if (!name) { nameInput.focus(); return; }
+  fetch('/api/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, color })
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      nameInput.value = '';
+      toast('Carpeta "' + d.name + '" creada ✓');
+      loadCategories();
+    } else {
+      toast(d.error || 'No se pudo crear la carpeta');
+    }
+  }).catch(() => toast('Error de conexión'));
+}
+
+function renameCategory(id) {
+  const cat = categoryById(id);
+  if (!cat) return;
+  const name = prompt('Nuevo nombre de la carpeta:', cat.name);
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed || trimmed === cat.name) return;
+  fetch(`/api/categories/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: trimmed })
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      // Actualizar el nombre cacheado en las sesiones locales
+      db.forEach(r => { if (+r.category_id === id) r.category_name = d.name; });
+      save();
+      toast('Carpeta renombrada ✓');
+      loadCategories();
+      if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+    } else {
+      toast(d.error || 'No se pudo renombrar');
+    }
+  }).catch(() => toast('Error de conexión'));
+}
+
+function toggleArchive(id) {
+  const cat = categoryById(id);
+  if (!cat) return;
+  fetch(`/api/categories/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ archived: !cat.archived })
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      toast(d.archived ? 'Carpeta archivada' : 'Carpeta restaurada ✓');
+      loadCategories();
+    } else {
+      toast(d.error || 'No se pudo archivar');
+    }
+  }).catch(() => toast('Error de conexión'));
+}
+
 // Clave estable para deduplicar sesiones (backend ↔ localStorage)
 function sessionKey(r) {
   return r.ts || `${r.date}|${r.time}|${r.minutes}|${r.type}|${r.mode}`;
@@ -1644,18 +1879,21 @@ function syncSessions() {
     .then(r => r.ok ? r.json() : [])
     .then(remote => {
       if (!Array.isArray(remote)) return;
+      // El id de servidor habilita la reasignación de carpeta vía PATCH
+      remote.forEach(r => { r.remote_id = r.id; });
       const seen = new Set(remote.map(sessionKey));
       const localOnly = db.filter(r => !seen.has(sessionKey(r)));
 
       // Backfill idempotente: subir al backend los registros que solo existen
       // localmente (datos previos al arreglo de persistencia / creados offline).
       // Se les asigna un ts estable para que no se re-suban en la próxima carga.
+      // Los que no tienen carpeta (datos antiguos) reciben la de fallback en el backend.
       localOnly.forEach(r => {
         if (!r.ts) r.ts = `${r.date}T${r.time || '00:00'}:00`;
         fetch('/api/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ minutes: r.minutes, type: r.type, mode: r.mode, date: r.date, hour: r.hour, time: r.time, ts: r.ts })
+          body: JSON.stringify({ minutes: r.minutes, type: r.type, mode: r.mode, date: r.date, hour: r.hour, time: r.time, ts: r.ts, category_id: r.category_id })
         }).catch(() => {});
       });
 
@@ -1678,6 +1916,8 @@ fetch('/api/me').then(r => {
     document.getElementById('user-display').textContent = data.username;
     applyTheme(data.theme || 'dark');
     applyAccent(data.accent || '#3b82f6');
+    activeCategoryId = data.active_category_id != null ? +data.active_category_id : null;
+    loadCategories();
     syncSessions();
   }
 }).catch(() => {});

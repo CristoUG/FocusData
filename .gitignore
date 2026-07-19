@@ -1,0 +1,10 @@
+# Entorno virtual
+venv/
+
+# Caché de Python
+__pycache__/
+*.pyc
+
+# Datos locales y secretos
+study.db
+.secret_key

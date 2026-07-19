@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusData</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  
+  <style>
+    :root {
+      /* Palette */
+      --bg-color: #060910;
+      --card-bg: rgba(23, 32, 50, 0.45);
+      --card-border: rgba(255, 255, 255, 0.09);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+
+      --accent: #3b82f6; /* Azul eléctrico */
+      --accent-glow: rgba(59, 130, 246, 0.5);
+      --accent-hover: #2563eb;
+
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.1);
+      --success: #10b981;
+      --info: #38bdf8;
+
+      --font-sans: 'Inter', sans-serif;
+      --font-display: 'Space Grotesk', 'Inter', sans-serif;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 8px;
+
+      /* Colores de ejes/rejilla de los gráficos (dependen del tema) */
+      --chart-grid: rgba(255, 255, 255, 0.05);
+      --chart-tick: #94a3b8;
+    }
+
+    /* ── Temas predefinidos (sobrescriben el fondo y los textos) ── */
+    [data-theme="light"] {
+      --bg-color: #f1f5f9;
+      --card-bg: rgba(255, 255, 255, 0.7);
+      --card-border: rgba(15, 23, 42, 0.1);
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --chart-grid: rgba(15, 23, 42, 0.08);
+      --chart-tick: #475569;
+    }
+    [data-theme="ocean"] {
+      --bg-color: #07182b;
+      --card-bg: rgba(12, 74, 110, 0.35);
+      --card-border: rgba(125, 211, 252, 0.15);
+      --text-main: #ecfeff;
+      --text-muted: #7dd3fc;
+      --chart-grid: rgba(125, 211, 252, 0.1);
+      --chart-tick: #7dd3fc;
+    }
+    [data-theme="forest"] {
+      --bg-color: #0a1f16;
+      --card-bg: rgba(6, 78, 59, 0.35);
+      --card-border: rgba(110, 231, 183, 0.15);
+      --text-main: #ecfdf5;
+      --text-muted: #6ee7b7;
+      --chart-grid: rgba(110, 231, 183, 0.1);
+      --chart-tick: #6ee7b7;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body { 
+      font-family: var(--font-sans); 
+      background: var(--bg-color); 
+      color: var(--text-main); 
+      min-height: 100vh; 
+      display: flex; 
+      justify-content: center; 
+      padding: 2rem 1rem; 
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient Background Shapes (Glassmorphism) */
+    .bg-shape {
+      position: fixed;
+      filter: blur(120px);
+      z-index: -1;
+      opacity: 0.6;
+      border-radius: 50%;
+      animation: float 20s infinite ease-in-out alternate;
+    }
+    .shape-1 {
+      width: 400px; height: 400px;
+      background: rgba(99, 102, 241, 0.3);
+      top: -100px; left: -100px;
+    }
+    .shape-2 {
+      width: 500px; height: 500px;
+      background: rgba(20, 184, 166, 0.2);
+      bottom: -200px; right: -100px;
+      animation-delay: -5s;
+    }
+    .shape-3 {
+      width: 300px; height: 300px;
+      background: rgba(236, 72, 153, 0.15);
+      top: 40%; left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: -10s;
+    }
+    @keyframes float {
+      0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+      100% { transform: translate(50px, 50px) rotate(10deg) scale(1.1); }
+    }
+
+    #app { 
+      width: 100%; 
+      max-width: 960px; 
+      z-index: 1;
+    }
+
+    /* Tabs */
+    .tabs { 
+      display: flex; 
+      gap: 12px; 
+      margin-bottom: 2.5rem; 
+      background: rgba(15, 23, 42, 0.5); 
+      padding: 8px; 
+      border-radius: var(--radius-lg); 
+      border: 1px solid var(--card-border); 
+      backdrop-filter: blur(20px); 
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .tab-btn { 
+      flex: 1; 
+      padding: 14px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 8px; 
+    }
+    .tab-btn i { font-size: 18px; }
+    .tab-btn:hover:not(.active) { 
+      color: var(--text-main); 
+      background: rgba(255, 255, 255, 0.05); 
+    }
+    .tab-btn.active { 
+      background: var(--accent); 
+      color: #fff; 
+      box-shadow: 0 4px 20px var(--accent-glow); 
+    }
+
+    .tab-panel { display: none; animation: fadeIn 0.4s ease; }
+    .tab-panel.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Cards Base */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Timer Layout */
+    .timer-layout { 
+      display: grid; 
+      grid-template-columns: 1.2fr 1fr; 
+      gap: 2rem; 
+      align-items: stretch; 
+    }
+    @media (max-width: 800px) { .timer-layout { grid-template-columns: 1fr; } }
+
+    .timer-card { text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;}
+    .timer-label {
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 2rem;
+    }
+
+    .timer-ring-wrap { 
+      position: relative; 
+      width: 260px; 
+      height: 260px; 
+      margin: 0 auto 2.5rem; 
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .timer-ring-wrap svg { 
+      width: 260px; 
+      height: 260px; 
+      transform: rotate(-90deg); 
+      filter: drop-shadow(0 0 12px var(--accent-glow));
+    }
+    .ring-bg { fill: none; stroke: rgba(255, 255, 255, 0.05); stroke-width: 6; }
+    .ring-fg { 
+      fill: none; 
+      stroke: var(--accent); 
+      stroke-width: 6; 
+      stroke-linecap: round; 
+      transition: stroke-dashoffset 1s linear, stroke 0.4s ease; 
+    }
+    .ring-fg.break { 
+      stroke: var(--info); 
+      filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.5));
+    }
+    .timer-time {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      font-family: var(--font-display);
+      font-size: 58px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .timer-phase { 
+      position: absolute; 
+      bottom: 40px; 
+      left: 50%; 
+      transform: translateX(-50%); 
+      font-size: 14px; 
+      font-weight: 500;
+      color: var(--text-muted); 
+      background: rgba(0,0,0,0.4);
+      padding: 4px 16px;
+      border-radius: 20px;
+      backdrop-filter: blur(4px);
+    }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 12px; justify-content: center; width: 100%; margin-bottom: 2rem;}
+    .btn-primary, .btn-secondary { 
+      border-radius: var(--radius-md); 
+      padding: 14px 28px; 
+      font-size: 15px; 
+      cursor: pointer; 
+      font-family: var(--font-sans); 
+      font-weight: 600; 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+    }
+    .btn-primary { 
+      background: var(--accent); 
+      color: #fff; 
+      box-shadow: 0 4px 20px var(--accent-glow); 
+      flex: 2;
+      justify-content: center;
+    }
+    .btn-primary:hover:not(:disabled) { 
+      background: var(--accent-hover); 
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px var(--accent-glow);
+    }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+    
+    .btn-secondary { 
+      background: rgba(255, 255, 255, 0.05); 
+      color: var(--text-main); 
+      border: 1px solid rgba(255, 255, 255, 0.1); 
+      flex: 1;
+      justify-content: center;
+    }
+    .btn-secondary:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); transform: translateY(-2px); }
+    .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary.full-width { width: 100%; margin-top: 1rem; }
+
+    /* Type Chips */
+    .session-type { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .type-recos-label {
+      text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--text-muted); margin: 14px 0 8px;
+    }
+    .type-chip { 
+      padding: 8px 16px; 
+      border-radius: 24px; 
+      font-size: 13px; 
+      border: 1px solid rgba(255, 255, 255, 0.1); 
+      cursor: pointer; 
+      background: rgba(255, 255, 255, 0.03); 
+      color: var(--text-muted); 
+      transition: all 0.3s ease; 
+      font-weight: 500;
+    }
+    .type-chip:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
+    .type-chip.selected { 
+      background: rgba(99, 102, 241, 0.2); 
+      border-color: var(--accent); 
+      color: #fff; 
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.3); 
+    }
+
+    /* Custom type input */
+    .custom-type-wrap {
+      margin-top: 12px;
+      animation: fadeIn 0.3s ease;
+    }
+    .custom-type-input {
+      width: 100%;
+      max-width: 280px;
+      padding: 10px 16px;
+      border-radius: 24px;
+      border: 1px solid var(--accent);
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      outline: none;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    .custom-type-input::placeholder { color: var(--text-muted); opacity: 0.6; }
+    .custom-type-input:focus {
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.15);
+    }
+
+    /* Manual session form */
+    .manual-form {
+      margin-top: 1rem;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      animation: fadeIn 0.3s ease;
+    }
+    .manual-form-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .manual-form-title i { font-size: 16px; color: var(--accent); }
+    .manual-input-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .manual-input {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 600;
+      outline: none;
+      text-align: center;
+      transition: all 0.3s ease;
+      font-variant-numeric: tabular-nums;
+    }
+    .manual-input::placeholder { color: var(--text-muted); opacity: 0.5; font-weight: 400; }
+    .manual-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+      background: rgba(99, 102, 241, 0.08);
+    }
+    .manual-input-suffix {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .manual-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .btn-confirm {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: #fff;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-confirm:hover { background: var(--accent-hover); box-shadow: 0 4px 15px var(--accent-glow); }
+    .btn-cancel {
+      padding: 10px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-cancel:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
+
+    /* Configuration */
+    .config-card { margin-bottom: 1rem; }
+    .config-card h3 { 
+      font-size: 14px; 
+      font-weight: 600; 
+      color: var(--text-muted); 
+      margin-bottom: 1.5rem; 
+      text-transform: uppercase; 
+      letter-spacing: 0.05em; 
+    }
+    .config-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .config-row label { font-size: 14px; color: var(--text-muted); flex: 1; }
+    
+    /* Range Sliders */
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100px; background: transparent; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 18px; width: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      margin-top: -7px;
+      box-shadow: 0 0 12px var(--accent-glow);
+      transition: transform 0.1s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%; height: 4px;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+    .config-val { 
+      font-size: 14px; 
+      font-weight: 600; 
+      color: var(--text-main); 
+      width: 56px; 
+      text-align: center; 
+      background: rgba(0,0,0,0.3);
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255,255,255,0.05);
+      font-family: var(--font-sans);
+      font-variant-numeric: tabular-nums;
+      outline: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      -moz-appearance: textfield;
+    }
+    .config-val::-webkit-outer-spin-button,
+    .config-val::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .config-val:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      background: rgba(99, 102, 241, 0.08);
+    }
+    .config-val:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+      background: rgba(99, 102, 241, 0.12);
+    }
+
+    /* Session Info Sidebar */
+    .session-info { 
+      background: rgba(0, 0, 0, 0.2); 
+      border-radius: var(--radius-md); 
+      padding: 1.25rem; 
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .session-info .row { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;}
+    .session-info .row:last-child { margin-bottom: 0; }
+    .session-info .label { color: var(--text-muted); font-size: 14px; }
+    .session-info .val { font-weight: 600; color: var(--text-main); font-size: 14px; }
+    .tag-green { color: var(--success) !important; text-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+    .tag-blue { color: var(--info) !important; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
+
+    /* STATS TAB */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+    .metric { 
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
+    .metric:hover { transform: translateY(-5px); }
+    .metric .m-label { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .metric .m-val { font-family: var(--font-display); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-main); text-shadow: 0 0 20px rgba(255, 255, 255, 0.1); }
+    .metric .m-sub { font-size: 13px; color: var(--text-muted); margin-top: 8px; opacity: 0.7; }
+
+    .chart-card { margin-bottom: 1.5rem; }
+    .chart-card h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 1.5rem; color: var(--text-main); }
+
+    /* LOG TAB */
+    .log-filters { 
+      display: flex; gap: 12px; margin-bottom: 1.5rem; align-items: center; flex-wrap: wrap; 
+      background: var(--card-bg); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--card-border);
+    }
+    .log-filters select { 
+      font-size: 14px; padding: 10px 16px; border-radius: var(--radius-sm); 
+      border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.3); 
+      color: var(--text-main); font-family: var(--font-sans); outline: none; cursor: pointer;
+    }
+    .log-filters select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+    .log-filters .spacer { flex: 1; }
+    
+    .btn-danger { 
+      background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.2); 
+      border-radius: var(--radius-sm); padding: 10px 16px; font-size: 14px; font-weight: 500;
+      color: var(--danger); cursor: pointer; font-family: var(--font-sans); transition: all 0.3s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-danger:hover { background: var(--danger); color: #fff; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+
+    .table-responsive { overflow-x: auto; background: var(--card-bg); border-radius: var(--radius-lg); border: 1px solid var(--card-border); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
+    thead th { text-align: left; padding: 16px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2); }
+    tbody tr { transition: background 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+    tbody td { padding: 16px; color: var(--text-main); }
+    
+    .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); font-size: 15px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .empty-state i { font-size: 48px; opacity: 0.5; margin-bottom: 8px;}
+    
+    .badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+    .badge-pomodoro { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .badge-manual { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    /* Contenedor de los gráficos de barras (canvas de Chart.js) */
+    .bar-container { display: flex; flex-direction: column; gap: 16px; }
+    .hour-peak {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .hour-peak strong { color: var(--text-main); }
+    .hour-peak i { color: var(--accent); font-size: 18px; }
+
+    /* User header */
+    .user-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding: 12px 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .user-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .user-avatar i { font-size: 16px; color: var(--accent); }
+    .user-name { font-weight: 600; color: var(--text-main); }
+    .btn-logout {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .btn-logout:hover {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+
+    /* Toast */
+    .toast { 
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); 
+      background: rgba(15, 23, 42, 0.9); color: #fff; padding: 14px 24px; border-radius: 30px; 
+      font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+      pointer-events: none; z-index: 1000; border: 1px solid rgba(255, 255, 255, 0.1); 
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); display: flex; align-items: center; gap: 8px;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Apariencia / Ajustes ── */
+    .theme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px; }
+    .theme-option {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      padding: 14px; cursor: pointer; background: transparent; color: var(--text-main);
+      border: 2px solid var(--card-border); border-radius: var(--radius-md);
+      transition: border-color 0.2s, transform 0.15s;
+      font-family: var(--font-sans); font-size: 14px; font-weight: 500;
+    }
+    .theme-option:hover { transform: translateY(-2px); }
+    .theme-option.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .theme-swatch {
+      width: 100%; height: 48px; border-radius: var(--radius-sm);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .swatch-dark   { background: linear-gradient(135deg, #060910 50%, #3b82f6 50%); }
+    .swatch-light  { background: linear-gradient(135deg, #f1f5f9 50%, #3b82f6 50%); }
+    .swatch-ocean  { background: linear-gradient(135deg, #07182b 50%, #38bdf8 50%); }
+    .swatch-forest { background: linear-gradient(135deg, #0a1f16 50%, #10b981 50%); }
+
+    .accent-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .accent-presets { display: flex; gap: 10px; flex-wrap: wrap; }
+    .accent-dot {
+      width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: transform 0.15s, border-color 0.2s;
+    }
+    .accent-dot:hover { transform: scale(1.12); }
+    .accent-dot.selected { border-color: var(--text-main); box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px currentColor; }
+    .accent-custom {
+      display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+      color: var(--text-muted); font-size: 14px;
+    }
+    .accent-custom input[type="color"] {
+      width: 34px; height: 34px; padding: 0; border: none; border-radius: 8px;
+      background: transparent; cursor: pointer;
+    }
+
+    /* ── Calendario de consistencia (heatmap) ── */
+    .heatmap-scroll { overflow-x: auto; padding-bottom: 6px; }
+    .heatmap {
+      display: grid;
+      grid-template-rows: repeat(7, 1fr);
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      gap: 3px;
+      min-width: 660px;
+    }
+    .hm-cell { aspect-ratio: 1; border-radius: 3px; min-width: 11px; }
+    .hm-l0 { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+    .hm-l1 { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+    .hm-l2 { background: color-mix(in srgb, var(--accent) 50%, transparent); }
+    .hm-l3 { background: color-mix(in srgb, var(--accent) 75%, transparent); }
+    .hm-l4 { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+    .heatmap-legend {
+      display: flex; align-items: center; gap: 6px; justify-content: flex-end;
+      margin-top: 14px; font-size: 12px; color: var(--text-muted);
+    }
+    .heatmap-legend .hm-cell { width: 13px; height: 13px; aspect-ratio: auto; }
+  </style>
+</head>
+<body>
+
+<!-- Ambient Background -->
+<div class="bg-shape shape-1"></div>
+<div class="bg-shape shape-2"></div>
+<div class="bg-shape shape-3"></div>
+
+<h2 class="sr-only" style="display:none;">Tracker de tiempo de estudio con Pomodoro, estadísticas y registro de sesiones</h2>
+<div id="app">
+  <div class="user-header">
+    <div class="user-info">
+      <div class="user-avatar"><i class="ti ti-user"></i></div>
+      <span>Hola, <span class="user-name" id="user-display">...</span></span>
+    </div>
+    <a href="/logout" class="btn-logout"><i class="ti ti-logout"></i> Cerrar sesión</a>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('timer')"><i class="ti ti-player-play" aria-hidden="true"></i> Timer</button>
+    <button class="tab-btn" onclick="switchTab('stats')"><i class="ti ti-chart-bar" aria-hidden="true"></i> Estadísticas</button>
+    <button class="tab-btn" onclick="switchTab('log')"><i class="ti ti-calendar" aria-hidden="true"></i> Registro</button>
+    <button class="tab-btn" onclick="switchTab('settings')"><i class="ti ti-palette" aria-hidden="true"></i> Apariencia</button>
+  </div>
+
+  <!-- TIMER TAB -->
+  <div id="tab-timer" class="tab-panel active">
+    <div class="timer-layout">
+      <div class="timer-card card">
+        <div class="timer-label" id="phase-label">Tiempo de estudio</div>
+        <div class="timer-ring-wrap">
+          <svg viewBox="0 0 180 180" aria-hidden="true">
+            <circle class="ring-bg" cx="90" cy="90" r="82"/>
+            <circle class="ring-fg" id="ring" cx="90" cy="90" r="82" stroke-dasharray="515" stroke-dashoffset="515"/>
+          </svg>
+          <div class="timer-time" id="timer-display">25:00</div>
+          <div class="timer-phase" id="phase-sub">Sesión 1</div>
+        </div>
+        
+        <div class="btn-row">
+          <button class="btn-primary" id="btn-start" onclick="startTimer()"><i class="ti ti-player-play" aria-hidden="true"></i> Iniciar</button>
+          <button class="btn-secondary" id="btn-pause" onclick="pauseTimer()" disabled><i class="ti ti-player-pause" aria-hidden="true"></i></button>
+          <button class="btn-secondary" onclick="resetTimer()"><i class="ti ti-refresh" aria-hidden="true"></i></button>
+        </div>
+
+        <div class="custom-type-wrap" id="custom-type-wrap">
+          <input type="text" id="custom-type-input" class="custom-type-input" placeholder="¿Qué vas a estudiar?" maxlength="30" oninput="updateCustomType()">
+        </div>
+        <div class="type-recos-label" id="type-recos-label" style="display:none;">Recomendados</div>
+        <div class="session-type" id="type-recos"></div>
+      </div>
+      
+      <div>
+        <div class="config-card card">
+          <h3>Configuración</h3>
+          <div class="config-row">
+            <label>Trabajo (min)</label>
+            <input type="range" min="5" max="60" value="25" step="5" id="cfg-work" oninput="updateConfig()">
+            <input type="number" class="config-val" id="val-work" value="25" min="5" max="60" step="5" oninput="updateConfigFromInput('work')" onblur="clampConfigInput('work')">
+          </div>
+          <div class="config-row">
+            <label>Descanso corto</label>
+            <input type="range" min="1" max="15" value="5" step="1" id="cfg-short" oninput="updateConfig()">
+            <input type="number" class="config-val" id="val-short" value="5" min="1" max="15" step="1" oninput="updateConfigFromInput('short')" onblur="clampConfigInput('short')">
+          </div>
+          <div class="config-row">
+            <label>Descanso largo</label>
+            <input type="range" min="10" max="30" value="15" step="5" id="cfg-long" oninput="updateConfig()">
+            <input type="number" class="config-val" id="val-long" value="15" min="10" max="30" step="5" oninput="updateConfigFromInput('long')" onblur="clampConfigInput('long')">
+          </div>
+          <div class="config-row">
+            <label>Ciclos hasta descanso</label>
+            <input type="range" min="2" max="6" value="4" step="1" id="cfg-cycles" oninput="updateConfig()">
+            <input type="number" class="config-val" id="val-cycles" value="4" min="2" max="6" step="1" oninput="updateConfigFromInput('cycles')" onblur="clampConfigInput('cycles')">
+          </div>
+        </div>
+        
+        <div class="session-info">
+          <div class="row"><span class="label">Hoy estudiado</span><span class="val tag-green" id="info-today">0 min</span></div>
+          <div class="row"><span class="label">Sesiones hoy</span><span class="val" id="info-sessions">0</span></div>
+          <div class="row"><span class="label">Ciclos completados</span><span class="val" id="info-cycles">0</span></div>
+          <div class="row"><span class="label">Tipo actual</span><span class="val tag-blue" id="info-type">General</span></div>
+        </div>
+        
+        <button class="btn-secondary full-width" id="btn-manual-toggle" onclick="toggleManualForm()"><i class="ti ti-plus"></i> Registrar sesión manual</button>
+        <div class="manual-form" id="manual-form" style="display:none;">
+          <div class="manual-form-title"><i class="ti ti-pencil"></i> Nueva sesión manual</div>
+          <div class="manual-input-group">
+            <input type="number" id="manual-minutes" class="manual-input" placeholder="0" min="1" max="600" onkeydown="if(event.key==='Enter')confirmManual()">
+            <span class="manual-input-suffix">minutos</span>
+          </div>
+          <div class="manual-actions">
+            <button class="btn-confirm" onclick="confirmManual()"><i class="ti ti-check"></i> Registrar</button>
+            <button class="btn-cancel" onclick="toggleManualForm()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS TAB -->
+  <div id="tab-stats" class="tab-panel">
+    <div class="stats-grid">
+      <div class="metric card"><div class="m-label">Total estudiado</div><div class="m-val" id="stat-total">0 h</div><div class="m-sub">de siempre</div></div>
+      <div class="metric card"><div class="m-label">Esta semana</div><div class="m-val" id="stat-week">0 h</div><div class="m-sub">últimos 7 días</div></div>
+      <div class="metric card"><div class="m-label">Hoy</div><div class="m-val" id="stat-today">0 min</div></div>
+      <div class="metric card"><div class="m-label">Sesiones totales</div><div class="m-val" id="stat-sessions">0</div></div>
+      <div class="metric card"><div class="m-label"><i class="ti ti-flame" aria-hidden="true"></i> Racha</div><div class="m-val" id="stat-streak">0 días</div><div class="m-sub">máx <span id="stat-streak-max">0</span> días</div></div>
+      <div class="metric card"><div class="m-label"><i class="ti ti-target" aria-hidden="true"></i> Regularidad</div><div class="m-val" id="stat-irs">0%</div><div class="m-sub">días activos (7d)</div></div>
+      <div class="metric card"><div class="m-label"><i class="ti ti-coffee" aria-hidden="true"></i> Descanso activo</div><div class="m-val" id="stat-rda">0%</div><div class="m-sub" id="stat-rda-hint">meta ~20%</div></div>
+      <div class="metric card"><div class="m-label"><i class="ti ti-focus-2" aria-hidden="true"></i> Enfoque Pomodoro</div><div class="m-val" id="stat-pomo">0%</div><div class="m-sub">del tiempo estudiado</div></div>
+    </div>
+    <div class="chart-card card">
+      <h3>Últimos 7 días (minutos)</h3>
+      <div style="position:relative;height:220px;"><canvas id="weekChart" role="img" aria-label="Gráfico de minutos estudiados los últimos 7 días"></canvas></div>
+    </div>
+    <div class="chart-card card">
+      <h3>Por tipo de estudio</h3>
+      <div class="bar-container" id="type-bars">
+        <div style="position:relative;height:220px;"><canvas id="typeChart" role="img" aria-label="Gráfico de minutos estudiados por tipo de estudio"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card card">
+      <h3>Densidad por hora (0–23)</h3>
+      <div class="bar-container" id="hour-bars">
+        <div style="position:relative;height:220px;"><canvas id="hourChart" role="img" aria-label="Gráfico de minutos estudiados por cada hora del día"></canvas></div>
+      </div>
+      <div id="hour-peak-info"></div>
+    </div>
+    <div class="chart-card card">
+      <h3>Balance temático</h3>
+      <div style="position:relative;height:340px;"><canvas id="radarChart" role="img" aria-label="Gráfico de radar del balance entre temas de estudio"></canvas></div>
+    </div>
+    <div class="chart-card card">
+      <h3>Calendario de consistencia</h3>
+      <div class="heatmap-scroll">
+        <div class="heatmap" id="heatmap"></div>
+      </div>
+      <div class="heatmap-legend">
+        <span>Menos</span>
+        <span class="hm-cell hm-l0"></span>
+        <span class="hm-cell hm-l1"></span>
+        <span class="hm-cell hm-l2"></span>
+        <span class="hm-cell hm-l3"></span>
+        <span class="hm-cell hm-l4"></span>
+        <span>Más</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOG TAB -->
+  <div id="tab-log" class="tab-panel">
+    <div class="log-filters">
+      <select id="filter-type" onchange="renderLog()">
+        <option value="">Todos los tipos</option>
+        <option>General</option><option>Matemáticas</option><option>Programación</option><option>Idiomas</option><option>Lectura</option><option>Otro</option>
+      </select>
+      <select id="filter-days" onchange="renderLog()">
+        <option value="7">Últimos 7 días</option>
+        <option value="30">Últimos 30 días</option>
+        <option value="0">Todo</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn-secondary" style="padding: 10px 16px; font-size: 14px;" onclick="exportCSV()"><i class="ti ti-download" aria-hidden="true"></i> CSV</button>
+      <button class="btn-danger" onclick="clearLog()"><i class="ti ti-trash" aria-hidden="true"></i> Limpiar</button>
+    </div>
+    <div class="table-responsive" id="log-table-wrap"></div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="tab-settings" class="tab-panel">
+    <div class="chart-card card">
+      <h3>Tema</h3>
+      <div class="theme-grid" id="theme-grid">
+        <button type="button" class="theme-option" data-theme-value="dark" onclick="selectTheme('dark')">
+          <span class="theme-swatch swatch-dark"></span>
+          <span class="theme-name">Oscuro</span>
+        </button>
+        <button type="button" class="theme-option" data-theme-value="light" onclick="selectTheme('light')">
+          <span class="theme-swatch swatch-light"></span>
+          <span class="theme-name">Claro</span>
+        </button>
+        <button type="button" class="theme-option" data-theme-value="ocean" onclick="selectTheme('ocean')">
+          <span class="theme-swatch swatch-ocean"></span>
+          <span class="theme-name">Océano</span>
+        </button>
+        <button type="button" class="theme-option" data-theme-value="forest" onclick="selectTheme('forest')">
+          <span class="theme-swatch swatch-forest"></span>
+          <span class="theme-name">Bosque</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="chart-card card">
+      <h3>Color de acento</h3>
+      <div class="accent-row">
+        <div class="accent-presets" id="accent-presets">
+          <button type="button" class="accent-dot" style="background:#6366f1" onclick="selectAccent('#6366f1')" aria-label="Índigo"></button>
+          <button type="button" class="accent-dot" style="background:#0ea5e9" onclick="selectAccent('#0ea5e9')" aria-label="Azul"></button>
+          <button type="button" class="accent-dot" style="background:#10b981" onclick="selectAccent('#10b981')" aria-label="Verde"></button>
+          <button type="button" class="accent-dot" style="background:#f59e0b" onclick="selectAccent('#f59e0b')" aria-label="Ámbar"></button>
+          <button type="button" class="accent-dot" style="background:#ec4899" onclick="selectAccent('#ec4899')" aria-label="Rosa"></button>
+          <button type="button" class="accent-dot" style="background:#ef4444" onclick="selectAccent('#ef4444')" aria-label="Rojo"></button>
+        </div>
+        <label class="accent-custom">
+          <i class="ti ti-color-picker"></i> Personalizado
+          <input type="color" id="accent-input" value="#3b82f6" oninput="selectAccent(this.value)">
+        </label>
+      </div>
+    </div>
+
+    <button class="btn-primary full-width" id="btn-save-prefs" onclick="savePreferences()">
+      <i class="ti ti-device-floppy"></i> Guardar apariencia
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"><i class="ti ti-check"></i> <span id="toast-msg"></span></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const STORAGE_KEY = 'studylog_v1';
+let db = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+
+// Helper: local date string YYYY-MM-DD (avoids toISOString() which uses UTC)
+function localDateStr(d) {
+  if (!d) d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Helper: local ISO-like timestamp (avoids UTC shift)
+function localISOString(d) {
+  if (!d) d = new Date();
+  const pad = (n, len=2) => String(n).padStart(len, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+let cfg = { work: 25, short: 5, long: 15, cycles: 4 };
+let state = {
+  running: false, paused: false, phase: 'work', session: 1,
+  remaining: cfg.work * 60, endTime: null, // endTime = timestamp when timer hits 0
+  type: 'General', cycleCount: 0
+};
+let interval = null;
+const CIRC = 515;
+
+function updateConfig() {
+  cfg.work = +document.getElementById('cfg-work').value;
+  cfg.short = +document.getElementById('cfg-short').value;
+  cfg.long = +document.getElementById('cfg-long').value;
+  cfg.cycles = +document.getElementById('cfg-cycles').value;
+  document.getElementById('val-work').value = cfg.work;
+  document.getElementById('val-short').value = cfg.short;
+  document.getElementById('val-long').value = cfg.long;
+  document.getElementById('val-cycles').value = cfg.cycles;
+  if (!state.running && !state.paused) { state.remaining = cfg.work * 60; renderClock(); }
+}
+
+function updateConfigFromInput(key) {
+  const input = document.getElementById('val-' + key);
+  const slider = document.getElementById('cfg-' + key);
+  let val = parseInt(input.value);
+  if (isNaN(val)) return;
+  const min = +slider.min;
+  const max = +slider.max;
+  val = Math.max(min, Math.min(max, val));
+  slider.value = val;
+  cfg[key] = val;
+  if (!state.running && !state.paused && key === 'work') { state.remaining = cfg.work * 60; renderClock(); }
+}
+
+function clampConfigInput(key) {
+  const input = document.getElementById('val-' + key);
+  const slider = document.getElementById('cfg-' + key);
+  let val = parseInt(input.value);
+  const min = +slider.min;
+  const max = +slider.max;
+  if (isNaN(val) || val < min) val = min;
+  if (val > max) val = max;
+  input.value = val;
+  slider.value = val;
+  cfg[key] = val;
+  if (!state.running && !state.paused && key === 'work') { state.remaining = cfg.work * 60; renderClock(); }
+}
+
+function phaseDuration() {
+  if (state.phase === 'work') return cfg.work * 60;
+  if (state.phase === 'short') return cfg.short * 60;
+  return cfg.long * 60;
+}
+
+function renderClock() {
+  const rem = Math.max(0, state.remaining);
+  const m = Math.floor(rem / 60), s = rem % 60;
+  document.getElementById('timer-display').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  const total = phaseDuration();
+  // offset = CIRC when full (no time elapsed), drains to 0 as time passes
+  const offset = CIRC * (rem / total);
+  const ring = document.getElementById('ring');
+  ring.style.strokeDashoffset = offset;
+  ring.className.baseVal = 'ring-fg' + (state.phase !== 'work' ? ' break' : '');
+  
+  document.getElementById('phase-label').textContent = state.phase === 'work' ? 'Tiempo de estudio' : (state.phase === 'short' ? 'Descanso corto' : 'Descanso largo');
+  document.getElementById('phase-sub').textContent = 'Sesión ' + state.session;
+
+  // Update page title with time remaining when running
+  if (state.running) {
+    document.title = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + ' — FocusData';
+  } else {
+    document.title = 'FocusData';
+  }
+}
+
+function startTimer() {
+  if (state.paused) {
+    // Resuming: set endTime based on remaining seconds from now
+    state.endTime = Date.now() + state.remaining * 1000;
+    state.paused = false;
+  } else {
+    // Fresh start: calculate endTime from current phase duration
+    state.endTime = Date.now() + state.remaining * 1000;
+  }
+  state.running = true;
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-pause').disabled = false;
+  interval = setInterval(tick, 250); // tick faster to stay accurate even when throttled
+}
+
+function pauseTimer() {
+  clearInterval(interval);
+  // Snapshot remaining time from the real clock
+  state.remaining = Math.max(0, Math.round((state.endTime - Date.now()) / 1000));
+  state.running = false;
+  state.paused = true;
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+  renderClock();
+}
+
+function resetTimer() {
+  clearInterval(interval);
+  state.running = false;
+  state.paused = false;
+  state.phase = 'work';
+  state.session = 1;
+  state.cycleCount = 0;
+  state.remaining = cfg.work * 60;
+  state.endTime = null;
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+  renderClock();
+  updateSideInfo();
+}
+
+function tick() {
+  // Calculate remaining from wall clock — immune to tab throttling
+  state.remaining = Math.max(0, Math.round((state.endTime - Date.now()) / 1000));
+  renderClock();
+  if (state.remaining <= 0) { phaseComplete(); }
+}
+
+// ── Alarm sound (Web Audio API — no external files needed) ──
+function playAlarm() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 — pleasant ascending chord
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.25);
+      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + i * 0.25 + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.25 + 0.6);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.25);
+      osc.stop(ctx.currentTime + i * 0.25 + 0.6);
+    });
+    // Second ring after a short pause for emphasis
+    setTimeout(() => {
+      try {
+        const ctx2 = new (window.AudioContext || window.webkitAudioContext)();
+        notes.forEach((freq, i) => {
+          const osc = ctx2.createOscillator();
+          const gain = ctx2.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0, ctx2.currentTime + i * 0.25);
+          gain.gain.linearRampToValueAtTime(0.25, ctx2.currentTime + i * 0.25 + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + i * 0.25 + 0.8);
+          osc.connect(gain);
+          gain.connect(ctx2.destination);
+          osc.start(ctx2.currentTime + i * 0.25);
+          osc.stop(ctx2.currentTime + i * 0.25 + 0.8);
+        });
+      } catch(e) {}
+    }, 1000);
+  } catch(e) { console.warn('Audio not available:', e); }
+}
+
+function sendNotification(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '🎓' });
+  }
+}
+
+function phaseComplete() {
+  clearInterval(interval);
+  playAlarm();
+  if (state.phase === 'work') {
+    logSession(cfg.work, state.type, 'pomodoro');
+    state.cycleCount++;
+    state.phase = state.cycleCount % cfg.cycles === 0 ? 'long' : 'short';
+    const msg = state.phase === 'long' ? '🎉 ¡Gran descanso! Sesión guardada.' : '☕ Descanso corto. Sesión guardada.';
+    toast(msg);
+    sendNotification('⏰ Sesión completada', state.phase === 'long' ? '¡Tómate un gran descanso!' : '¡Hora de un descanso corto!');
+  } else {
+    // El descanso terminó: registrarlo para poder calcular el Ratio de Descanso Activo
+    const breakMins = state.phase === 'long' ? cfg.long : cfg.short;
+    logSession(breakMins, 'Descanso', 'break');
+    state.session++;
+    state.phase = 'work';
+    toast('💪 ¡A estudiar!');
+    sendNotification('⏰ Descanso terminado', '¡Es hora de volver a estudiar!');
+  }
+  state.remaining = phaseDuration();
+  state.running = false;
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+  renderClock(); updateSideInfo();
+}
+
+function logSession(minutes, type, mode) {
+  const now = new Date();
+  const ts = localISOString(now);
+  const session = { id: Date.now(), date: localDateStr(now), hour: now.getHours(), time: now.toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'}), minutes, type, mode, ts };
+  db.push(session);
+  save(); updateSideInfo(); renderTypeRecos();
+
+  // Persist to backend (SQLite)
+  fetch('/api/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ minutes, type, mode, date: session.date, hour: session.hour, time: session.time, ts })
+  }).catch(err => console.error('Error guardando en backend:', err));
+}
+
+function toggleManualForm() {
+  const form = document.getElementById('manual-form');
+  const btn = document.getElementById('btn-manual-toggle');
+  const isHidden = form.style.display === 'none';
+  form.style.display = isHidden ? 'block' : 'none';
+  btn.style.display = isHidden ? 'none' : '';
+  if (isHidden) {
+    document.getElementById('manual-minutes').value = '';
+    document.getElementById('manual-minutes').focus();
+  }
+}
+
+function confirmManual() {
+  const input = document.getElementById('manual-minutes');
+  const min = +input.value;
+  if (!min || isNaN(min) || min <= 0) {
+    input.style.borderColor = 'var(--danger)';
+    input.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.2)';
+    setTimeout(() => { input.style.borderColor = ''; input.style.boxShadow = ''; }, 1000);
+    return;
+  }
+  logSession(Math.round(min), state.type, 'manual');
+  toast('Sesión manual registrada ✓');
+  toggleManualForm();
+}
+
+// Renderiza hasta 3 recomendaciones = los tipos más usados del historial.
+// Usuario nuevo (sin historial) → no muestra ninguna.
+function renderTypeRecos() {
+  const counts = {};
+  db.filter(r => r.mode !== 'break' && r.type).forEach(r => {
+    counts[r.type] = (counts[r.type] || 0) + 1;
+  });
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+  const wrap = document.getElementById('type-recos');
+  const label = document.getElementById('type-recos-label');
+  wrap.innerHTML = '';
+  if (!top.length) { wrap.style.display = 'none'; label.style.display = 'none'; return; }
+
+  wrap.style.display = 'flex';
+  label.style.display = 'block';
+  const current = document.getElementById('custom-type-input').value.trim();
+  top.forEach(([t]) => {
+    const chip = document.createElement('span');
+    chip.className = 'type-chip' + (t === current && current ? ' selected' : '');
+    chip.textContent = t;
+    chip.onclick = () => pickReco(t);
+    wrap.appendChild(chip);
+  });
+}
+
+// Al pulsar una recomendación, rellena el campo manual.
+function pickReco(t) {
+  document.getElementById('custom-type-input').value = t;
+  updateCustomType();
+}
+
+function updateCustomType() {
+  const val = document.getElementById('custom-type-input').value.trim();
+  state.type = val || 'General';
+  document.getElementById('info-type').textContent = state.type;
+  // Resalta la recomendación que coincide con lo escrito (si alguna)
+  document.querySelectorAll('#type-recos .type-chip').forEach(c =>
+    c.classList.toggle('selected', c.textContent === val && val !== ''));
+}
+
+function updateSideInfo() {
+  const today = localDateStr();
+  const todayRecs = db.filter(r => r.date === today && r.mode !== 'break');
+  const mins = todayRecs.reduce((a,r) => a + r.minutes, 0);
+  document.getElementById('info-today').textContent = mins >= 60 ? (mins/60).toFixed(1) + ' h' : mins + ' min';
+  document.getElementById('info-sessions').textContent = todayRecs.length;
+  document.getElementById('info-cycles').textContent = state.cycleCount;
+  document.getElementById('info-type').textContent = state.type;
+}
+
+function switchTab(t) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ['timer','stats','log','settings'][i] === t));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + t).classList.add('active');
+  if (t === 'stats') renderStats();
+  if (t === 'log') renderLog();
+}
+
+let weekChartInst = null;
+let typeChartInst = null;
+let hourChartInst = null;
+let radarChartInst = null;
+
+// ── Umbrales de métricas (una sola definición reutilizada) ──
+const STREAK_MIN_MIN = 1;   // un día cuenta para la racha con >= 1 min estudiado
+const IRS_MIN_MIN = 20;     // un día es "regular" con >= 20 min estudiados
+
+// Minutos de estudio (sin descansos) agrupados por fecha
+function studyMinutesByDate() {
+  const map = {};
+  db.filter(r => r.mode !== 'break').forEach(r => {
+    map[r.date] = (map[r.date] || 0) + r.minutes;
+  });
+  return map;
+}
+
+// Diferencia en días entre dos fechas 'YYYY-MM-DD'
+function dayDiff(a, b) {
+  return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+}
+
+// Racha actual (desde hoy o ayer hacia atrás) y racha máxima histórica
+function computeStreaks() {
+  const byDate = studyMinutesByDate();
+  const days = Object.keys(byDate).filter(d => byDate[d] >= STREAK_MIN_MIN).sort();
+  if (!days.length) return { current: 0, max: 0 };
+
+  const daySet = new Set(days);
+  let max = 0, run = 0, prev = null;
+  days.forEach(d => {
+    run = (prev && dayDiff(prev, d) === 1) ? run + 1 : 1;
+    max = Math.max(max, run);
+    prev = d;
+  });
+
+  let current = 0;
+  let cursor = localDateStr(new Date());
+  if (!daySet.has(cursor)) {
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    cursor = localDateStr(y);
+    if (!daySet.has(cursor)) return { current: 0, max };
+  }
+  while (daySet.has(cursor)) {
+    current++;
+    const d = new Date(cursor + 'T00:00:00'); d.setDate(d.getDate() - 1);
+    cursor = localDateStr(d);
+  }
+  return { current, max };
+}
+
+// Índice de Regularidad Semanal: % de los últimos 7 días con >= IRS_MIN_MIN
+function computeIRS() {
+  const byDate = studyMinutesByDate();
+  let active = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    if ((byDate[localDateStr(d)] || 0) >= IRS_MIN_MIN) active++;
+  }
+  return Math.round(active / 7 * 100);
+}
+
+// Ratio de Descanso Activo: minutos de descanso / minutos de estudio
+function computeRDA() {
+  let study = 0, brk = 0;
+  db.forEach(r => { if (r.mode === 'break') brk += r.minutes; else study += r.minutes; });
+  return { ratio: study > 0 ? Math.round(brk / study * 100) : 0, study, brk };
+}
+
+// Heatmap estilo GitHub: últimas 26 semanas, intensidad por minutos/día
+function renderHeatmap() {
+  const el = document.getElementById('heatmap');
+  if (!el) return;
+  const byDate = studyMinutesByDate();
+  const WEEKS = 26;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setDate(start.getDate() - (WEEKS * 7 - 1));
+  start.setDate(start.getDate() - start.getDay()); // alinear al domingo
+  const level = m => m <= 0 ? 0 : m < 25 ? 1 : m < 60 ? 2 : m < 120 ? 3 : 4;
+
+  let html = '';
+  const cur = new Date(start);
+  while (cur <= today) {
+    const ds = localDateStr(cur);
+    const mins = byDate[ds] || 0;
+    html += `<div class="hm-cell hm-l${level(mins)}" title="${ds}: ${mins} min"></div>`;
+    cur.setDate(cur.getDate() + 1);
+  }
+  el.innerHTML = html;
+}
+
+// Radar de balance temático: top-6 tipos reales vs meta equilibrada (promedio)
+function renderRadar(typeTotals) {
+  const el = document.getElementById('radarChart');
+  if (!el) return;
+  if (radarChartInst) { radarChartInst.destroy(); radarChartInst = null; }
+
+  const entries = Object.entries(typeTotals).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  if (!entries.length) return;
+
+  const labels = entries.map(([t]) => t);
+  const values = entries.map(([, m]) => m);
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  const goal = labels.map(() => Math.round(avg));
+
+  const accent = cssVar('--accent') || '#3b82f6';
+  const rgb = hexToRgb(accent);
+  const tick = cssVar('--chart-tick') || '#94a3b8';
+  const grid = cssVar('--chart-grid') || 'rgba(255,255,255,0.08)';
+
+  radarChartInst = new Chart(el, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Real (min)', data: values, borderColor: accent, backgroundColor: `rgba(${rgb}, 0.25)`, borderWidth: 2, pointBackgroundColor: accent, pointRadius: 3 },
+        { label: 'Meta equilibrada', data: goal, borderColor: tick, backgroundColor: 'transparent', borderDash: [5, 5], borderWidth: 1.5, pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: tick, font: { family: "'Inter', sans-serif" } } },
+        tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#fff', bodyColor: '#cbd5e1' }
+      },
+      scales: {
+        r: {
+          angleLines: { color: grid },
+          grid: { color: grid },
+          pointLabels: { color: tick, font: { family: "'Inter', sans-serif", size: 12 } },
+          ticks: { display: false, backdropColor: 'transparent' },
+          suggestedMin: 0
+        }
+      }
+    }
+  });
+}
+
+// Paletas de colores reutilizadas de las barras CSS
+const TYPE_COLORS = {
+  'General': '#6366f1', 'Matemáticas': '#0ea5e9', 'Programación': '#10b981',
+  'Idiomas': '#f59e0b', 'Lectura': '#ec4899', 'Otro': '#64748b'
+};
+
+// Lee una variable CSS del tema actual (para que los gráficos se adapten)
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// Opciones de ejes generadas al vuelo, según el tema activo
+function makeBarAxisOptions() {
+  const tick = cssVar('--chart-tick') || '#94a3b8';
+  const grid = cssVar('--chart-grid') || 'rgba(255,255,255,0.05)';
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#fff', bodyColor: '#cbd5e1', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 }
+    },
+    scales: {
+      x: { grid: { display: false }, border: { display: false }, ticks: { color: tick, font: { family: "'Inter', sans-serif" } } },
+      y: { grid: { color: grid }, border: { display: false }, ticks: { color: tick, font: { family: "'Inter', sans-serif" }, stepSize: 30 } }
+    }
+  };
+}
+function renderStats() {
+  const today = new Date();
+  const studyRecs = db.filter(r => r.mode !== 'break');
+  const totalMins = studyRecs.reduce((a,r) => a + r.minutes, 0);
+  const weekAgo = new Date(today); weekAgo.setDate(today.getDate()-7);
+  const weekMins = studyRecs.filter(r => new Date(r.date) >= weekAgo).reduce((a,r) => a+r.minutes, 0);
+  const todayMins = studyRecs.filter(r => r.date === localDateStr(today)).reduce((a,r) => a+r.minutes, 0);
+  
+  document.getElementById('stat-total').textContent = totalMins >= 60 ? (totalMins/60).toFixed(1) + ' h' : totalMins + ' min';
+  document.getElementById('stat-week').textContent = weekMins >= 60 ? (weekMins/60).toFixed(1) + ' h' : weekMins + ' min';
+  document.getElementById('stat-today').textContent = todayMins + ' min';
+  document.getElementById('stat-sessions').textContent = studyRecs.length;
+
+  // Métricas avanzadas: racha, regularidad, descanso activo, enfoque pomodoro
+  const streaks = computeStreaks();
+  document.getElementById('stat-streak').textContent = streaks.current + (streaks.current === 1 ? ' día' : ' días');
+  document.getElementById('stat-streak-max').textContent = streaks.max;
+  document.getElementById('stat-irs').textContent = computeIRS() + '%';
+
+  const rda = computeRDA();
+  document.getElementById('stat-rda').textContent = rda.ratio + '%';
+  document.getElementById('stat-rda-hint').textContent =
+    rda.brk === 0 ? 'sin descansos aún'
+    : rda.ratio < 15 ? 'bajo (meta ~20%)'
+    : rda.ratio <= 30 ? 'ideal ✓'
+    : 'alto (meta ~20%)';
+
+  const pomoMins = studyRecs.filter(r => r.mode === 'pomodoro').reduce((a, r) => a + r.minutes, 0);
+  document.getElementById('stat-pomo').textContent = (totalMins > 0 ? Math.round(pomoMins / totalMins * 100) : 0) + '%';
+
+  const days = [], labels = [], data = [];
+  for (let i=6; i>=0; i--) { const d = new Date(today); d.setDate(today.getDate()-i); days.push(localDateStr(d)); labels.push(['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()]); }
+  days.forEach(d => data.push(studyRecs.filter(r => r.date === d).reduce((a,r) => a+r.minutes, 0)));
+
+  const accentColor = cssVar('--accent') || '#3b82f6';
+  const accentRgb = hexToRgb(accentColor);
+  const pointColors = data.map((_,i) => i === 6 ? accentColor : `rgba(${accentRgb}, 0.85)`);
+
+  if (weekChartInst) { weekChartInst.destroy(); }
+  weekChartInst = new Chart(document.getElementById('weekChart'), {
+    type: 'line',
+    data: { labels, datasets: [{
+      label: 'Minutos',
+      data,
+      borderColor: accentColor,
+      backgroundColor: `rgba(${accentRgb}, 0.12)`,
+      fill: true,
+      tension: 0.35,
+      borderWidth: 2.5,
+      pointBackgroundColor: pointColors,
+      pointBorderColor: accentColor,
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }] },
+    options: makeBarAxisOptions()
+  });
+
+  const typeTotals = {};
+  studyRecs.forEach(r => typeTotals[r.type] = (typeTotals[r.type] || 0) + r.minutes);
+  const bars = document.getElementById('type-bars');
+  if (typeChartInst) { typeChartInst.destroy(); typeChartInst = null; }
+  if (!Object.keys(typeTotals).length) {
+    bars.innerHTML = '<div class="empty-state"><i class="ti ti-chart-bar"></i>Aún no hay registros</div>';
+  } else {
+    bars.innerHTML = '<div style="position:relative;height:220px;"><canvas id="typeChart" role="img" aria-label="Gráfico de minutos estudiados por tipo de estudio"></canvas></div>';
+    const typeEntries = Object.entries(typeTotals).sort((a,b) => b[1]-a[1]);
+    typeChartInst = new Chart(document.getElementById('typeChart'), {
+      type: 'bar',
+      data: {
+        labels: typeEntries.map(([t]) => t),
+        datasets: [{
+          label: 'Minutos',
+          data: typeEntries.map(([,m]) => m),
+          backgroundColor: typeEntries.map(([t]) => TYPE_COLORS[t] || '#6366f1'),
+          borderRadius: 6, borderSkipped: false
+        }]
+      },
+      options: makeBarAxisOptions()
+    });
+  }
+
+  // Densidad por hora del día (0–23)
+  const hourData = new Array(24).fill(0);
+  studyRecs.forEach(r => { const h = Math.max(0, Math.min(23, r.hour | 0)); hourData[h] += r.minutes; });
+
+  const hourBars = document.getElementById('hour-bars');
+  const peakInfo = document.getElementById('hour-peak-info');
+  if (hourChartInst) { hourChartInst.destroy(); hourChartInst = null; }
+
+  if (!studyRecs.length) {
+    hourBars.innerHTML = '<div class="empty-state"><i class="ti ti-clock"></i>Aún no hay registros</div>';
+    peakInfo.innerHTML = '';
+  } else {
+    hourBars.innerHTML = '<div style="position:relative;height:220px;"><canvas id="hourChart" role="img" aria-label="Minutos estudiados por cada hora del día"></canvas></div>';
+    const hAccent = cssVar('--accent') || '#3b82f6';
+    const hRgb = hexToRgb(hAccent);
+    const peakH = hourData.indexOf(Math.max(...hourData));
+    hourChartInst = new Chart(document.getElementById('hourChart'), {
+      type: 'bar',
+      data: {
+        labels: hourData.map((_, h) => String(h)),
+        datasets: [{
+          label: 'Minutos',
+          data: hourData,
+          backgroundColor: hourData.map((_, h) => h === peakH ? hAccent : `rgba(${hRgb}, 0.45)`),
+          borderRadius: 4, borderSkipped: false
+        }]
+      },
+      options: makeBarAxisOptions()
+    });
+    peakInfo.innerHTML = `<div class="hour-peak"><i class="ti ti-bulb"></i> Tu hora más productiva es alrededor de las <strong>${peakH}:00</strong></div>`;
+  }
+
+  // Heatmap de consistencia + radar de balance temático
+  renderHeatmap();
+  renderRadar(typeTotals);
+}
+
+function renderLog() {
+  const filterType = document.getElementById('filter-type').value;
+  const filterDays = +document.getElementById('filter-days').value;
+  const today = new Date();
+  let recs = [...db].filter(r => r.mode !== 'break').reverse();
+  if (filterType) recs = recs.filter(r => r.type === filterType);
+  if (filterDays > 0) { const cutoff = new Date(today); cutoff.setDate(today.getDate()-filterDays); recs = recs.filter(r => new Date(r.date) >= cutoff); }
+  
+  const wrap = document.getElementById('log-table-wrap');
+  if (!recs.length) { wrap.innerHTML = '<div class="empty-state"><i class="ti ti-calendar-off" aria-hidden="true"></i>No hay sesiones registradas</div>'; return; }
+  
+  wrap.innerHTML = `<table><thead><tr><th>Fecha</th><th>Hora</th><th>Duración</th><th>Tipo</th><th>Modo</th></tr></thead><tbody>` +
+    recs.map(r => `<tr><td>${r.date}</td><td>${r.time}</td><td><strong>${r.minutes} min</strong></td><td>${r.type}</td><td><span class="badge badge-${r.mode}">${r.mode}</span></td></tr>`).join('') +
+    `</tbody></table>`;
+}
+
+function clearLog() {
+  if (!confirm('¿Borrar todos los registros? Esto no se puede deshacer.')) return;
+  db = []; save(); renderLog(); updateSideInfo(); renderTypeRecos(); toast('Registros eliminados');
+}
+
+function exportCSV() {
+  const rows = [['fecha','hora','minutos','tipo','modo'], ...db.map(r => [r.date,r.time,r.minutes,r.type,r.mode])];
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'estudio_' + localDateStr() + '.csv'; a.click();
+  toast('CSV exportado ✓');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast'); 
+  document.getElementById('toast-msg').textContent = msg; 
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+renderClock(); updateSideInfo(); renderTypeRecos();
+
+// Request notification permission on first interaction
+if ('Notification' in window && Notification.permission === 'default') {
+  document.getElementById('btn-start').addEventListener('click', function reqPerm() {
+    Notification.requestPermission();
+    document.getElementById('btn-start').removeEventListener('click', reqPerm);
+  }, { once: true });
+}
+
+// ── Apariencia (tema + acento) ──
+const VALID_THEMES = ['dark', 'light', 'ocean', 'forest'];
+let prefs = { theme: 'dark', accent: '#3b82f6' };
+
+// Convierte #rrggbb a "r, g, b"
+function hexToRgb(hex) {
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const n = parseInt(h, 16);
+  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+}
+
+function applyTheme(theme) {
+  if (!VALID_THEMES.includes(theme)) theme = 'dark';
+  prefs.theme = theme;
+  if (theme === 'dark') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', theme);
+  document.querySelectorAll('.theme-option').forEach(b =>
+    b.classList.toggle('selected', b.dataset.themeValue === theme));
+}
+
+function applyAccent(accent) {
+  prefs.accent = accent;
+  const root = document.documentElement.style;
+  const rgb = hexToRgb(accent);
+  root.setProperty('--accent', accent);
+  root.setProperty('--accent-hover', accent);
+  root.setProperty('--accent-glow', `rgba(${rgb}, 0.5)`);
+  const input = document.getElementById('accent-input');
+  if (input) input.value = accent;
+  document.querySelectorAll('.accent-dot').forEach(d => {
+    const dotColor = d.style.background.startsWith('rgb')
+      ? d.style.background
+      : d.getAttribute('style').split(':')[1].trim();
+    d.classList.toggle('selected', dotColor.toLowerCase() === accent.toLowerCase());
+  });
+}
+
+function selectTheme(theme) {
+  applyTheme(theme);
+  if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+}
+function selectAccent(accent) {
+  applyAccent(accent);
+  if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+}
+
+function savePreferences() {
+  const btn = document.getElementById('btn-save-prefs');
+  btn.disabled = true;
+  fetch('/api/preferences', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme: prefs.theme, accent: prefs.accent })
+  }).then(r => r.json()).then(d => {
+    if (d.ok) toast('Apariencia guardada ✓');
+    else toast(d.error || 'No se pudo guardar');
+  }).catch(() => toast('Error de conexión'))
+    .finally(() => { btn.disabled = false; });
+}
+
+// Clave estable para deduplicar sesiones (backend ↔ localStorage)
+function sessionKey(r) {
+  return r.ts || `${r.date}|${r.time}|${r.minutes}|${r.type}|${r.mode}`;
+}
+function sessionTime(r) {
+  return new Date(r.ts || `${r.date}T${r.time || '00:00'}`).getTime() || 0;
+}
+
+// Sincroniza el historial real del backend con la variable local `db`.
+// Backend = fuente de verdad; se conservan registros locales aún no subidos
+// (offline / carrera). Merge idempotente por `ts`, sin duplicar.
+function syncSessions() {
+  return fetch('/api/sessions?include_breaks=1')
+    .then(r => r.ok ? r.json() : [])
+    .then(remote => {
+      if (!Array.isArray(remote)) return;
+      const seen = new Set(remote.map(sessionKey));
+      const localOnly = db.filter(r => !seen.has(sessionKey(r)));
+
+      // Backfill idempotente: subir al backend los registros que solo existen
+      // localmente (datos previos al arreglo de persistencia / creados offline).
+      // Se les asigna un ts estable para que no se re-suban en la próxima carga.
+      localOnly.forEach(r => {
+        if (!r.ts) r.ts = `${r.date}T${r.time || '00:00'}:00`;
+        fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ minutes: r.minutes, type: r.type, mode: r.mode, date: r.date, hour: r.hour, time: r.time, ts: r.ts })
+        }).catch(() => {});
+      });
+
+      db = [...remote, ...localOnly].sort((a, b) => sessionTime(a) - sessionTime(b));
+      save();
+      // Re-render con los datos ya sincronizados
+      updateSideInfo(); renderTypeRecos();
+      if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+      if (document.getElementById('tab-log').classList.contains('active')) renderLog();
+    })
+    .catch(err => console.error('Error sincronizando historial:', err));
+}
+
+// Load current user + preferencias
+fetch('/api/me').then(r => {
+  if (r.status === 401) { window.location.href = '/login'; return; }
+  return r.json();
+}).then(data => {
+  if (data && data.username) {
+    document.getElementById('user-display').textContent = data.username;
+    applyTheme(data.theme || 'dark');
+    applyAccent(data.accent || '#3b82f6');
+    syncSessions();
+  }
+}).catch(() => {});
+</script>
+</body>
+</html>

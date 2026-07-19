@@ -7,353 +7,319 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-  
+
   <style>
     :root {
-      /* Palette */
-      --bg-color: #060910;
-      --card-bg: rgba(23, 32, 50, 0.45);
-      --card-border: rgba(255, 255, 255, 0.09);
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
+      /* Palette (superficies planas y opacas) */
+      --bg: #0b0f18;
+      --surface: #141a26;
+      --surface-2: #1b2230;
+      --border: #252d3d;
+      --text: #e7ebf3;
+      --muted: #8892a6;
+      --faint: #5a6478;
 
-      --accent: #3b82f6; /* Azul eléctrico */
-      --accent-glow: rgba(59, 130, 246, 0.5);
+      --accent: #3b82f6;
       --accent-hover: #2563eb;
 
       --danger: #ef4444;
-      --danger-bg: rgba(239, 68, 68, 0.1);
+      --danger-bg: rgba(239, 68, 68, 0.12);
       --success: #10b981;
       --info: #38bdf8;
 
       --font-sans: 'Inter', sans-serif;
-      --font-display: 'Space Grotesk', 'Inter', sans-serif;
-      --radius-lg: 24px;
-      --radius-md: 16px;
-      --radius-sm: 8px;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius-lg: 12px;
+      --radius-md: 8px;
+      --radius-sm: 6px;
 
       /* Colores de ejes/rejilla de los gráficos (dependen del tema) */
-      --chart-grid: rgba(255, 255, 255, 0.05);
-      --chart-tick: #94a3b8;
+      --chart-grid: rgba(255, 255, 255, 0.06);
+      --chart-tick: #8892a6;
     }
 
-    /* ── Temas predefinidos (sobrescriben el fondo y los textos) ── */
+    /* ── Temas predefinidos ── */
     [data-theme="light"] {
-      --bg-color: #f1f5f9;
-      --card-bg: rgba(255, 255, 255, 0.7);
-      --card-border: rgba(15, 23, 42, 0.1);
-      --text-main: #0f172a;
-      --text-muted: #475569;
-      --chart-grid: rgba(15, 23, 42, 0.08);
-      --chart-tick: #475569;
+      --bg: #f4f6fa;
+      --surface: #ffffff;
+      --surface-2: #eef2f8;
+      --border: #e2e7ef;
+      --text: #131722;
+      --muted: #5c6675;
+      --faint: #98a2b3;
+      --chart-grid: rgba(19, 23, 34, 0.08);
+      --chart-tick: #5c6675;
     }
     [data-theme="ocean"] {
-      --bg-color: #07182b;
-      --card-bg: rgba(12, 74, 110, 0.35);
-      --card-border: rgba(125, 211, 252, 0.15);
-      --text-main: #ecfeff;
-      --text-muted: #7dd3fc;
-      --chart-grid: rgba(125, 211, 252, 0.1);
+      --bg: #07182b;
+      --surface: #0e2740;
+      --surface-2: #123152;
+      --border: #1d3f63;
+      --text: #ecfeff;
+      --muted: #7dd3fc;
+      --faint: #4d7fa3;
+      --chart-grid: rgba(125, 211, 252, 0.10);
       --chart-tick: #7dd3fc;
     }
     [data-theme="forest"] {
-      --bg-color: #0a1f16;
-      --card-bg: rgba(6, 78, 59, 0.35);
-      --card-border: rgba(110, 231, 183, 0.15);
-      --text-main: #ecfdf5;
-      --text-muted: #6ee7b7;
-      --chart-grid: rgba(110, 231, 183, 0.1);
+      --bg: #0a1f16;
+      --surface: #0f2e22;
+      --surface-2: #123a2b;
+      --border: #1c4a38;
+      --text: #ecfdf5;
+      --muted: #6ee7b7;
+      --faint: #3f7d64;
+      --chart-grid: rgba(110, 231, 183, 0.10);
       --chart-tick: #6ee7b7;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    
-    body { 
-      font-family: var(--font-sans); 
-      background: var(--bg-color); 
-      color: var(--text-main); 
-      min-height: 100vh; 
-      display: flex; 
-      justify-content: center; 
-      padding: 2rem 1rem; 
-      position: relative;
-      overflow-x: hidden;
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
     }
 
-    /* Ambient Background Shapes (Glassmorphism) */
-    .bg-shape {
-      position: fixed;
-      filter: blur(120px);
-      z-index: -1;
-      opacity: 0.6;
-      border-radius: 50%;
-      animation: float 20s infinite ease-in-out alternate;
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+    #app { width: 100%; min-height: 100vh; display: flex; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 232px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 22px 16px; gap: 4px; min-height: 100vh;
+      position: sticky; top: 0; align-self: flex-start;
     }
-    .shape-1 {
-      width: 400px; height: 400px;
-      background: rgba(99, 102, 241, 0.3);
-      top: -100px; left: -100px;
+    .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 22px; }
+    .sidebar-brand-icon {
+      width: 30px; height: 30px; border-radius: 7px; background: var(--accent);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .shape-2 {
-      width: 500px; height: 500px;
-      background: rgba(20, 184, 166, 0.2);
-      bottom: -200px; right: -100px;
-      animation-delay: -5s;
+    .sidebar-brand-icon i { font-size: 18px; color: #fff; }
+    .sidebar-brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+    .sidebar-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); padding: 8px 10px 6px; }
+
+    .nav-item {
+      text-align: left; width: 100%; border: none; cursor: pointer; font-family: var(--font-sans);
+      display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--radius-sm);
+      background: transparent; color: var(--muted); font-size: 14px; font-weight: 600;
+      border-left: 2px solid transparent; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
     }
-    .shape-3 {
-      width: 300px; height: 300px;
-      background: rgba(236, 72, 153, 0.15);
-      top: 40%; left: 50%;
-      transform: translate(-50%, -50%);
-      animation-delay: -10s;
+    .nav-item i { font-size: 18px; flex-shrink: 0; }
+    .nav-item:hover:not(.active) { background: var(--surface-2); color: var(--text); }
+    .nav-item.active {
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--text); border-left-color: var(--accent);
     }
-    @keyframes float {
-      0% { transform: translate(0, 0) rotate(0deg) scale(1); }
-      100% { transform: translate(50px, 50px) rotate(10deg) scale(1.1); }
+    .nav-item.active i { color: var(--accent); }
+
+    .sidebar-spacer { flex: 1; }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border-top: 1px solid var(--border); margin-top: 8px;
+    }
+    .sidebar-user-avatar {
+      width: 30px; height: 30px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--muted);
+      flex-shrink: 0;
+    }
+    .sidebar-user-info { line-height: 1.2; min-width: 0; }
+    .sidebar-user-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-logout { font-size: 11px; color: var(--faint); text-decoration: none; }
+    .sidebar-user-logout:hover { color: var(--danger); }
+
+    @media (max-width: 720px) {
+      .sidebar { width: 64px; padding: 16px 8px; }
+      .sidebar-brand { justify-content: center; padding: 6px 0 22px; }
+      .sidebar-brand-name, .sidebar-label, .nav-label, .sidebar-user-info { display: none; }
+      .nav-item { justify-content: center; padding: 12px; }
+      .sidebar-user { justify-content: center; }
     }
 
-    #app { 
-      width: 100%; 
-      max-width: 960px; 
-      z-index: 1;
+    /* ── Main / topbar ── */
+    .main-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar {
+      height: 60px; flex-shrink: 0; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; padding: 0 28px; background: var(--surface);
     }
+    .topbar-title { font-size: 16px; font-weight: 600; color: var(--text); }
+    .topbar-actions { display: flex; align-items: center; gap: 12px; }
 
-    /* Tabs */
-    .tabs { 
-      display: flex; 
-      gap: 12px; 
-      margin-bottom: 2.5rem; 
-      background: rgba(15, 23, 42, 0.5); 
-      padding: 8px; 
-      border-radius: var(--radius-lg); 
-      border: 1px solid var(--card-border); 
-      backdrop-filter: blur(20px); 
-      -webkit-backdrop-filter: blur(20px);
+    .header-cat {
+      display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
     }
-    .tab-btn { 
-      flex: 1; 
-      padding: 14px;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-family: var(--font-display);
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      cursor: pointer;
-      border-radius: var(--radius-md);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      gap: 8px; 
-    }
-    .tab-btn i { font-size: 18px; }
-    .tab-btn:hover:not(.active) { 
-      color: var(--text-main); 
-      background: rgba(255, 255, 255, 0.05); 
-    }
-    .tab-btn.active { 
-      background: var(--accent); 
-      color: #fff; 
-      box-shadow: 0 4px 20px var(--accent-glow); 
-    }
+    .header-cat i { color: var(--muted); font-size: 16px; }
+    .header-cat .cat-select { border: none; background: transparent; padding: 0; font-size: 13px; color: var(--text); font-weight: 500; max-width: 180px; }
 
-    .tab-panel { display: none; animation: fadeIn 0.4s ease; }
-    .tab-panel.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .theme-toggle-btn {
+      display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--surface-2);
+      border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+      color: var(--text); cursor: pointer; font-family: var(--font-sans); transition: border-color 0.2s ease;
+    }
+    .theme-toggle-btn:hover { border-color: var(--accent); }
+    .theme-toggle-btn i { font-size: 16px; color: var(--accent); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; padding: 28px; max-width: 1200px; margin: 0 auto; width: 100%; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
     /* Cards Base */
     .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 2rem;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+      padding: 1.75rem;
     }
 
     /* Timer Layout */
-    .timer-layout { 
-      display: grid; 
-      grid-template-columns: 1.2fr 1fr; 
-      gap: 2rem; 
-      align-items: stretch; 
+    .timer-layout {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 2rem;
+      align-items: stretch;
     }
     @media (max-width: 800px) { .timer-layout { grid-template-columns: 1fr; } }
 
     .timer-card { text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;}
+    .timer-header-row { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 8px; }
     .timer-label {
-      font-family: var(--font-display);
-      font-size: 14px;
-      letter-spacing: 0.14em;
+      font-size: 13px;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--text-muted);
+      color: var(--muted);
       font-weight: 600;
-      margin-bottom: 2rem;
     }
+    .timer-meta { font-size: 12px; font-family: var(--font-mono); color: var(--faint); letter-spacing: 0.03em; text-transform: uppercase; }
 
-    .timer-ring-wrap { 
-      position: relative; 
-      width: 260px; 
-      height: 260px; 
-      margin: 0 auto 2.5rem; 
+    .timer-ring-wrap {
+      position: relative;
+      width: 216px;
+      height: 216px;
+      margin: 0 auto 2rem;
       display: flex;
       justify-content: center;
       align-items: center;
     }
-    .timer-ring-wrap svg { 
-      width: 260px; 
-      height: 260px; 
-      transform: rotate(-90deg); 
-      filter: drop-shadow(0 0 12px var(--accent-glow));
+    .timer-ring-wrap svg {
+      width: 216px;
+      height: 216px;
+      transform: rotate(-90deg);
     }
-    .ring-bg { fill: none; stroke: rgba(255, 255, 255, 0.05); stroke-width: 6; }
-    .ring-fg { 
-      fill: none; 
-      stroke: var(--accent); 
-      stroke-width: 6; 
-      stroke-linecap: round; 
-      transition: stroke-dashoffset 1s linear, stroke 0.4s ease; 
+    .ring-bg { fill: none; stroke: var(--surface-2); stroke-width: 9; }
+    .ring-fg {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 9;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear, stroke 0.4s ease;
     }
-    .ring-fg.break { 
-      stroke: var(--info); 
-      filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.5));
-    }
+    .ring-fg.break { stroke: var(--info); }
+    .timer-time-wrap { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); display: flex; flex-direction: column; align-items: center; }
     .timer-time {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%,-50%);
-      font-family: var(--font-display);
-      font-size: 58px;
+      font-family: var(--font-mono);
+      font-size: 48px;
       font-weight: 700;
       letter-spacing: -0.02em;
-      color: var(--text-main);
+      color: var(--text);
       font-variant-numeric: tabular-nums;
-      text-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
-    .timer-phase { 
-      position: absolute; 
-      bottom: 40px; 
-      left: 50%; 
-      transform: translateX(-50%); 
-      font-size: 14px; 
-      font-weight: 500;
-      color: var(--text-muted); 
-      background: rgba(0,0,0,0.4);
-      padding: 4px 16px;
-      border-radius: 20px;
-      backdrop-filter: blur(4px);
-    }
+    .timer-percent { font-size: 12px; color: var(--muted); font-weight: 500; margin-top: 6px; }
 
     /* Buttons */
     .btn-row { display: flex; gap: 12px; justify-content: center; width: 100%; margin-bottom: 2rem;}
-    .btn-primary, .btn-secondary { 
-      border-radius: var(--radius-md); 
-      padding: 14px 28px; 
-      font-size: 15px; 
-      cursor: pointer; 
-      font-family: var(--font-sans); 
-      font-weight: 600; 
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    .btn-primary, .btn-secondary {
+      border-radius: var(--radius-md);
+      padding: 14px 28px;
+      font-size: 15px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      transition: background 0.2s ease, border-color 0.2s ease;
       display: flex;
       align-items: center;
       gap: 8px;
       border: none;
     }
-    .btn-primary { 
-      background: var(--accent); 
-      color: #fff; 
-      box-shadow: 0 4px 20px var(--accent-glow); 
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
       flex: 2;
       justify-content: center;
     }
-    .btn-primary:hover:not(:disabled) { 
-      background: var(--accent-hover); 
-      transform: translateY(-2px);
-      box-shadow: 0 6px 25px var(--accent-glow);
-    }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
-    
-    .btn-secondary { 
-      background: rgba(255, 255, 255, 0.05); 
-      color: var(--text-main); 
-      border: 1px solid rgba(255, 255, 255, 0.1); 
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
       flex: 1;
       justify-content: center;
     }
-    .btn-secondary:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); transform: translateY(-2px); }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
     .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-secondary.full-width { width: 100%; margin-top: 1rem; }
 
     /* Type Chips */
-    .session-type { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .session-type { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-start; width: 100%; }
     .type-recos-label {
-      text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--text-muted); margin: 14px 0 8px;
+      text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; width: 100%;
     }
-    .type-chip { 
-      padding: 8px 16px; 
-      border-radius: 24px; 
-      font-size: 13px; 
-      border: 1px solid rgba(255, 255, 255, 0.1); 
-      cursor: pointer; 
-      background: rgba(255, 255, 255, 0.03); 
-      color: var(--text-muted); 
-      transition: all 0.3s ease; 
+    .type-chip {
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      background: var(--surface-2);
+      color: var(--muted);
+      transition: background 0.2s ease, color 0.2s ease;
       font-weight: 500;
     }
-    .type-chip:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
-    .type-chip.selected { 
-      background: rgba(99, 102, 241, 0.2); 
-      border-color: var(--accent); 
-      color: #fff; 
-      box-shadow: 0 0 15px rgba(99, 102, 241, 0.3); 
+    .type-chip:hover { background: var(--surface); color: var(--text); }
+    .type-chip.selected {
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+      color: var(--accent);
     }
 
     /* Custom type input */
-    .custom-type-wrap {
-      margin-top: 12px;
-      animation: fadeIn 0.3s ease;
+    .custom-type-wrap { margin-top: 12px; width: 100%; text-align: left; }
+    .custom-type-label { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px; }
+    .custom-type-field {
+      display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      transition: border-color 0.2s ease;
     }
+    .custom-type-field:focus-within { border-color: var(--accent); }
+    .custom-type-field i { color: var(--faint); font-size: 16px; flex-shrink: 0; }
     .custom-type-input {
-      width: 100%;
-      max-width: 280px;
-      padding: 10px 16px;
-      border-radius: 24px;
-      border: 1px solid var(--accent);
-      background: rgba(99, 102, 241, 0.1);
-      color: var(--text-main);
-      font-family: var(--font-sans);
-      font-size: 14px;
-      font-weight: 500;
-      outline: none;
-      text-align: center;
-      transition: all 0.3s ease;
+      flex: 1; width: auto; min-width: 0; padding: 0; border: none; background: transparent;
+      color: var(--text); font-family: var(--font-sans); font-size: 14px; font-weight: 500;
+      outline: none; text-align: left;
     }
-    .custom-type-input::placeholder { color: var(--text-muted); opacity: 0.6; }
-    .custom-type-input:focus {
-      box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
-      border-color: var(--accent);
-      background: rgba(99, 102, 241, 0.15);
-    }
+    .custom-type-input::placeholder { color: var(--faint); }
 
     /* Manual session form */
     .manual-form {
       margin-top: 1rem;
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid var(--card-border);
+      background: transparent;
+      border: 1px dashed var(--border);
       border-radius: var(--radius-md);
       padding: 1.25rem;
-      animation: fadeIn 0.3s ease;
     }
     .manual-form-title {
       font-size: 13px;
       font-weight: 600;
-      color: var(--text-muted);
+      color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
       margin-bottom: 1rem;
@@ -362,615 +328,574 @@
       gap: 6px;
     }
     .manual-form-title i { font-size: 16px; color: var(--accent); }
-    .manual-input-group {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
+    .manual-input-group { display: flex; gap: 8px; align-items: center; }
     .manual-input {
       flex: 1;
       padding: 12px 16px;
       border-radius: var(--radius-sm);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(0, 0, 0, 0.3);
-      color: var(--text-main);
-      font-family: var(--font-sans);
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-family: var(--font-mono);
       font-size: 15px;
       font-weight: 600;
       outline: none;
       text-align: center;
-      transition: all 0.3s ease;
-      font-variant-numeric: tabular-nums;
+      transition: border-color 0.2s ease;
     }
-    .manual-input::placeholder { color: var(--text-muted); opacity: 0.5; font-weight: 400; }
-    .manual-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
-      background: rgba(99, 102, 241, 0.08);
-    }
-    .manual-input-suffix {
-      font-size: 14px;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-    .manual-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-    }
+    .manual-input::placeholder { color: var(--faint); font-weight: 400; }
+    .manual-input:focus { border-color: var(--accent); }
+    .manual-input-suffix { font-size: 14px; color: var(--muted); font-weight: 500; }
+    .manual-actions { display: flex; gap: 8px; margin-top: 10px; }
     .btn-confirm {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      border-radius: var(--radius-sm);
-      background: var(--accent);
-      color: #fff;
-      font-family: var(--font-sans);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
+      flex: 1; padding: 10px; border: none; border-radius: var(--radius-sm);
+      background: var(--accent); color: #fff; font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .btn-confirm:hover { background: var(--accent-hover); box-shadow: 0 4px 15px var(--accent-glow); }
+    .btn-confirm:hover { background: var(--accent-hover); }
     .btn-cancel {
-      padding: 10px 16px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: var(--radius-sm);
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text-muted);
-      font-family: var(--font-sans);
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s ease;
+      padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface-2); color: var(--muted); font-family: var(--font-sans); font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: color 0.2s ease;
     }
-    .btn-cancel:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-main); }
+    .btn-cancel:hover { color: var(--text); }
 
     /* Configuration */
     .config-card { margin-bottom: 1rem; }
-    .config-card h3 { 
-      font-size: 14px; 
-      font-weight: 600; 
-      color: var(--text-muted); 
-      margin-bottom: 1.5rem; 
-      text-transform: uppercase; 
-      letter-spacing: 0.05em; 
-    }
+    .config-card h3 { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
     .config-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-    .config-row label { font-size: 14px; color: var(--text-muted); flex: 1; }
-    
-    /* Range Sliders */
-    input[type=range] { -webkit-appearance: none; appearance: none; width: 100px; background: transparent; }
+    .config-row label { font-size: 13.5px; color: var(--text); flex: 1; }
+
+    /* Range Sliders (el JS pinta el track con el % recorrido en color de acento) */
+    input[type=range] {
+      -webkit-appearance: none; appearance: none; width: 100px; height: 5px; border-radius: 3px;
+      background: var(--surface-2); outline: none; cursor: pointer;
+    }
     input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      height: 18px; width: 18px;
-      border-radius: 50%;
-      background: var(--accent);
-      cursor: pointer;
-      margin-top: -7px;
-      box-shadow: 0 0 12px var(--accent-glow);
-      transition: transform 0.1s;
+      -webkit-appearance: none; appearance: none; height: 15px; width: 15px; border-radius: 50%;
+      background: var(--accent); cursor: pointer; border: 2px solid var(--surface); transition: transform 0.1s;
     }
     input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
-    input[type=range]::-webkit-slider-runnable-track {
-      width: 100%; height: 4px;
-      cursor: pointer;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 2px;
+    input[type=range]::-moz-range-thumb {
+      height: 15px; width: 15px; border-radius: 50%;
+      background: var(--accent); cursor: pointer; border: 2px solid var(--surface);
     }
-    .config-val { 
-      font-size: 14px; 
-      font-weight: 600; 
-      color: var(--text-main); 
-      width: 56px; 
-      text-align: center; 
-      background: rgba(0,0,0,0.3);
-      padding: 6px 10px;
-      border-radius: var(--radius-sm);
-      border: 1px solid rgba(255,255,255,0.05);
-      font-family: var(--font-sans);
-      font-variant-numeric: tabular-nums;
-      outline: none;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      -moz-appearance: textfield;
+    .config-val {
+      font-size: 13px; font-weight: 600; color: var(--text); width: 56px; text-align: center;
+      background: var(--surface-2); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+      font-family: var(--font-mono); font-variant-numeric: tabular-nums; outline: none; cursor: pointer;
+      transition: border-color 0.2s ease; -moz-appearance: textfield;
     }
-    .config-val::-webkit-outer-spin-button,
-    .config-val::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-    .config-val:hover {
-      border-color: rgba(99, 102, 241, 0.3);
-      background: rgba(99, 102, 241, 0.08);
-    }
-    .config-val:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
-      background: rgba(99, 102, 241, 0.12);
-    }
+    .config-val::-webkit-outer-spin-button, .config-val::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .config-val:hover, .config-val:focus { border-color: var(--accent); }
 
-    /* Session Info Sidebar */
-    .session-info { 
-      background: rgba(0, 0, 0, 0.2); 
-      border-radius: var(--radius-md); 
-      padding: 1.25rem; 
-      border: 1px solid rgba(255,255,255,0.03);
+    /* Carpeta activa (Timer) */
+    .folder-card { margin-bottom: 1rem; }
+    .folder-card-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .folder-card-label { font-size: 12px; color: var(--muted); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+    .folder-card-value { display: flex; align-items: center; gap: 8px; }
+    .folder-card-value .cat-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+    .cat-select-plain {
+      border: none; background: transparent; font-weight: 600; font-size: 13.5px; color: var(--text);
+      cursor: pointer; font-family: var(--font-sans); outline: none;
     }
-    .session-info .row { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;}
-    .session-info .row:last-child { margin-bottom: 0; }
-    .session-info .label { color: var(--text-muted); font-size: 14px; }
-    .session-info .val { font-weight: 600; color: var(--text-main); font-size: 14px; }
-    .tag-green { color: var(--success) !important; text-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
-    .tag-blue { color: var(--info) !important; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
+    .folder-card-divider { height: 1px; background: var(--border); margin: 14px 0; }
+    .btn-secondary.dashed { border-style: dashed; background: transparent; }
 
     /* STATS TAB */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-    .metric { 
-      text-align: center;
-      transition: transform 0.3s ease;
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .stats-grid { grid-template-columns: 1fr; } }
+    .metric { text-align: left; padding: 18px; border-radius: 10px; }
+    .metric .m-label { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 10px; }
+    .metric .m-label i { font-size: 15px; color: var(--accent); }
+    .metric .m-val { font-family: var(--font-mono); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+    .metric .m-val .m-unit { font-family: var(--font-sans); font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 3px; }
+    .metric .m-sub { font-size: 12px; color: var(--faint); margin-top: 6px; }
+
+    /* Fila de dos columnas: gráfico semanal + donut de distribución */
+    .charts-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-bottom: 1.5rem; align-items: stretch; }
+    .charts-row .chart-card { margin-bottom: 0; }
+    @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+
+    /* Distribución por tema (donut) */
+    .donut-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .donut { width: 150px; height: 150px; border-radius: 50%; flex-shrink: 0; position: relative; }
+    .donut-center {
+      position: absolute; inset: 26px; border-radius: 50%; background: var(--surface);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
-    .metric:hover { transform: translateY(-5px); }
-    .metric .m-label { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .metric .m-val { font-family: var(--font-display); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-main); text-shadow: 0 0 20px rgba(255, 255, 255, 0.1); }
-    .metric .m-sub { font-size: 13px; color: var(--text-muted); margin-top: 8px; opacity: 0.7; }
+    .donut-center .val { font-family: var(--font-mono); font-size: 19px; font-weight: 700; color: var(--text); }
+    .donut-center .lbl { font-size: 10px; color: var(--muted); }
+    .donut-legend { display: flex; flex-direction: column; gap: 9px; font-size: 12.5px; }
+    .donut-legend .row { display: flex; align-items: center; gap: 8px; }
+    .donut-legend .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    .donut-legend .pct { color: var(--muted); margin-left: auto; padding-left: 12px; }
+
+    /* Por tipo de estudio (barras horizontales) */
+    .hbars { display: flex; flex-direction: column; gap: 14px; }
+    .hbar-row { display: flex; align-items: center; gap: 14px; }
+    .hbar-label { width: 110px; font-size: 13px; color: var(--text); flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hbar-track { flex: 1; height: 22px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
+    .hbar-fill { height: 100%; border-radius: 5px; }
+    .hbar-val { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); width: 46px; text-align: right; flex-shrink: 0; }
 
     .chart-card { margin-bottom: 1.5rem; }
-    .chart-card h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 1.5rem; color: var(--text-main); }
+    .chart-card h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 1.5rem; color: var(--text); }
+
+    /* HELP TAB */
+    .help-text { color: var(--muted); font-size: 13.5px; line-height: 1.7; margin: 0; }
+    .help-text + .help-text { margin-top: 0.5rem; }
+    .help-text strong { color: var(--text); font-weight: 600; }
 
     /* LOG TAB */
-    .log-filters { 
-      display: flex; gap: 12px; margin-bottom: 1.5rem; align-items: center; flex-wrap: wrap; 
-      background: var(--card-bg); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--card-border);
+    .log-filters {
+      display: flex; gap: 12px; margin-bottom: 1.5rem; align-items: center; flex-wrap: wrap;
+      background: var(--surface); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);
     }
-    .log-filters select { 
-      font-size: 14px; padding: 10px 16px; border-radius: var(--radius-sm); 
-      border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.3); 
-      color: var(--text-main); font-family: var(--font-sans); outline: none; cursor: pointer;
+    .log-filters select {
+      font-size: 13.5px; padding: 9px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface-2);
+      color: var(--text); font-family: var(--font-sans); outline: none; cursor: pointer;
     }
-    .log-filters select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+    .log-filters select:focus { border-color: var(--accent); }
     .log-filters .spacer { flex: 1; }
-    
-    /* Selects de carpeta (header, timer, log) — mismo look que los filtros del log */
+
+    /* Selects de carpeta (header, timer, log) */
     .cat-select {
-      font-size: 14px; padding: 8px 12px; border-radius: var(--radius-sm);
-      border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.3);
-      color: var(--text-main); font-family: var(--font-sans); outline: none; cursor: pointer;
+      font-size: 13.5px; padding: 8px 12px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface-2);
+      color: var(--text); font-family: var(--font-sans); outline: none; cursor: pointer;
       max-width: 200px;
     }
-    .cat-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
-    .header-cat { display: flex; align-items: center; gap: 8px; }
-    .header-cat .ti { color: var(--text-muted); }
+    .cat-select:focus { border-color: var(--accent); }
     .timer-cat-wrap { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
-    .timer-cat-wrap label { font-size: 13px; color: var(--text-muted); }
+    .timer-cat-wrap label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+    .cat-add-btn {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      border: 1px solid var(--border); background: var(--surface-2);
+      color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: color 0.2s ease, border-color 0.2s ease; font-size: 15px;
+    }
+    .cat-add-btn:hover { color: var(--text); border-color: var(--accent); }
+    .timer-cat-form { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+    .timer-cat-form input[type="text"] {
+      padding: 8px 12px; border-radius: var(--radius-sm); max-width: 160px;
+      border: 1px solid var(--border); background: var(--surface-2);
+      color: var(--text); font-family: var(--font-sans); font-size: 13px; outline: none;
+    }
+    .timer-cat-form input[type="text"]:focus { border-color: var(--accent); }
+    .timer-cat-form input[type="color"] { width: 34px; height: 32px; border: none; background: transparent; cursor: pointer; }
 
-    /* Gestión de carpetas (Ajustes) */
+    /* Gestión de carpetas (Configuración) */
     .cat-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; }
-    .cat-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .cat-row .cat-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
-    .cat-row .cat-name { font-weight: 500; }
-    .cat-row.archived .cat-name { color: var(--text-muted); text-decoration: line-through; }
+    .cat-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+    .cat-row .cat-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+    .cat-row .cat-name { font-weight: 500; font-size: 13.5px; }
+    .cat-row.archived .cat-name { color: var(--muted); text-decoration: line-through; }
     .cat-row .spacer { flex: 1; }
     .cat-action {
-      background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm);
-      padding: 6px 10px; font-size: 13px; color: var(--text-muted); cursor: pointer;
-      font-family: var(--font-sans); transition: all 0.2s;
+      background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 6px 10px; font-size: 12.5px; color: var(--muted); cursor: pointer;
+      font-family: var(--font-sans); transition: color 0.2s ease, border-color 0.2s ease;
     }
-    .cat-action:hover { color: var(--text-main); border-color: var(--accent); }
+    .cat-action:hover { color: var(--text); border-color: var(--accent); }
     .cat-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .cat-form input[type="text"] {
       flex: 1; min-width: 160px; padding: 10px 14px; border-radius: var(--radius-sm);
-      border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3);
-      color: var(--text-main); font-family: var(--font-sans); font-size: 14px; outline: none;
+      border: 1px solid var(--border); background: var(--surface-2);
+      color: var(--text); font-family: var(--font-sans); font-size: 13.5px; outline: none;
     }
     .cat-form input[type="text"]:focus { border-color: var(--accent); }
-    .cat-form input[type="color"] { width: 42px; height: 38px; border: none; background: transparent; cursor: pointer; }
+    .cat-form input[type="color"] { width: 40px; height: 38px; border: none; background: transparent; cursor: pointer; }
 
     .btn-danger {
-      background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.2);
-      border-radius: var(--radius-sm); padding: 10px 16px; font-size: 14px; font-weight: 500;
-      color: var(--danger); cursor: pointer; font-family: var(--font-sans); transition: all 0.3s;
+      background: var(--danger-bg); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+      border-radius: var(--radius-sm); padding: 9px 16px; font-size: 13.5px; font-weight: 500;
+      color: var(--danger); cursor: pointer; font-family: var(--font-sans); transition: background 0.2s ease, color 0.2s ease;
       display: flex; align-items: center; gap: 6px;
     }
-    .btn-danger:hover { background: var(--danger); color: #fff; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
 
-    .table-responsive { overflow-x: auto; background: var(--card-bg); border-radius: var(--radius-lg); border: 1px solid var(--card-border); }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
-    thead th { text-align: left; padding: 16px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2); }
-    tbody tr { transition: background 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .table-responsive { overflow-x: auto; background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 660px; }
+    thead th { text-align: left; padding: 14px 16px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--surface-2); }
+    tbody tr { transition: background 0.15s ease; border-bottom: 1px solid var(--border); }
     tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
-    tbody td { padding: 16px; color: var(--text-main); }
-    
-    .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); font-size: 15px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-    .empty-state i { font-size: 48px; opacity: 0.5; margin-bottom: 8px;}
-    
-    .badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+    tbody tr:hover { background: var(--surface-2); }
+    tbody td { padding: 14px 16px; color: var(--text); }
+    .mono-cell { font-family: var(--font-mono); color: var(--muted); font-size: 12.5px; }
+    .mono-strong { font-family: var(--font-mono); font-weight: 600; color: var(--text); }
+
+    .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); font-size: 15px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .empty-state i { font-size: 44px; opacity: 0.5; margin-bottom: 8px;}
+
+    .badge { display: inline-block; padding: 5px 11px; border-radius: 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;}
     .badge-pomodoro { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
     .badge-manual { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
 
     /* Contenedor de los gráficos de barras (canvas de Chart.js) */
     .bar-container { display: flex; flex-direction: column; gap: 16px; }
     .hour-peak {
-      margin-top: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      border-radius: var(--radius-sm);
-      background: rgba(99, 102, 241, 0.08);
-      border: 1px solid rgba(99, 102, 241, 0.15);
-      font-size: 14px;
-      color: var(--text-muted);
+      margin-top: 1rem; display: flex; align-items: center; gap: 8px; padding: 9px 14px;
+      border-radius: var(--radius-sm); background: color-mix(in srgb, var(--accent) 8%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); font-size: 13px; color: var(--muted);
     }
-    .hour-peak strong { color: var(--text-main); }
-    .hour-peak i { color: var(--accent); font-size: 18px; }
-
-    /* User header */
-    .user-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-      padding: 12px 20px;
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: var(--radius-lg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-    }
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-    .user-avatar {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      background: rgba(99, 102, 241, 0.2);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .user-avatar i { font-size: 16px; color: var(--accent); }
-    .user-name { font-weight: 600; color: var(--text-main); }
-    .btn-logout {
-      padding: 8px 16px;
-      border-radius: var(--radius-sm);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text-muted);
-      font-family: var(--font-sans);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      text-decoration: none;
-    }
-    .btn-logout:hover {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.3);
-      color: #ef4444;
-    }
+    .hour-peak strong { color: var(--text); }
+    .hour-peak i { color: var(--accent); font-size: 17px; }
 
     /* Toast */
-    .toast { 
-      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); 
-      background: rgba(15, 23, 42, 0.9); color: #fff; padding: 14px 24px; border-radius: 30px; 
-      font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
-      pointer-events: none; z-index: 1000; border: 1px solid rgba(255, 255, 255, 0.1); 
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); display: flex; align-items: center; gap: 8px;
+    .toast {
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(10, 14, 22, 0.92); color: #fff; padding: 13px 22px; border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 500; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none; z-index: 1000; border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); display: flex; align-items: center; gap: 8px;
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* ── Apariencia / Ajustes ── */
-    .theme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px; }
-    .theme-option {
-      display: flex; flex-direction: column; align-items: center; gap: 10px;
-      padding: 14px; cursor: pointer; background: transparent; color: var(--text-main);
-      border: 2px solid var(--card-border); border-radius: var(--radius-md);
-      transition: border-color 0.2s, transform 0.15s;
-      font-family: var(--font-sans); font-size: 14px; font-weight: 500;
+    /* Aviso de novedades (se muestra una sola vez por navegador) */
+    .update-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 2000;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
     }
-    .theme-option:hover { transform: translateY(-2px); }
-    .theme-option.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-    .theme-swatch {
-      width: 100%; height: 48px; border-radius: var(--radius-sm);
-      border: 1px solid rgba(255,255,255,0.12);
+    .update-modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      max-width: 420px; width: 100%; padding: 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.4);
     }
-    .swatch-dark   { background: linear-gradient(135deg, #060910 50%, #3b82f6 50%); }
-    .swatch-light  { background: linear-gradient(135deg, #f1f5f9 50%, #3b82f6 50%); }
-    .swatch-ocean  { background: linear-gradient(135deg, #07182b 50%, #38bdf8 50%); }
-    .swatch-forest { background: linear-gradient(135deg, #0a1f16 50%, #10b981 50%); }
+    .update-modal-icon {
+      width: 44px; height: 44px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 15%, transparent);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+    }
+    .update-modal-icon i { font-size: 22px; color: var(--accent); }
+    .update-modal h3 { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .update-modal p.update-modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+    .update-modal ul { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 22px; }
+    .update-modal li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: var(--text); line-height: 1.5; }
+    .update-modal li i { color: var(--accent); font-size: 17px; margin-top: 1px; flex-shrink: 0; }
 
+    /* ── Configuración ── */
     .accent-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
     .accent-presets { display: flex; gap: 10px; flex-wrap: wrap; }
     .accent-dot {
-      width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
-      border: 2px solid transparent; transition: transform 0.15s, border-color 0.2s;
+      width: 32px; height: 32px; border-radius: 9px; cursor: pointer;
+      border: 2px solid transparent; transition: transform 0.15s ease, border-color 0.2s ease;
     }
-    .accent-dot:hover { transform: scale(1.12); }
-    .accent-dot.selected { border-color: var(--text-main); box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px currentColor; }
-    .accent-custom {
-      display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
-      color: var(--text-muted); font-size: 14px;
-    }
-    .accent-custom input[type="color"] {
-      width: 34px; height: 34px; padding: 0; border: none; border-radius: 8px;
-      background: transparent; cursor: pointer;
-    }
+    .accent-dot:hover { transform: scale(1.1); }
+    .accent-dot.selected { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px currentColor; }
+    .accent-custom { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--muted); font-size: 14px; }
+    .accent-custom input[type="color"] { width: 32px; height: 32px; padding: 0; border: none; border-radius: 8px; background: transparent; cursor: pointer; }
 
     /* ── Calendario de consistencia (heatmap) ── */
     .heatmap-scroll { overflow-x: auto; padding-bottom: 6px; }
-    .heatmap {
-      display: grid;
-      grid-template-rows: repeat(7, 1fr);
-      grid-auto-flow: column;
-      grid-auto-columns: 1fr;
-      gap: 3px;
-      min-width: 660px;
-    }
+    .heatmap { display: grid; grid-template-rows: repeat(7, 1fr); grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; min-width: 660px; }
     .hm-cell { aspect-ratio: 1; border-radius: 3px; min-width: 11px; }
     .hm-l0 { background: color-mix(in srgb, var(--accent) 7%, transparent); }
     .hm-l1 { background: color-mix(in srgb, var(--accent) 28%, transparent); }
     .hm-l2 { background: color-mix(in srgb, var(--accent) 50%, transparent); }
     .hm-l3 { background: color-mix(in srgb, var(--accent) 75%, transparent); }
-    .hm-l4 { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
-    .heatmap-legend {
-      display: flex; align-items: center; gap: 6px; justify-content: flex-end;
-      margin-top: 14px; font-size: 12px; color: var(--text-muted);
-    }
+    .hm-l4 { background: var(--accent); }
+    .heatmap-legend { display: flex; align-items: center; gap: 6px; justify-content: flex-end; margin-top: 14px; font-size: 12px; color: var(--muted); }
     .heatmap-legend .hm-cell { width: 13px; height: 13px; aspect-ratio: auto; }
   </style>
 </head>
 <body>
 
-<!-- Ambient Background -->
-<div class="bg-shape shape-1"></div>
-<div class="bg-shape shape-2"></div>
-<div class="bg-shape shape-3"></div>
-
 <h2 class="sr-only" style="display:none;">Tracker de tiempo de estudio con Pomodoro, estadísticas y registro de sesiones</h2>
 <div id="app">
-  <div class="user-header">
-    <div class="user-info">
-      <div class="user-avatar"><i class="ti ti-user"></i></div>
-      <span>Hola, <span class="user-name" id="user-display">...</span></span>
-    </div>
-    <div class="header-cat">
-      <i class="ti ti-folder" aria-hidden="true"></i>
-      <select id="global-category-filter" class="cat-select" onchange="setGlobalFilter(this.value)" aria-label="Filtrar por carpeta">
-        <option value="">Todas las carpetas</option>
-      </select>
-    </div>
-    <a href="/logout" class="btn-logout"><i class="ti ti-logout"></i> Cerrar sesión</a>
-  </div>
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('timer')"><i class="ti ti-player-play" aria-hidden="true"></i> Timer</button>
-    <button class="tab-btn" onclick="switchTab('stats')"><i class="ti ti-chart-bar" aria-hidden="true"></i> Estadísticas</button>
-    <button class="tab-btn" onclick="switchTab('log')"><i class="ti ti-calendar" aria-hidden="true"></i> Registro</button>
-    <button class="tab-btn" onclick="switchTab('settings')"><i class="ti ti-palette" aria-hidden="true"></i> Apariencia</button>
-  </div>
 
-  <!-- TIMER TAB -->
-  <div id="tab-timer" class="tab-panel active">
-    <div class="timer-layout">
-      <div class="timer-card card">
-        <div class="timer-label" id="phase-label">Tiempo de estudio</div>
-        <div class="timer-ring-wrap">
-          <svg viewBox="0 0 180 180" aria-hidden="true">
-            <circle class="ring-bg" cx="90" cy="90" r="82"/>
-            <circle class="ring-fg" id="ring" cx="90" cy="90" r="82" stroke-dasharray="515" stroke-dashoffset="515"/>
-          </svg>
-          <div class="timer-time" id="timer-display">25:00</div>
-          <div class="timer-phase" id="phase-sub">Sesión 1</div>
-        </div>
-        
-        <div class="btn-row">
-          <button class="btn-primary" id="btn-start" onclick="startTimer()"><i class="ti ti-player-play" aria-hidden="true"></i> Iniciar</button>
-          <button class="btn-secondary" id="btn-pause" onclick="pauseTimer()" disabled><i class="ti ti-player-pause" aria-hidden="true"></i></button>
-          <button class="btn-secondary" onclick="resetTimer()"><i class="ti ti-refresh" aria-hidden="true"></i></button>
-        </div>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon"><i class="ti ti-clock-bolt" aria-hidden="true"></i></div>
+      <span class="sidebar-brand-name">FocusData</span>
+    </div>
+    <div class="sidebar-label">Panel</div>
+    <button class="nav-item active" onclick="switchTab('timer')"><i class="ti ti-player-play" aria-hidden="true"></i><span class="nav-label">Timer</span></button>
+    <button class="nav-item" onclick="switchTab('stats')"><i class="ti ti-chart-bar" aria-hidden="true"></i><span class="nav-label">Estadísticas</span></button>
+    <button class="nav-item" onclick="switchTab('log')"><i class="ti ti-calendar" aria-hidden="true"></i><span class="nav-label">Registro</span></button>
+    <button class="nav-item" onclick="switchTab('settings')"><i class="ti ti-settings" aria-hidden="true"></i><span class="nav-label">Configuración</span></button>
+    <button class="nav-item" onclick="switchTab('help')"><i class="ti ti-help" aria-hidden="true"></i><span class="nav-label">Ayuda</span></button>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar"><span id="sidebar-avatar-initial">?</span></div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="user-display">...</div>
+        <a href="/logout" class="sidebar-user-logout">Cerrar sesión</a>
+      </div>
+    </div>
+  </aside>
 
-        <div class="custom-type-wrap" id="custom-type-wrap">
-          <input type="text" id="custom-type-input" class="custom-type-input" placeholder="¿Qué vas a estudiar?" maxlength="30" oninput="updateCustomType()">
+  <!-- MAIN -->
+  <main class="main-content">
+    <div class="topbar">
+      <span class="topbar-title" id="topbar-title">Timer</span>
+      <div class="topbar-actions">
+        <div class="header-cat">
+          <i class="ti ti-folder" aria-hidden="true"></i>
+          <select id="global-category-filter" class="cat-select" onchange="setGlobalFilter(this.value)" aria-label="Filtrar por carpeta">
+            <option value="">Todas las carpetas</option>
+          </select>
         </div>
-        <div class="timer-cat-wrap">
-          <label for="active-category-select"><i class="ti ti-folder" aria-hidden="true"></i> Carpeta</label>
-          <select id="active-category-select" class="cat-select" onchange="setActiveCategory(this.value)"></select>
-        </div>
-        <div class="type-recos-label" id="type-recos-label" style="display:none;">Recomendados</div>
-        <div class="session-type" id="type-recos"></div>
-      </div>
-      
-      <div>
-        <div class="config-card card">
-          <h3>Configuración</h3>
-          <div class="config-row">
-            <label>Trabajo (min)</label>
-            <input type="range" min="5" max="60" value="25" step="5" id="cfg-work" oninput="updateConfig()">
-            <input type="number" class="config-val" id="val-work" value="25" min="5" max="60" step="5" oninput="updateConfigFromInput('work')" onblur="clampConfigInput('work')">
-          </div>
-          <div class="config-row">
-            <label>Descanso corto</label>
-            <input type="range" min="1" max="15" value="5" step="1" id="cfg-short" oninput="updateConfig()">
-            <input type="number" class="config-val" id="val-short" value="5" min="1" max="15" step="1" oninput="updateConfigFromInput('short')" onblur="clampConfigInput('short')">
-          </div>
-          <div class="config-row">
-            <label>Descanso largo</label>
-            <input type="range" min="10" max="30" value="15" step="5" id="cfg-long" oninput="updateConfig()">
-            <input type="number" class="config-val" id="val-long" value="15" min="10" max="30" step="5" oninput="updateConfigFromInput('long')" onblur="clampConfigInput('long')">
-          </div>
-          <div class="config-row">
-            <label>Ciclos hasta descanso</label>
-            <input type="range" min="2" max="6" value="4" step="1" id="cfg-cycles" oninput="updateConfig()">
-            <input type="number" class="config-val" id="val-cycles" value="4" min="2" max="6" step="1" oninput="updateConfigFromInput('cycles')" onblur="clampConfigInput('cycles')">
-          </div>
-        </div>
-        
-        <div class="session-info">
-          <div class="row"><span class="label">Hoy estudiado</span><span class="val tag-green" id="info-today">0 min</span></div>
-          <div class="row"><span class="label">Sesiones hoy</span><span class="val" id="info-sessions">0</span></div>
-          <div class="row"><span class="label">Ciclos completados</span><span class="val" id="info-cycles">0</span></div>
-          <div class="row"><span class="label">Tipo actual</span><span class="val tag-blue" id="info-type">General</span></div>
-        </div>
-        
-        <button class="btn-secondary full-width" id="btn-manual-toggle" onclick="toggleManualForm()"><i class="ti ti-plus"></i> Registrar sesión manual</button>
-        <div class="manual-form" id="manual-form" style="display:none;">
-          <div class="manual-form-title"><i class="ti ti-pencil"></i> Nueva sesión manual</div>
-          <div class="manual-input-group">
-            <input type="number" id="manual-minutes" class="manual-input" placeholder="0" min="1" max="600" onkeydown="if(event.key==='Enter')confirmManual()">
-            <span class="manual-input-suffix">minutos</span>
-          </div>
-          <div class="manual-actions">
-            <button class="btn-confirm" onclick="confirmManual()"><i class="ti ti-check"></i> Registrar</button>
-            <button class="btn-cancel" onclick="toggleManualForm()">Cancelar</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- STATS TAB -->
-  <div id="tab-stats" class="tab-panel">
-    <div class="stats-grid">
-      <div class="metric card"><div class="m-label">Total estudiado</div><div class="m-val" id="stat-total">0 h</div><div class="m-sub">de siempre</div></div>
-      <div class="metric card"><div class="m-label">Esta semana</div><div class="m-val" id="stat-week">0 h</div><div class="m-sub">últimos 7 días</div></div>
-      <div class="metric card"><div class="m-label">Hoy</div><div class="m-val" id="stat-today">0 min</div></div>
-      <div class="metric card"><div class="m-label">Sesiones totales</div><div class="m-val" id="stat-sessions">0</div></div>
-      <div class="metric card"><div class="m-label"><i class="ti ti-flame" aria-hidden="true"></i> Racha</div><div class="m-val" id="stat-streak">0 días</div><div class="m-sub">máx <span id="stat-streak-max">0</span> días</div></div>
-      <div class="metric card"><div class="m-label"><i class="ti ti-target" aria-hidden="true"></i> Regularidad</div><div class="m-val" id="stat-irs">0%</div><div class="m-sub">días activos (7d)</div></div>
-      <div class="metric card"><div class="m-label"><i class="ti ti-coffee" aria-hidden="true"></i> Descanso activo</div><div class="m-val" id="stat-rda">0%</div><div class="m-sub" id="stat-rda-hint">meta ~20%</div></div>
-      <div class="metric card"><div class="m-label"><i class="ti ti-focus-2" aria-hidden="true"></i> Enfoque Pomodoro</div><div class="m-val" id="stat-pomo">0%</div><div class="m-sub">del tiempo estudiado</div></div>
-    </div>
-    <div class="chart-card card">
-      <h3>Últimos 7 días (minutos)</h3>
-      <div style="position:relative;height:220px;"><canvas id="weekChart" role="img" aria-label="Gráfico de minutos estudiados los últimos 7 días"></canvas></div>
-    </div>
-    <div class="chart-card card">
-      <h3>Por tipo de estudio</h3>
-      <div class="bar-container" id="type-bars">
-        <div style="position:relative;height:220px;"><canvas id="typeChart" role="img" aria-label="Gráfico de minutos estudiados por tipo de estudio"></canvas></div>
-      </div>
-    </div>
-    <div class="chart-card card">
-      <h3>Densidad por hora (0–23)</h3>
-      <div class="bar-container" id="hour-bars">
-        <div style="position:relative;height:220px;"><canvas id="hourChart" role="img" aria-label="Gráfico de minutos estudiados por cada hora del día"></canvas></div>
-      </div>
-      <div id="hour-peak-info"></div>
-    </div>
-    <div class="chart-card card">
-      <h3>Balance temático</h3>
-      <div style="position:relative;height:340px;"><canvas id="radarChart" role="img" aria-label="Gráfico de radar del balance entre temas de estudio"></canvas></div>
-    </div>
-    <div class="chart-card card">
-      <h3>Calendario de consistencia</h3>
-      <div class="heatmap-scroll">
-        <div class="heatmap" id="heatmap"></div>
-      </div>
-      <div class="heatmap-legend">
-        <span>Menos</span>
-        <span class="hm-cell hm-l0"></span>
-        <span class="hm-cell hm-l1"></span>
-        <span class="hm-cell hm-l2"></span>
-        <span class="hm-cell hm-l3"></span>
-        <span class="hm-cell hm-l4"></span>
-        <span>Más</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- LOG TAB -->
-  <div id="tab-log" class="tab-panel">
-    <div class="log-filters">
-      <select id="filter-type" onchange="renderLog()">
-        <option value="">Todos los tipos</option>
-        <option>General</option><option>Matemáticas</option><option>Programación</option><option>Idiomas</option><option>Lectura</option><option>Otro</option>
-      </select>
-      <select id="filter-days" onchange="renderLog()">
-        <option value="7">Últimos 7 días</option>
-        <option value="30">Últimos 30 días</option>
-        <option value="0">Todo</option>
-      </select>
-      <div class="spacer"></div>
-      <button class="btn-secondary" style="padding: 10px 16px; font-size: 14px;" onclick="exportCSV()"><i class="ti ti-download" aria-hidden="true"></i> CSV</button>
-      <button class="btn-danger" onclick="clearLog()"><i class="ti ti-trash" aria-hidden="true"></i> Limpiar</button>
-    </div>
-    <div class="table-responsive" id="log-table-wrap"></div>
-  </div>
-
-  <!-- SETTINGS TAB -->
-  <div id="tab-settings" class="tab-panel">
-    <div class="chart-card card">
-      <h3>Tema</h3>
-      <div class="theme-grid" id="theme-grid">
-        <button type="button" class="theme-option" data-theme-value="dark" onclick="selectTheme('dark')">
-          <span class="theme-swatch swatch-dark"></span>
-          <span class="theme-name">Oscuro</span>
-        </button>
-        <button type="button" class="theme-option" data-theme-value="light" onclick="selectTheme('light')">
-          <span class="theme-swatch swatch-light"></span>
-          <span class="theme-name">Claro</span>
-        </button>
-        <button type="button" class="theme-option" data-theme-value="ocean" onclick="selectTheme('ocean')">
-          <span class="theme-swatch swatch-ocean"></span>
-          <span class="theme-name">Océano</span>
-        </button>
-        <button type="button" class="theme-option" data-theme-value="forest" onclick="selectTheme('forest')">
-          <span class="theme-swatch swatch-forest"></span>
-          <span class="theme-name">Bosque</span>
+        <button type="button" class="theme-toggle-btn" onclick="toggleQuickTheme()" aria-label="Cambiar tema">
+          <i class="ti ti-moon" id="theme-toggle-icon" aria-hidden="true"></i>
+          <span id="theme-toggle-label">Modo oscuro</span>
         </button>
       </div>
     </div>
 
-    <div class="chart-card card">
-      <h3>Color de acento</h3>
-      <div class="accent-row">
-        <div class="accent-presets" id="accent-presets">
-          <button type="button" class="accent-dot" style="background:#6366f1" onclick="selectAccent('#6366f1')" aria-label="Índigo"></button>
-          <button type="button" class="accent-dot" style="background:#0ea5e9" onclick="selectAccent('#0ea5e9')" aria-label="Azul"></button>
-          <button type="button" class="accent-dot" style="background:#10b981" onclick="selectAccent('#10b981')" aria-label="Verde"></button>
-          <button type="button" class="accent-dot" style="background:#f59e0b" onclick="selectAccent('#f59e0b')" aria-label="Ámbar"></button>
-          <button type="button" class="accent-dot" style="background:#ec4899" onclick="selectAccent('#ec4899')" aria-label="Rosa"></button>
-          <button type="button" class="accent-dot" style="background:#ef4444" onclick="selectAccent('#ef4444')" aria-label="Rojo"></button>
+    <!-- TIMER TAB -->
+    <div id="tab-timer" class="tab-panel active">
+      <div class="stats-grid">
+        <div class="metric card"><div class="m-label"><i class="ti ti-flame" aria-hidden="true"></i> Racha</div><div class="m-val" id="t-stat-streak">0 días</div></div>
+        <div class="metric card"><div class="m-label"><i class="ti ti-clock" aria-hidden="true"></i> Hoy</div><div class="m-val" id="t-stat-today">0 min</div></div>
+        <div class="metric card"><div class="m-label"><i class="ti ti-calendar-week" aria-hidden="true"></i> Esta semana</div><div class="m-val" id="t-stat-week">0 min</div></div>
+        <div class="metric card"><div class="m-label"><i class="ti ti-checkbox" aria-hidden="true"></i> Sesiones</div><div class="m-val" id="t-stat-sessions">0</div></div>
+      </div>
+      <div class="timer-layout">
+        <div class="timer-card card">
+          <div class="timer-header-row">
+            <span class="timer-label" id="phase-label">Tiempo de estudio</span>
+            <span class="timer-meta" id="timer-meta">Sesión 1 · Ciclo 1/4</span>
+          </div>
+          <div class="timer-ring-wrap">
+            <svg viewBox="0 0 216 216" aria-hidden="true">
+              <circle class="ring-bg" cx="108" cy="108" r="98"/>
+              <circle class="ring-fg" id="ring" cx="108" cy="108" r="98" stroke-dasharray="615.75" stroke-dashoffset="615.75"/>
+            </svg>
+            <div class="timer-time-wrap">
+              <div class="timer-time" id="timer-display">25:00</div>
+              <div class="timer-percent" id="timer-percent">0% completado</div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn-primary" id="btn-toggle" onclick="toggleTimer()"><i class="ti ti-player-play" id="btn-toggle-icon" aria-hidden="true"></i> <span id="btn-toggle-label">Iniciar</span></button>
+            <button class="btn-secondary" onclick="resetTimer()"><i class="ti ti-refresh" aria-hidden="true"></i> Reiniciar</button>
+          </div>
+
+          <div class="custom-type-wrap" id="custom-type-wrap">
+            <label class="custom-type-label" for="custom-type-input">¿Qué vas a estudiar?</label>
+            <div class="custom-type-field">
+              <i class="ti ti-pencil" aria-hidden="true"></i>
+              <input type="text" id="custom-type-input" class="custom-type-input" placeholder="General" maxlength="30" oninput="updateCustomType()">
+            </div>
+          </div>
+          <div class="type-recos-label" id="type-recos-label" style="display:none;">Recomendados</div>
+          <div class="session-type" id="type-recos"></div>
         </div>
-        <label class="accent-custom">
-          <i class="ti ti-color-picker"></i> Personalizado
-          <input type="color" id="accent-input" value="#3b82f6" oninput="selectAccent(this.value)">
-        </label>
+
+        <div>
+          <div class="config-card card">
+            <h3>Configuración</h3>
+            <div class="config-row">
+              <label>Trabajo</label>
+              <input type="range" min="5" max="60" value="25" step="5" id="cfg-work" oninput="updateConfig()">
+              <input type="number" class="config-val" id="val-work" value="25" min="5" max="60" step="5" oninput="updateConfigFromInput('work')" onblur="clampConfigInput('work')">
+            </div>
+            <div class="config-row">
+              <label>Descanso corto</label>
+              <input type="range" min="1" max="15" value="5" step="1" id="cfg-short" oninput="updateConfig()">
+              <input type="number" class="config-val" id="val-short" value="5" min="1" max="15" step="1" oninput="updateConfigFromInput('short')" onblur="clampConfigInput('short')">
+            </div>
+            <div class="config-row">
+              <label>Descanso largo</label>
+              <input type="range" min="10" max="30" value="15" step="5" id="cfg-long" oninput="updateConfig()">
+              <input type="number" class="config-val" id="val-long" value="15" min="10" max="30" step="5" oninput="updateConfigFromInput('long')" onblur="clampConfigInput('long')">
+            </div>
+            <div class="config-row">
+              <label>Ciclos hasta descanso</label>
+              <input type="range" min="2" max="6" value="4" step="1" id="cfg-cycles" oninput="updateConfig()">
+              <input type="number" class="config-val" id="val-cycles" value="4" min="2" max="6" step="1" oninput="updateConfigFromInput('cycles')" onblur="clampConfigInput('cycles')">
+            </div>
+          </div>
+
+          <div class="folder-card card">
+            <div class="folder-card-row">
+              <span class="folder-card-label"><i class="ti ti-folder" aria-hidden="true"></i> Carpeta activa</span>
+              <div class="folder-card-value">
+                <span class="cat-dot" id="active-cat-dot"></span>
+                <select id="active-category-select" class="cat-select-plain" onchange="setActiveCategory(this.value)"></select>
+                <button type="button" class="cat-add-btn" onclick="toggleTimerCatForm()" aria-label="Crear carpeta" title="Crear carpeta"><i class="ti ti-plus" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <div class="timer-cat-form" id="timer-cat-form" style="display:none;">
+              <input type="text" id="timer-new-cat-name" maxlength="30" placeholder="Nombre de la carpeta" onkeydown="if(event.key==='Enter')createCategoryFromTimer()">
+              <input type="color" id="timer-new-cat-color" value="#6366f1" aria-label="Color de la carpeta">
+              <button type="button" class="cat-action" onclick="createCategoryFromTimer()"><i class="ti ti-check" aria-hidden="true"></i></button>
+              <button type="button" class="cat-action" onclick="toggleTimerCatForm()"><i class="ti ti-x" aria-hidden="true"></i></button>
+            </div>
+            <div class="folder-card-divider"></div>
+            <button class="btn-secondary dashed full-width" id="btn-manual-toggle" onclick="toggleManualForm()" style="margin-top:0;"><i class="ti ti-plus"></i> Registrar sesión manual</button>
+            <div class="manual-form" id="manual-form" style="display:none;">
+              <div class="manual-form-title"><i class="ti ti-pencil"></i> Nueva sesión manual</div>
+              <div class="manual-input-group">
+                <input type="number" id="manual-minutes" class="manual-input" placeholder="0" min="1" max="600" onkeydown="if(event.key==='Enter')confirmManual()">
+                <span class="manual-input-suffix">minutos</span>
+              </div>
+              <div class="manual-actions">
+                <button class="btn-confirm" onclick="confirmManual()"><i class="ti ti-check"></i> Registrar</button>
+                <button class="btn-cancel" onclick="toggleManualForm()">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="chart-card card">
-      <h3><i class="ti ti-folder" aria-hidden="true"></i> Carpetas</h3>
-      <div class="cat-list" id="category-list"></div>
-      <div class="cat-form">
-        <input type="text" id="new-cat-name" maxlength="30" placeholder="Nueva carpeta (ej. Semestre 2)" onkeydown="if(event.key==='Enter')createCategory()">
-        <input type="color" id="new-cat-color" value="#6366f1" aria-label="Color de la carpeta">
-        <button class="btn-secondary" style="padding: 10px 16px; font-size: 14px;" onclick="createCategory()"><i class="ti ti-plus" aria-hidden="true"></i> Crear</button>
+    <!-- STATS TAB -->
+    <div id="tab-stats" class="tab-panel">
+      <div class="stats-grid">
+        <div class="metric card"><div class="m-label">Total estudiado</div><div class="m-val" id="stat-total">0 h</div><div class="m-sub">de siempre</div></div>
+        <div class="metric card"><div class="m-label">Esta semana</div><div class="m-val" id="stat-week">0 h</div><div class="m-sub">últimos 7 días</div></div>
+        <div class="metric card"><div class="m-label">Hoy</div><div class="m-val" id="stat-today">0 min</div></div>
+        <div class="metric card"><div class="m-label">Sesiones totales</div><div class="m-val" id="stat-sessions">0</div></div>
+        <div class="metric card"><div class="m-label"><i class="ti ti-flame" aria-hidden="true"></i> Racha</div><div class="m-val" id="stat-streak">0 días</div><div class="m-sub">máx <span id="stat-streak-max">0</span> días</div></div>
+        <div class="metric card"><div class="m-label"><i class="ti ti-target" aria-hidden="true"></i> Regularidad</div><div class="m-val" id="stat-irs">0%</div><div class="m-sub">días activos (7d)</div></div>
+        <div class="metric card"><div class="m-label"><i class="ti ti-coffee" aria-hidden="true"></i> Descanso activo</div><div class="m-val" id="stat-rda">0%</div><div class="m-sub" id="stat-rda-hint">meta ~20%</div></div>
+        <div class="metric card"><div class="m-label"><i class="ti ti-focus-2" aria-hidden="true"></i> Enfoque Pomodoro</div><div class="m-val" id="stat-pomo">0%</div><div class="m-sub">del tiempo estudiado</div></div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card card">
+          <h3>Últimos 7 días <span style="color:var(--muted);font-weight:400;font-size:13px;">(minutos)</span></h3>
+          <div style="position:relative;height:220px;"><canvas id="weekChart" role="img" aria-label="Gráfico de minutos estudiados los últimos 7 días"></canvas></div>
+        </div>
+        <div class="chart-card card">
+          <h3>Distribución por tema</h3>
+          <div class="donut-wrap" id="donut-wrap"></div>
+        </div>
+      </div>
+      <div class="chart-card card">
+        <h3>Por tipo de estudio <span style="color:var(--muted);font-weight:400;font-size:13px;">(minutos)</span></h3>
+        <div class="hbars" id="hbars-wrap"></div>
+      </div>
+      <div class="chart-card card">
+        <h3>Densidad por hora (0–23)</h3>
+        <div class="bar-container" id="hour-bars">
+          <div style="position:relative;height:220px;"><canvas id="hourChart" role="img" aria-label="Gráfico de minutos estudiados por cada hora del día"></canvas></div>
+        </div>
+        <div id="hour-peak-info"></div>
+      </div>
+      <div class="chart-card card">
+        <h3>Calendario de consistencia</h3>
+        <div class="heatmap-scroll">
+          <div class="heatmap" id="heatmap"></div>
+        </div>
+        <div class="heatmap-legend">
+          <span>Menos</span>
+          <span class="hm-cell hm-l0"></span>
+          <span class="hm-cell hm-l1"></span>
+          <span class="hm-cell hm-l2"></span>
+          <span class="hm-cell hm-l3"></span>
+          <span class="hm-cell hm-l4"></span>
+          <span>Más</span>
+        </div>
       </div>
     </div>
 
-    <button class="btn-primary full-width" id="btn-save-prefs" onclick="savePreferences()">
-      <i class="ti ti-device-floppy"></i> Guardar apariencia
-    </button>
-  </div>
+    <!-- LOG TAB -->
+    <div id="tab-log" class="tab-panel">
+      <div class="log-filters">
+        <select id="filter-type" onchange="renderLog()">
+          <option value="">Todos los tipos</option>
+          <option>General</option><option>Matemáticas</option><option>Programación</option><option>Idiomas</option><option>Lectura</option><option>Otro</option>
+        </select>
+        <select id="filter-days" onchange="renderLog()">
+          <option value="7">Últimos 7 días</option>
+          <option value="30">Últimos 30 días</option>
+          <option value="0">Todo</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn-secondary" style="padding: 9px 16px; font-size: 13.5px;" onclick="exportCSV()"><i class="ti ti-download" aria-hidden="true"></i> CSV</button>
+        <button class="btn-danger" onclick="clearLog()"><i class="ti ti-trash" aria-hidden="true"></i> Limpiar</button>
+      </div>
+      <div class="table-responsive" id="log-table-wrap"></div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="tab-settings" class="tab-panel" style="max-width:760px;">
+      <div class="chart-card card">
+        <h3>Color de acento</h3>
+        <div class="accent-row">
+          <div class="accent-presets" id="accent-presets">
+            <button type="button" class="accent-dot" style="background:#6366f1" onclick="selectAccent('#6366f1')" aria-label="Índigo"></button>
+            <button type="button" class="accent-dot" style="background:#0ea5e9" onclick="selectAccent('#0ea5e9')" aria-label="Azul"></button>
+            <button type="button" class="accent-dot" style="background:#10b981" onclick="selectAccent('#10b981')" aria-label="Verde"></button>
+            <button type="button" class="accent-dot" style="background:#f59e0b" onclick="selectAccent('#f59e0b')" aria-label="Ámbar"></button>
+            <button type="button" class="accent-dot" style="background:#ec4899" onclick="selectAccent('#ec4899')" aria-label="Rosa"></button>
+            <button type="button" class="accent-dot" style="background:#ef4444" onclick="selectAccent('#ef4444')" aria-label="Rojo"></button>
+          </div>
+          <label class="accent-custom">
+            <i class="ti ti-color-picker"></i> Personalizado
+            <input type="color" id="accent-input" value="#3b82f6" oninput="selectAccent(this.value)">
+          </label>
+        </div>
+      </div>
+
+      <div class="chart-card card">
+        <h3><i class="ti ti-folder" aria-hidden="true"></i> Carpetas</h3>
+        <div class="cat-list" id="category-list"></div>
+        <div class="cat-form">
+          <input type="text" id="new-cat-name" maxlength="30" placeholder="Nueva carpeta (ej. Semestre 2)" onkeydown="if(event.key==='Enter')createCategory()">
+          <input type="color" id="new-cat-color" value="#6366f1" aria-label="Color de la carpeta">
+          <button class="btn-secondary" style="padding: 9px 16px; font-size: 13.5px;" onclick="createCategory()"><i class="ti ti-plus" aria-hidden="true"></i> Crear</button>
+        </div>
+      </div>
+
+      <button class="btn-primary full-width" id="btn-save-prefs" onclick="savePreferences()">
+        <i class="ti ti-device-floppy"></i> Guardar apariencia
+      </button>
+    </div>
+
+    <!-- HELP TAB -->
+    <div id="tab-help" class="tab-panel" style="max-width:760px;">
+      <div class="chart-card card">
+        <h3><i class="ti ti-player-play" aria-hidden="true"></i> Timer</h3>
+        <p class="help-text">Configura los minutos de <strong>trabajo</strong>, <strong>descanso corto</strong>, <strong>descanso largo</strong> y cuántos ciclos pasan antes del descanso largo.</p>
+        <p class="help-text">Escribe qué vas a estudiar (o elige uno de tus tipos más usados en "Recomendados") y presiona <strong>Iniciar</strong>. Al terminar cada fase suena una alarma y la sesión se guarda sola.</p>
+        <p class="help-text">¿No usaste el temporizador? Con <strong>"Registrar sesión manual"</strong> puedes anotar minutos de estudio directamente.</p>
+      </div>
+      <div class="chart-card card">
+        <h3><i class="ti ti-folder" aria-hidden="true"></i> Carpetas</h3>
+        <p class="help-text">Agrupan tus sesiones en categorías como "Semestre 1" o "Trabajo" para separar tu análisis por contexto.</p>
+        <p class="help-text">El selector <strong>Carpeta</strong> del Timer define dónde se guarda cada nueva sesión; con el botón <strong>+</strong> de al lado puedes crear una carpeta nueva sin salir del Timer. El selector del encabezado (arriba) filtra <strong>toda la app</strong> — estadísticas, historial y exportación — para enfocarte en una sola carpeta a la vez.</p>
+        <p class="help-text">Renómbralas o archívalas desde <strong>Configuración</strong>. Archivar una carpeta la oculta de los selectores de registro, pero sus datos siguen disponibles para análisis.</p>
+      </div>
+      <div class="chart-card card">
+        <h3><i class="ti ti-chart-bar" aria-hidden="true"></i> Estadísticas</h3>
+        <p class="help-text"><strong>Racha</strong> (actual y máxima), <strong>regularidad semanal</strong>, <strong>descanso activo</strong> y <strong>enfoque Pomodoro</strong> resumen tus hábitos de un vistazo.</p>
+        <p class="help-text">Gráficos de los últimos 7 días, distribución y minutos por tipo de estudio, densidad por hora del día, y un <strong>heatmap</strong> de consistencia (26 semanas).</p>
+      </div>
+      <div class="chart-card card">
+        <h3><i class="ti ti-calendar" aria-hidden="true"></i> Registro</h3>
+        <p class="help-text">Historial completo de tus sesiones, filtrable por tipo de estudio y por rango de días.</p>
+        <p class="help-text">Puedes cambiar la <strong>carpeta</strong> de una sesión directamente desde la tabla, exportar todo a <strong>CSV</strong> o borrar el historial por completo.</p>
+      </div>
+      <div class="chart-card card">
+        <h3><i class="ti ti-settings" aria-hidden="true"></i> Configuración</h3>
+        <p class="help-text">Elige un <strong>color de acento</strong> propio, o personalizado con el selector de color. El botón de sol/luna de la barra superior alterna entre <strong>modo claro</strong> y <strong>oscuro</strong>.</p>
+        <p class="help-text">Aquí también se administran las <strong>carpetas</strong>: crear nuevas, renombrar o archivar las que ya no uses.</p>
+      </div>
+    </div>
+  </main>
 </div>
 
 <div class="toast" id="toast"><i class="ti ti-check"></i> <span id="toast-msg"></span></div>
+
+<div class="update-overlay" id="update-overlay" style="display:none;">
+  <div class="update-modal">
+    <div class="update-modal-icon"><i class="ti ti-sparkles" aria-hidden="true"></i></div>
+    <h3>Novedades en FocusData</h3>
+    <p class="update-modal-sub">Le dimos una vuelta al diseño de la app.</p>
+    <ul>
+      <li><i class="ti ti-layout-sidebar" aria-hidden="true"></i> Navegación en barra lateral y un look más simple y plano.</li>
+      <li><i class="ti ti-moon" aria-hidden="true"></i> Botón de sol/luna arriba a la derecha para cambiar entre claro y oscuro al instante.</li>
+      <li><i class="ti ti-chart-donut" aria-hidden="true"></i> Nueva distribución por tema (gráfico de dona) en Estadísticas.</li>
+      <li><i class="ti ti-player-play" aria-hidden="true"></i> El Timer ahora muestra la sesión, el ciclo y el % completado de un vistazo.</li>
+    </ul>
+    <button class="btn-primary full-width" onclick="dismissUpdateNotice()"><i class="ti ti-check" aria-hidden="true"></i> Entendido, ¡vamos!</button>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
@@ -1012,7 +937,16 @@ let state = {
   type: 'General', cycleCount: 0
 };
 let interval = null;
-const CIRC = 515;
+const CIRC = 615.75;
+
+// Pinta el track del slider con el % recorrido en color de acento (como el mockup)
+function paintSlider(slider) {
+  const p = (slider.value - slider.min) / (slider.max - slider.min) * 100;
+  slider.style.background = `linear-gradient(to right, var(--accent) ${p}%, var(--surface-2) ${p}%)`;
+}
+function paintAllSliders() {
+  ['work','short','long','cycles'].forEach(k => paintSlider(document.getElementById('cfg-' + k)));
+}
 
 function updateConfig() {
   cfg.work = +document.getElementById('cfg-work').value;
@@ -1023,6 +957,7 @@ function updateConfig() {
   document.getElementById('val-short').value = cfg.short;
   document.getElementById('val-long').value = cfg.long;
   document.getElementById('val-cycles').value = cfg.cycles;
+  paintAllSliders();
   if (!state.running && !state.paused) { state.remaining = cfg.work * 60; renderClock(); }
 }
 
@@ -1036,6 +971,7 @@ function updateConfigFromInput(key) {
   val = Math.max(min, Math.min(max, val));
   slider.value = val;
   cfg[key] = val;
+  paintSlider(slider);
   if (!state.running && !state.paused && key === 'work') { state.remaining = cfg.work * 60; renderClock(); }
 }
 
@@ -1050,6 +986,7 @@ function clampConfigInput(key) {
   input.value = val;
   slider.value = val;
   cfg[key] = val;
+  paintSlider(slider);
   if (!state.running && !state.paused && key === 'work') { state.remaining = cfg.work * 60; renderClock(); }
 }
 
@@ -1069,9 +1006,11 @@ function renderClock() {
   const ring = document.getElementById('ring');
   ring.style.strokeDashoffset = offset;
   ring.className.baseVal = 'ring-fg' + (state.phase !== 'work' ? ' break' : '');
-  
+  document.getElementById('timer-percent').textContent = Math.round((1 - rem / total) * 100) + '% completado';
+
   document.getElementById('phase-label').textContent = state.phase === 'work' ? 'Tiempo de estudio' : (state.phase === 'short' ? 'Descanso corto' : 'Descanso largo');
-  document.getElementById('phase-sub').textContent = 'Sesión ' + state.session;
+  const currentCycle = Math.min(cfg.cycles, (state.cycleCount % cfg.cycles) + 1);
+  document.getElementById('timer-meta').textContent = `Sesión ${state.session} · Ciclo ${currentCycle}/${cfg.cycles}`;
 
   // Update page title with time remaining when running
   if (state.running) {
@@ -1079,6 +1018,18 @@ function renderClock() {
   } else {
     document.title = 'FocusData';
   }
+}
+
+// Botón único Iniciar/Pausar: su icono y texto reflejan el estado actual del timer.
+function updateToggleButton() {
+  const icon = document.getElementById('btn-toggle-icon');
+  const label = document.getElementById('btn-toggle-label');
+  if (state.running) { icon.className = 'ti ti-player-pause'; label.textContent = 'Pausar'; }
+  else { icon.className = 'ti ti-player-play'; label.textContent = state.paused ? 'Reanudar' : 'Iniciar'; }
+}
+
+function toggleTimer() {
+  if (state.running) pauseTimer(); else startTimer();
 }
 
 function startTimer() {
@@ -1091,8 +1042,7 @@ function startTimer() {
     state.endTime = Date.now() + state.remaining * 1000;
   }
   state.running = true;
-  document.getElementById('btn-start').disabled = true;
-  document.getElementById('btn-pause').disabled = false;
+  updateToggleButton();
   interval = setInterval(tick, 250); // tick faster to stay accurate even when throttled
 }
 
@@ -1102,8 +1052,7 @@ function pauseTimer() {
   state.remaining = Math.max(0, Math.round((state.endTime - Date.now()) / 1000));
   state.running = false;
   state.paused = true;
-  document.getElementById('btn-start').disabled = false;
-  document.getElementById('btn-pause').disabled = true;
+  updateToggleButton();
   renderClock();
 }
 
@@ -1116,8 +1065,7 @@ function resetTimer() {
   state.cycleCount = 0;
   state.remaining = cfg.work * 60;
   state.endTime = null;
-  document.getElementById('btn-start').disabled = false;
-  document.getElementById('btn-pause').disabled = true;
+  updateToggleButton();
   renderClock();
   updateSideInfo();
 }
@@ -1196,8 +1144,7 @@ function phaseComplete() {
   }
   state.remaining = phaseDuration();
   state.running = false;
-  document.getElementById('btn-start').disabled = false;
-  document.getElementById('btn-pause').disabled = true;
+  updateToggleButton();
   renderClock(); updateSideInfo();
 }
 
@@ -1239,8 +1186,7 @@ function confirmManual() {
   const min = +input.value;
   if (!min || isNaN(min) || min <= 0) {
     input.style.borderColor = 'var(--danger)';
-    input.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.2)';
-    setTimeout(() => { input.style.borderColor = ''; input.style.boxShadow = ''; }, 1000);
+    setTimeout(() => { input.style.borderColor = ''; }, 1000);
     return;
   }
   logSession(Math.round(min), state.type, 'manual');
@@ -1283,34 +1229,46 @@ function pickReco(t) {
 function updateCustomType() {
   const val = document.getElementById('custom-type-input').value.trim();
   state.type = val || 'General';
-  document.getElementById('info-type').textContent = state.type;
   // Resalta la recomendación que coincide con lo escrito (si alguna)
   document.querySelectorAll('#type-recos .type-chip').forEach(c =>
     c.classList.toggle('selected', c.textContent === val && val !== ''));
 }
 
-function updateSideInfo() {
-  const today = localDateStr();
-  const todayRecs = db.filter(r => r.date === today && r.mode !== 'break');
-  const mins = todayRecs.reduce((a,r) => a + r.minutes, 0);
-  document.getElementById('info-today').textContent = mins >= 60 ? (mins/60).toFixed(1) + ' h' : mins + ' min';
-  document.getElementById('info-sessions').textContent = todayRecs.length;
-  document.getElementById('info-cycles').textContent = state.cycleCount;
-  document.getElementById('info-type').textContent = state.type;
+// Formatea un valor numérico grande + una unidad chica (ej. "108" + "min"), como en las stat cards.
+function setStatVal(id, num, unit) {
+  document.getElementById(id).innerHTML = num + (unit ? `<span class="m-unit">${unit}</span>` : '');
 }
 
+// Fila de stats del Timer (Racha/Hoy/Semana/Sesiones). Respeta el filtro global de carpeta, igual que Estadísticas.
+function updateSideInfo() {
+  const today = localDateStr();
+  const studyRecs = filteredDb().filter(r => r.mode !== 'break');
+  const todayMins = studyRecs.filter(r => r.date === today).reduce((a,r) => a + r.minutes, 0);
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekMins = studyRecs.filter(r => new Date(r.date) >= weekAgo).reduce((a,r) => a + r.minutes, 0);
+  const todaySessions = studyRecs.filter(r => r.date === today).length;
+  const streaks = computeStreaks();
+
+  setStatVal('t-stat-streak', streaks.current, streaks.current === 1 ? 'día' : 'días');
+  todayMins >= 60 ? setStatVal('t-stat-today', (todayMins/60).toFixed(1), 'h') : setStatVal('t-stat-today', todayMins, 'min');
+  weekMins >= 60 ? setStatVal('t-stat-week', (weekMins/60).toFixed(1), 'h') : setStatVal('t-stat-week', weekMins, 'min');
+  setStatVal('t-stat-sessions', todaySessions, 'hoy');
+}
+
+const NAV_LABELS = { timer: 'Timer', stats: 'Estadísticas', log: 'Registro', settings: 'Configuración', help: 'Ayuda' };
+
 function switchTab(t) {
-  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ['timer','stats','log','settings'][i] === t));
+  document.querySelectorAll('.nav-item').forEach((b,i) => b.classList.toggle('active', ['timer','stats','log','settings','help'][i] === t));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + t).classList.add('active');
+  const title = document.getElementById('topbar-title');
+  if (title) title.textContent = NAV_LABELS[t] || '';
   if (t === 'stats') renderStats();
   if (t === 'log') renderLog();
 }
 
 let weekChartInst = null;
-let typeChartInst = null;
 let hourChartInst = null;
-let radarChartInst = null;
 
 // ── Umbrales de métricas (una sola definición reutilizada) ──
 const STREAK_MIN_MIN = 1;   // un día cuenta para la racha con >= 1 min estudiado
@@ -1400,58 +1358,53 @@ function renderHeatmap() {
   el.innerHTML = html;
 }
 
-// Radar de balance temático: top-6 tipos reales vs meta equilibrada (promedio)
-function renderRadar(typeTotals) {
-  const el = document.getElementById('radarChart');
-  if (!el) return;
-  if (radarChartInst) { radarChartInst.destroy(); radarChartInst = null; }
-
-  const entries = Object.entries(typeTotals).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  if (!entries.length) return;
-
-  const labels = entries.map(([t]) => t);
-  const values = entries.map(([, m]) => m);
-  const avg = values.reduce((a, b) => a + b, 0) / values.length;
-  const goal = labels.map(() => Math.round(avg));
-
-  const accent = cssVar('--accent') || '#3b82f6';
-  const rgb = hexToRgb(accent);
-  const tick = cssVar('--chart-tick') || '#94a3b8';
-  const grid = cssVar('--chart-grid') || 'rgba(255,255,255,0.08)';
-
-  radarChartInst = new Chart(el, {
-    type: 'radar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Real (min)', data: values, borderColor: accent, backgroundColor: `rgba(${rgb}, 0.25)`, borderWidth: 2, pointBackgroundColor: accent, pointRadius: 3 },
-        { label: 'Meta equilibrada', data: goal, borderColor: tick, backgroundColor: 'transparent', borderDash: [5, 5], borderWidth: 1.5, pointRadius: 0 }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: tick, font: { family: "'Inter', sans-serif" } } },
-        tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#fff', bodyColor: '#cbd5e1' }
-      },
-      scales: {
-        r: {
-          angleLines: { color: grid },
-          grid: { color: grid },
-          pointLabels: { color: tick, font: { family: "'Inter', sans-serif", size: 12 } },
-          ticks: { display: false, backdropColor: 'transparent' },
-          suggestedMin: 0
-        }
-      }
-    }
-  });
+// Escala difuminada del color de acento: el tipo con más minutos recibe el acento
+// pleno y los siguientes tonos cada vez más tenues. Misma escala en donut,
+// leyenda y barras para que cada tipo tenga un color consistente entre gráficos.
+function typeShade(index, count) {
+  const MAX = 100, MIN = 18;
+  const pct = count <= 1 ? MAX : Math.round(MAX - (index / (count - 1)) * (MAX - MIN));
+  return `color-mix(in srgb, var(--accent) ${pct}%, transparent)`;
 }
 
-// Paletas de colores reutilizadas de las barras CSS
-const TYPE_COLORS = {
-  'General': '#6366f1', 'Matemáticas': '#0ea5e9', 'Programación': '#10b981',
-  'Idiomas': '#f59e0b', 'Lectura': '#ec4899', 'Otro': '#64748b'
-};
+// Distribución por tema: donut (conic-gradient) + barras horizontales, a partir de los mismos totales por tipo.
+function renderTypeBreakdown(typeTotals) {
+  const donutWrap = document.getElementById('donut-wrap');
+  const hbarsWrap = document.getElementById('hbars-wrap');
+  const entries = Object.entries(typeTotals).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((a, [, m]) => a + m, 0);
+
+  if (!entries.length) {
+    donutWrap.innerHTML = '<div class="empty-state"><i class="ti ti-chart-donut"></i>Aún no hay registros</div>';
+    hbarsWrap.innerHTML = '<div class="empty-state"><i class="ti ti-chart-bar"></i>Aún no hay registros</div>';
+    return;
+  }
+
+  const n = entries.length;
+  let acc = 0;
+  const stops = entries.map(([t, m], i) => {
+    const start = acc;
+    acc += m / total * 100;
+    return `${typeShade(i, n)} ${start}% ${acc}%`;
+  }).join(', ');
+  const totalLabel = total >= 60 ? (total / 60).toFixed(1) + 'h' : total + 'min';
+
+  donutWrap.innerHTML = `
+    <div class="donut" style="background:conic-gradient(${stops});">
+      <div class="donut-center"><span class="val">${totalLabel}</span><span class="lbl">total</span></div>
+    </div>
+    <div class="donut-legend">${entries.map(([t, m], i) => `
+      <div class="row"><span class="dot" style="background:${typeShade(i, n)}"></span>${t}<span class="pct">${Math.round(m / total * 100)}%</span></div>
+    `).join('')}</div>`;
+
+  const max = entries[0][1];
+  hbarsWrap.innerHTML = entries.map(([t, m], i) => `
+    <div class="hbar-row">
+      <span class="hbar-label">${t}</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${max ? Math.round(m / max * 100) : 0}%;background:${typeShade(i, n)}"></div></div>
+      <span class="hbar-val">${m}</span>
+    </div>`).join('');
+}
 
 // Lee una variable CSS del tema actual (para que los gráficos se adapten)
 function cssVar(name) {
@@ -1460,7 +1413,7 @@ function cssVar(name) {
 
 // Opciones de ejes generadas al vuelo, según el tema activo
 function makeBarAxisOptions() {
-  const tick = cssVar('--chart-tick') || '#94a3b8';
+  const tick = cssVar('--chart-tick') || '#8892a6';
   const grid = cssVar('--chart-grid') || 'rgba(255,255,255,0.05)';
   return {
     responsive: true,
@@ -1482,20 +1435,20 @@ function renderStats() {
   const weekAgo = new Date(today); weekAgo.setDate(today.getDate()-7);
   const weekMins = studyRecs.filter(r => new Date(r.date) >= weekAgo).reduce((a,r) => a+r.minutes, 0);
   const todayMins = studyRecs.filter(r => r.date === localDateStr(today)).reduce((a,r) => a+r.minutes, 0);
-  
-  document.getElementById('stat-total').textContent = totalMins >= 60 ? (totalMins/60).toFixed(1) + ' h' : totalMins + ' min';
-  document.getElementById('stat-week').textContent = weekMins >= 60 ? (weekMins/60).toFixed(1) + ' h' : weekMins + ' min';
-  document.getElementById('stat-today').textContent = todayMins + ' min';
+
+  totalMins >= 60 ? setStatVal('stat-total', (totalMins/60).toFixed(1), 'h') : setStatVal('stat-total', totalMins, 'min');
+  weekMins >= 60 ? setStatVal('stat-week', (weekMins/60).toFixed(1), 'h') : setStatVal('stat-week', weekMins, 'min');
+  setStatVal('stat-today', todayMins, 'min');
   document.getElementById('stat-sessions').textContent = studyRecs.length;
 
   // Métricas avanzadas: racha, regularidad, descanso activo, enfoque pomodoro
   const streaks = computeStreaks();
-  document.getElementById('stat-streak').textContent = streaks.current + (streaks.current === 1 ? ' día' : ' días');
+  setStatVal('stat-streak', streaks.current, streaks.current === 1 ? 'día' : 'días');
   document.getElementById('stat-streak-max').textContent = streaks.max;
-  document.getElementById('stat-irs').textContent = computeIRS() + '%';
+  setStatVal('stat-irs', computeIRS(), '%');
 
   const rda = computeRDA();
-  document.getElementById('stat-rda').textContent = rda.ratio + '%';
+  setStatVal('stat-rda', rda.ratio, '%');
   document.getElementById('stat-rda-hint').textContent =
     rda.brk === 0 ? 'sin descansos aún'
     : rda.ratio < 15 ? 'bajo (meta ~20%)'
@@ -1503,7 +1456,7 @@ function renderStats() {
     : 'alto (meta ~20%)';
 
   const pomoMins = studyRecs.filter(r => r.mode === 'pomodoro').reduce((a, r) => a + r.minutes, 0);
-  document.getElementById('stat-pomo').textContent = (totalMins > 0 ? Math.round(pomoMins / totalMins * 100) : 0) + '%';
+  setStatVal('stat-pomo', totalMins > 0 ? Math.round(pomoMins / totalMins * 100) : 0, '%');
 
   const days = [], labels = [], data = [];
   for (let i=6; i>=0; i--) { const d = new Date(today); d.setDate(today.getDate()-i); days.push(localDateStr(d)); labels.push(['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()]); }
@@ -1511,50 +1464,23 @@ function renderStats() {
 
   const accentColor = cssVar('--accent') || '#3b82f6';
   const accentRgb = hexToRgb(accentColor);
-  const pointColors = data.map((_,i) => i === 6 ? accentColor : `rgba(${accentRgb}, 0.85)`);
+  const barColors = data.map((_,i) => i === 6 ? accentColor : `rgba(${accentRgb}, 0.55)`);
 
   if (weekChartInst) { weekChartInst.destroy(); }
   weekChartInst = new Chart(document.getElementById('weekChart'), {
-    type: 'line',
+    type: 'bar',
     data: { labels, datasets: [{
       label: 'Minutos',
       data,
-      borderColor: accentColor,
-      backgroundColor: `rgba(${accentRgb}, 0.12)`,
-      fill: true,
-      tension: 0.35,
-      borderWidth: 2.5,
-      pointBackgroundColor: pointColors,
-      pointBorderColor: accentColor,
-      pointRadius: 4,
-      pointHoverRadius: 6
+      backgroundColor: barColors,
+      borderRadius: 5, borderSkipped: false
     }] },
     options: makeBarAxisOptions()
   });
 
   const typeTotals = {};
   studyRecs.forEach(r => typeTotals[r.type] = (typeTotals[r.type] || 0) + r.minutes);
-  const bars = document.getElementById('type-bars');
-  if (typeChartInst) { typeChartInst.destroy(); typeChartInst = null; }
-  if (!Object.keys(typeTotals).length) {
-    bars.innerHTML = '<div class="empty-state"><i class="ti ti-chart-bar"></i>Aún no hay registros</div>';
-  } else {
-    bars.innerHTML = '<div style="position:relative;height:220px;"><canvas id="typeChart" role="img" aria-label="Gráfico de minutos estudiados por tipo de estudio"></canvas></div>';
-    const typeEntries = Object.entries(typeTotals).sort((a,b) => b[1]-a[1]);
-    typeChartInst = new Chart(document.getElementById('typeChart'), {
-      type: 'bar',
-      data: {
-        labels: typeEntries.map(([t]) => t),
-        datasets: [{
-          label: 'Minutos',
-          data: typeEntries.map(([,m]) => m),
-          backgroundColor: typeEntries.map(([t]) => TYPE_COLORS[t] || '#6366f1'),
-          borderRadius: 6, borderSkipped: false
-        }]
-      },
-      options: makeBarAxisOptions()
-    });
-  }
+  renderTypeBreakdown(typeTotals);
 
   // Densidad por hora del día (0–23)
   const hourData = new Array(24).fill(0);
@@ -1572,6 +1498,8 @@ function renderStats() {
     const hAccent = cssVar('--accent') || '#3b82f6';
     const hRgb = hexToRgb(hAccent);
     const peakH = hourData.indexOf(Math.max(...hourData));
+    const hourOptions = makeBarAxisOptions();
+    hourOptions.scales.x.ticks.callback = function(value, index) { return index % 3 === 0 ? this.getLabelForValue(value) : ''; };
     hourChartInst = new Chart(document.getElementById('hourChart'), {
       type: 'bar',
       data: {
@@ -1583,14 +1511,12 @@ function renderStats() {
           borderRadius: 4, borderSkipped: false
         }]
       },
-      options: makeBarAxisOptions()
+      options: hourOptions
     });
     peakInfo.innerHTML = `<div class="hour-peak"><i class="ti ti-bulb"></i> Tu hora más productiva es alrededor de las <strong>${peakH}:00</strong></div>`;
   }
 
-  // Heatmap de consistencia + radar de balance temático
   renderHeatmap();
-  renderRadar(typeTotals);
 }
 
 // Select de carpeta por fila para reasignar; las filas aún no sincronizadas
@@ -1616,7 +1542,7 @@ function renderLog() {
   if (!recs.length) { wrap.innerHTML = '<div class="empty-state"><i class="ti ti-calendar-off" aria-hidden="true"></i>No hay sesiones registradas</div>'; return; }
 
   wrap.innerHTML = `<table><thead><tr><th>Fecha</th><th>Hora</th><th>Duración</th><th>Tipo</th><th>Carpeta</th><th>Modo</th></tr></thead><tbody>` +
-    recs.map(r => `<tr><td>${r.date}</td><td>${r.time}</td><td><strong>${r.minutes} min</strong></td><td>${r.type}</td><td>${catSelectHtml(r)}</td><td><span class="badge badge-${r.mode}">${r.mode}</span></td></tr>`).join('') +
+    recs.map(r => `<tr><td class="mono-cell">${r.date}</td><td class="mono-cell">${r.time}</td><td><strong class="mono-strong">${r.minutes} min</strong></td><td>${r.type}</td><td>${catSelectHtml(r)}</td><td><span class="badge badge-${r.mode}">${r.mode}</span></td></tr>`).join('') +
     `</tbody></table>`;
 }
 
@@ -1634,19 +1560,31 @@ function exportCSV() {
 }
 
 function toast(msg) {
-  const el = document.getElementById('toast'); 
-  document.getElementById('toast-msg').textContent = msg; 
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-renderClock(); updateSideInfo(); renderTypeRecos();
+// Aviso de novedades: se muestra una vez por navegador tras esta actualización.
+// Cambiar UPDATE_NOTICE_VERSION en el próximo rediseño relevante para volver a mostrarlo.
+const UPDATE_NOTICE_VERSION = 'redesign-v1';
+function showUpdateNoticeIfNeeded() {
+  if (localStorage.getItem('fd_update_seen') === UPDATE_NOTICE_VERSION) return;
+  document.getElementById('update-overlay').style.display = 'flex';
+}
+function dismissUpdateNotice() {
+  localStorage.setItem('fd_update_seen', UPDATE_NOTICE_VERSION);
+  document.getElementById('update-overlay').style.display = 'none';
+}
+
+renderClock(); updateSideInfo(); renderTypeRecos(); paintAllSliders();
 
 // Request notification permission on first interaction
 if ('Notification' in window && Notification.permission === 'default') {
-  document.getElementById('btn-start').addEventListener('click', function reqPerm() {
+  document.getElementById('btn-toggle').addEventListener('click', function reqPerm() {
     Notification.requestPermission();
-    document.getElementById('btn-start').removeEventListener('click', reqPerm);
+    document.getElementById('btn-toggle').removeEventListener('click', reqPerm);
   }, { once: true });
 }
 
@@ -1667,17 +1605,20 @@ function applyTheme(theme) {
   prefs.theme = theme;
   if (theme === 'dark') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', theme);
-  document.querySelectorAll('.theme-option').forEach(b =>
-    b.classList.toggle('selected', b.dataset.themeValue === theme));
+
+  // Botón de toggle rápido del topbar: icono/label describen el modo ACTUAL (no el destino)
+  const isLight = theme === 'light';
+  const icon = document.getElementById('theme-toggle-icon');
+  const label = document.getElementById('theme-toggle-label');
+  if (icon) icon.className = 'ti ' + (isLight ? 'ti-sun' : 'ti-moon');
+  if (label) label.textContent = isLight ? 'Modo claro' : 'Modo oscuro';
 }
 
 function applyAccent(accent) {
   prefs.accent = accent;
   const root = document.documentElement.style;
-  const rgb = hexToRgb(accent);
   root.setProperty('--accent', accent);
   root.setProperty('--accent-hover', accent);
-  root.setProperty('--accent-glow', `rgba(${rgb}, 0.5)`);
   const input = document.getElementById('accent-input');
   if (input) input.value = accent;
   document.querySelectorAll('.accent-dot').forEach(d => {
@@ -1688,13 +1629,22 @@ function applyAccent(accent) {
   });
 }
 
-function selectTheme(theme) {
-  applyTheme(theme);
-  if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
-}
 function selectAccent(accent) {
   applyAccent(accent);
   if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+}
+
+// Toggle rápido del topbar: única forma de cambiar de tema (claro/oscuro).
+// Cualquier tema activo que no sea 'light' se considera "modo oscuro" a efectos de este atajo.
+function toggleQuickTheme() {
+  const next = prefs.theme === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+  fetch('/api/preferences', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme: next })
+  }).catch(() => {});
 }
 
 function savePreferences() {
@@ -1741,8 +1691,11 @@ function renderCategoryUI() {
     activeCategoryId = active.length ? active[0].id : null;
   }
   if (activeCategoryId != null) activeSel.value = activeCategoryId;
+  const activeCat = categoryById(activeCategoryId);
+  const dot = document.getElementById('active-cat-dot');
+  if (dot) dot.style.background = activeCat ? activeCat.color : 'transparent';
 
-  // Lista de gestión en Ajustes
+  // Lista de gestión en Configuración
   const list = document.getElementById('category-list');
   if (!categories.length) {
     list.innerHTML = '<div class="empty-state"><i class="ti ti-folder-off"></i>Sin carpetas aún</div>';
@@ -1765,6 +1718,9 @@ function renderCategoryUI() {
 
 function setActiveCategory(id) {
   activeCategoryId = +id;
+  const dot = document.getElementById('active-cat-dot');
+  const cat = categoryById(activeCategoryId);
+  if (dot) dot.style.background = cat ? cat.color : 'transparent';
   fetch('/api/preferences', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1776,6 +1732,7 @@ function setActiveCategory(id) {
 
 function setGlobalFilter(id) {
   filterCategoryId = id;
+  updateSideInfo();
   if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
   if (document.getElementById('tab-log').classList.contains('active')) renderLog();
 }
@@ -1799,6 +1756,40 @@ function reassignSession(ts, catId) {
       renderLog();
     }
   }).catch(() => { toast('Error de conexión'); renderLog(); });
+}
+
+function toggleTimerCatForm() {
+  const form = document.getElementById('timer-cat-form');
+  const isHidden = form.style.display === 'none';
+  form.style.display = isHidden ? 'flex' : 'none';
+  if (isHidden) {
+    document.getElementById('timer-new-cat-name').value = '';
+    document.getElementById('timer-new-cat-name').focus();
+  }
+}
+
+// Crea una carpeta desde el Timer y la deja activa de inmediato.
+function createCategoryFromTimer() {
+  const nameInput = document.getElementById('timer-new-cat-name');
+  const name = nameInput.value.trim();
+  const color = document.getElementById('timer-new-cat-color').value;
+  if (!name) { nameInput.focus(); return; }
+  fetch('/api/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, color })
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      toast('Carpeta "' + d.name + '" creada ✓');
+      toggleTimerCatForm();
+      loadCategories().then(() => {
+        document.getElementById('active-category-select').value = d.id;
+        setActiveCategory(d.id);
+      });
+    } else {
+      toast(d.error || 'No se pudo crear la carpeta');
+    }
+  }).catch(() => toast('Error de conexión'));
 }
 
 function createCategory() {
@@ -1914,6 +1905,9 @@ fetch('/api/me').then(r => {
 }).then(data => {
   if (data && data.username) {
     document.getElementById('user-display').textContent = data.username;
+    const avatarInitial = document.getElementById('sidebar-avatar-initial');
+    if (avatarInitial) avatarInitial.textContent = data.username.charAt(0).toUpperCase();
+    showUpdateNoticeIfNeeded();
     applyTheme(data.theme || 'dark');
     applyAccent(data.accent || '#3b82f6');
     activeCategoryId = data.active_category_id != null ? +data.active_category_id : null;

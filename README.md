@@ -29,6 +29,7 @@ Abre **http://127.0.0.1:5000** en tu navegador. La app te redirige a `/login` si
 
 > **Producción:** define la variable de entorno `SECRET_KEY` con un valor secreto propio.
 > El valor por defecto en `app.py` es solo para desarrollo y **no** debe usarse en el servidor real.
+> En producción (PythonAnywhere, que sirve por HTTPS) define además `FOCUSDATA_HTTPS=1` para asegurar las cookies de sesión con el atributo `Secure`.
 
 ## Estructura
 

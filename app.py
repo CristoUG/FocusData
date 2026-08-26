@@ -2,7 +2,7 @@
 from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, url_for
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3, csv, json, io, os, re, secrets
+import sqlite3, csv, json, io, os, re, secrets, time
 from datetime import datetime, timedelta
 from contextlib import closing
 
@@ -33,6 +33,15 @@ def load_secret_key():
 
 app = Flask(__name__)
 app.secret_key = load_secret_key()
+
+# Endurecimiento de la cookie de sesión.
+# SECURE se activa por variable de entorno: forzarlo en local (http://) impediría
+# el login por completo, porque el navegador no enviaría la cookie.
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("FOCUSDATA_HTTPS", "").lower() in ("1", "true", "yes"),
+)
 DB = os.path.join(BASE_DIR, "study.db")
 
 # Preferencias por defecto (fuente única de verdad; el DEFAULT de SQL puede quedar
@@ -226,18 +235,53 @@ def register():
     except sqlite3.IntegrityError:
         return jsonify({"error": "Ese nombre de usuario ya existe"}), 409
 
+# ── Freno de fuerza bruta en el login ───────────────────
+# Contador en memoria del proceso: se pierde al reiniciar y es por worker.
+# Suficiente y proporcionado para el tamaño de esta app; si algún día hace falta
+# algo estricto, habría que moverlo a la DB o a Redis.
+LOGIN_MAX_FAILS      = 8
+LOGIN_WINDOW_SECONDS = 300
+_login_fails = {}   # ip -> (nº de fallos, inicio de la ventana en time.monotonic())
+
+def _login_retry_after(ip):
+    """Segundos que faltan para poder reintentar, o 0 si no está bloqueado."""
+    entry = _login_fails.get(ip)
+    if not entry:
+        return 0
+    count, start = entry
+    elapsed = time.monotonic() - start
+    if elapsed > LOGIN_WINDOW_SECONDS:
+        _login_fails.pop(ip, None)
+        return 0
+    if count >= LOGIN_MAX_FAILS:
+        return int(LOGIN_WINDOW_SECONDS - elapsed) + 1
+    return 0
+
+def _record_login_fail(ip):
+    count, start = _login_fails.get(ip, (0, time.monotonic()))
+    if time.monotonic() - start > LOGIN_WINDOW_SECONDS:
+        count, start = 0, time.monotonic()
+    _login_fails[ip] = (count + 1, start)
+
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.get_json(silent=True) or {}
     username = data.get("username").strip() if isinstance(data.get("username"), str) else ""
     password = data.get("password") if isinstance(data.get("password"), str) else ""
 
+    ip = request.remote_addr or "desconocida"
+    retry = _login_retry_after(ip)
+    if retry:
+        return jsonify({"error": f"Demasiados intentos fallidos. Reintenta en {retry} segundos."}), 429
+
     with closing(get_db()) as conn, conn:
         row = conn.execute("SELECT id, username, password FROM users WHERE username = ?", (username,)).fetchone()
 
     if not row or not check_password_hash(row["password"], password):
+        _record_login_fail(ip)
         return jsonify({"error": "Usuario o contraseña incorrectos"}), 401
 
+    _login_fails.pop(ip, None)
     user = User(row["id"], row["username"])
     login_user(user)
     return jsonify({"ok": True, "username": username})
@@ -254,6 +298,7 @@ def me():
     with closing(get_db()) as conn, conn:
         row = conn.execute("SELECT theme, accent, active_category_id FROM users WHERE id = ?", (current_user.id,)).fetchone()
     return jsonify({
+        "id": current_user.id,
         "username": current_user.username,
         "theme": row["theme"] if row else DEFAULT_THEME,
         "accent": row["accent"] if row else DEFAULT_ACCENT,

@@ -352,6 +352,7 @@
     document.getElementById('btn-mode-register').classList.toggle('active', m === 'register');
     document.getElementById('btn-text').textContent = m === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta';
     document.getElementById('btn-submit').querySelector('i').className = m === 'login' ? 'ti ti-login' : 'ti ti-user-plus';
+    document.getElementById('password').minLength = (mode === 'register') ? 8 : 4;
     hideMessages();
   }
 

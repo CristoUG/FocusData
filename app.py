@@ -4,6 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3, csv, json, io, os, re, secrets
 from datetime import datetime, timedelta
+from contextlib import closing
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -57,7 +58,7 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         row = conn.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
     if row:
         return User(row["id"], row["username"])
@@ -77,7 +78,7 @@ def get_db():
     return conn
 
 def init_db():
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,6 +146,9 @@ def init_db():
                 SELECT id FROM categories c WHERE c.user_id = users.id AND c.archived = 0 ORDER BY c.id LIMIT 1
             ) WHERE active_category_id IS NULL
         """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_date ON sessions(user_id, date)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_ts   ON sessions(user_id, ts)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_user    ON categories(user_id)")
         conn.commit()
 
 def resolve_category(conn, uid, category_id):
@@ -191,19 +195,19 @@ def login_page():
 
 @app.route("/api/register", methods=["POST"])
 def register():
-    data = request.get_json()
-    username = data.get("username", "").strip()
-    password = data.get("password", "")
+    data = request.get_json(silent=True) or {}
+    username = data.get("username").strip() if isinstance(data.get("username"), str) else ""
+    password = data.get("password") if isinstance(data.get("password"), str) else ""
 
     if not username or not password:
         return jsonify({"error": "Usuario y contraseña son requeridos"}), 400
-    if len(username) < 3:
-        return jsonify({"error": "El usuario debe tener al menos 3 caracteres"}), 400
-    if len(password) < 4:
-        return jsonify({"error": "La contraseña debe tener al menos 4 caracteres"}), 400
+    if len(username) < 3 or len(username) > USERNAME_MAX:
+        return jsonify({"error": f"El usuario debe tener entre 3 y {USERNAME_MAX} caracteres"}), 400
+    if len(password) < PASSWORD_MIN:
+        return jsonify({"error": f"La contraseña debe tener al menos {PASSWORD_MIN} caracteres"}), 400
 
     try:
-        with get_db() as conn:
+        with closing(get_db()) as conn, conn:
             conn.execute(
                 "INSERT INTO users (username, password, theme, accent) VALUES (?, ?, ?, ?)",
                 (username, generate_password_hash(password), DEFAULT_THEME, DEFAULT_ACCENT)
@@ -224,11 +228,11 @@ def register():
 
 @app.route("/api/login", methods=["POST"])
 def login():
-    data = request.get_json()
-    username = data.get("username", "").strip()
-    password = data.get("password", "")
+    data = request.get_json(silent=True) or {}
+    username = data.get("username").strip() if isinstance(data.get("username"), str) else ""
+    password = data.get("password") if isinstance(data.get("password"), str) else ""
 
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         row = conn.execute("SELECT id, username, password FROM users WHERE username = ?", (username,)).fetchone()
 
     if not row or not check_password_hash(row["password"], password):
@@ -247,7 +251,7 @@ def logout():
 @app.route("/api/me")
 @login_required
 def me():
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         row = conn.execute("SELECT theme, accent, active_category_id FROM users WHERE id = ?", (current_user.id,)).fetchone()
     return jsonify({
         "username": current_user.username,
@@ -259,6 +263,17 @@ def me():
 # Temas válidos y validación del color de acento (#rgb o #rrggbb)
 VALID_THEMES = {"dark", "light", "ocean", "forest"}
 HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+
+# Validación de entrada de sesiones
+VALID_MODES  = {"pomodoro", "break", "manual"}
+DATE_RE      = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+TIME_RE      = re.compile(r"^\d{1,2}:\d{2}$")
+TYPE_MAX     = 40
+TS_MAX       = 40
+MINUTES_MIN  = 1
+MINUTES_MAX  = 600
+USERNAME_MAX = 30
+PASSWORD_MIN = 8
 
 @app.route("/api/preferences", methods=["POST"])
 @login_required
@@ -278,7 +293,7 @@ def save_preferences():
         updates.append("accent = ?")
         params.append(data["accent"])
 
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         if "active_category_id" in data:
             row = conn.execute(
                 "SELECT id FROM categories WHERE id = ? AND user_id = ? AND archived = 0",
@@ -302,7 +317,7 @@ def _category_json(row):
 @app.route("/api/categories", methods=["GET"])
 @login_required
 def get_categories():
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         rows = conn.execute(
             "SELECT id, name, color, archived FROM categories WHERE user_id = ? ORDER BY archived, name",
             (current_user.id,)
@@ -320,7 +335,7 @@ def create_category():
     if not isinstance(color, str) or not HEX_RE.match(color):
         return jsonify({"error": "Color no válido"}), 400
     try:
-        with get_db() as conn:
+        with closing(get_db()) as conn, conn:
             cur = conn.execute(
                 "INSERT INTO categories (user_id, name, color) VALUES (?, ?, ?)",
                 (current_user.id, name, color)
@@ -335,7 +350,7 @@ def create_category():
 def update_category(cid):
     data = request.get_json() or {}
     uid = current_user.id
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         row = conn.execute(
             "SELECT id, name, color, archived FROM categories WHERE id = ? AND user_id = ?", (cid, uid)
         ).fetchone()
@@ -392,11 +407,15 @@ def update_category(cid):
 def update_session(sid):
     data = request.get_json() or {}
     uid = current_user.id
-    with get_db() as conn:
+    try:
+        cid_req = int(data.get("category_id"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Carpeta no válida"}), 400
+    with closing(get_db()) as conn, conn:
         if not conn.execute("SELECT id FROM sessions WHERE id = ? AND user_id = ?", (sid, uid)).fetchone():
             return jsonify({"error": "Sesión no encontrada"}), 404
         cat = conn.execute(
-            "SELECT id, name FROM categories WHERE id = ? AND user_id = ?", (data.get("category_id"), uid)
+            "SELECT id, name FROM categories WHERE id = ? AND user_id = ?", (cid_req, uid)
         ).fetchone()
         if not cat:
             return jsonify({"error": "Carpeta no válida"}), 400
@@ -418,7 +437,7 @@ def get_sessions():
     stype = request.args.get("type", "")
     include_breaks = request.args.get("include_breaks", "") in ("1", "true", "yes")
     uid = current_user.id
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         q = ("SELECT s.*, c.name AS category_name, c.color AS category_color "
              "FROM sessions s LEFT JOIN categories c ON c.id = s.category_id "
              "WHERE s.user_id = ?")
@@ -439,24 +458,55 @@ def get_sessions():
 @app.route("/api/sessions", methods=["POST"])
 @login_required
 def add_session():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     now  = datetime.now()
-    uid = current_user.id
-    with get_db() as conn:
-        category_id = resolve_category(conn, uid, data.get("category_id"))
+    uid  = current_user.id
+
+    try:
+        minutes = int(data["minutes"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "minutes debe ser un número entero"}), 400
+    if not (MINUTES_MIN <= minutes <= MINUTES_MAX):
+        return jsonify({"error": f"minutes debe estar entre {MINUTES_MIN} y {MINUTES_MAX}"}), 400
+
+    stype = data.get("type").strip() if isinstance(data.get("type"), str) else ""
+    if not stype or len(stype) > TYPE_MAX:
+        return jsonify({"error": f"type debe tener entre 1 y {TYPE_MAX} caracteres"}), 400
+
+    mode = data.get("mode")
+    if mode not in VALID_MODES:
+        return jsonify({"error": "mode no válido"}), 400
+
+    date = data.get("date") or now.strftime("%Y-%m-%d")
+    if not isinstance(date, str) or not DATE_RE.match(date):
+        return jsonify({"error": "date debe tener formato YYYY-MM-DD"}), 400
+
+    time_ = data.get("time") or now.strftime("%H:%M")
+    if not isinstance(time_, str) or not TIME_RE.match(time_):
+        return jsonify({"error": "time debe tener formato HH:MM"}), 400
+
+    try:
+        hour = int(data.get("hour", now.hour))
+    except (TypeError, ValueError):
+        return jsonify({"error": "hour debe ser un número entero"}), 400
+    if not (0 <= hour <= 23):
+        return jsonify({"error": "hour debe estar entre 0 y 23"}), 400
+
+    # `ts` es la clave de deduplicación cliente↔servidor: se guarda tal cual llega.
+    ts = str(data.get("ts") or now.isoformat())[:TS_MAX]
+
+    category_id = data.get("category_id")
+    if category_id is not None:
+        try:
+            category_id = int(category_id)
+        except (TypeError, ValueError):
+            category_id = None
+
+    with closing(get_db()) as conn, conn:
+        category_id = resolve_category(conn, uid, category_id)
         conn.execute(
             "INSERT INTO sessions (user_id,date,hour,time,minutes,type,mode,ts,category_id) VALUES (?,?,?,?,?,?,?,?,?)",
-            (
-                uid,
-                data.get("date", now.strftime("%Y-%m-%d")),
-                data.get("hour", now.hour),
-                data.get("time", now.strftime("%H:%M")),
-                int(data["minutes"]),
-                data["type"],
-                data["mode"],
-                data.get("ts", now.isoformat()),
-                category_id,
-            )
+            (uid, date, hour, time_, minutes, stype, mode, ts, category_id)
         )
         conn.commit()
     return jsonify({"ok": True, "category_id": category_id})
@@ -467,7 +517,7 @@ def get_stats():
     today = datetime.now().strftime("%Y-%m-%d")
     week_cutoff = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
     uid = current_user.id
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         total  = conn.execute("SELECT COALESCE(SUM(minutes),0) FROM sessions WHERE mode!='break' AND user_id=?", (uid,)).fetchone()[0]
         week   = conn.execute("SELECT COALESCE(SUM(minutes),0) FROM sessions WHERE mode!='break' AND user_id=? AND date>=?", (uid, week_cutoff)).fetchone()[0]
         today_ = conn.execute("SELECT COALESCE(SUM(minutes),0) FROM sessions WHERE mode!='break' AND user_id=? AND date=?", (uid, today)).fetchone()[0]
@@ -497,7 +547,7 @@ def get_stats():
 @login_required
 def export_csv():
     uid = current_user.id
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         rows = conn.execute(
             """SELECT s.date, s.time, s.hour, s.minutes, s.type, s.mode, COALESCE(c.name,'') AS carpeta, s.ts
                FROM sessions s LEFT JOIN categories c ON c.id = s.category_id
@@ -520,7 +570,7 @@ def export_csv():
 @login_required
 def export_json():
     uid = current_user.id
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         rows = conn.execute(
             """SELECT s.*, c.name AS category_name FROM sessions s
                LEFT JOIN categories c ON c.id = s.category_id
@@ -538,7 +588,7 @@ def export_json():
 @login_required
 def delete_all():
     uid = current_user.id
-    with get_db() as conn:
+    with closing(get_db()) as conn, conn:
         conn.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         conn.commit()
     return jsonify({"ok": True})

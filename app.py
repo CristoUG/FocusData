@@ -407,7 +407,7 @@ VALID_THEMES = {"dark", "light", "ocean", "forest"}
 HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 
 # Validación de entrada de sesiones
-VALID_MODES  = {"pomodoro", "break", "manual"}
+VALID_MODES  = {"pomodoro", "break", "manual", "cronometro"}
 DATE_RE      = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TIME_RE      = re.compile(r"^\d{1,2}:\d{2}$")
 TYPE_MAX     = 40

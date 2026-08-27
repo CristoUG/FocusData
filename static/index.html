@@ -673,7 +673,7 @@
       <div class="timer-layout">
         <div class="timer-card card">
           <div class="timer-header-row">
-            <span class="timer-label" id="phase-label">Tiempo de estudio</span>
+            <span class="timer-label" id="phase-label">Tiempo de trabajo</span>
             <span class="timer-meta" id="timer-meta">Sesión 1 · Ciclo 1/4</span>
           </div>
           <div class="timer-ring-wrap">
@@ -872,30 +872,51 @@
     <div id="tab-help" class="tab-panel" style="max-width:760px;">
       <div class="chart-card card">
         <h3><i class="ti ti-player-play" aria-hidden="true"></i> Timer</h3>
-        <p class="help-text">Configura los minutos de <strong>trabajo</strong>, <strong>descanso corto</strong>, <strong>descanso largo</strong> y cuántos ciclos pasan antes del descanso largo.</p>
-        <p class="help-text">Escribe qué vas a estudiar (o elige uno de tus tipos más usados en "Recomendados") y presiona <strong>Iniciar</strong>. Al terminar cada fase suena una alarma y la sesión se guarda sola.</p>
-        <p class="help-text">¿No usaste el temporizador? Con <strong>"Registrar sesión manual"</strong> puedes anotar minutos de estudio directamente.</p>
+        <p class="help-text">El temporizador tiene <strong>dos modos</strong>, que eliges con los botones bajo el reloj:</p>
+        <p class="help-text"><strong>Pomodoro</strong> — cuenta hacia atrás. Configura los minutos de <strong>trabajo</strong>, <strong>descanso corto</strong>, <strong>descanso largo</strong> y cuántos ciclos pasan antes del descanso largo. Al terminar cada fase suena una alarma y la sesión se guarda sola.</p>
+        <p class="help-text"><strong>Cronómetro</strong> — cuenta hacia adelante, sin límite. Útil cuando no sabes de antemano cuánto vas a trabajar: inícialo, y cuando termines pulsa <strong>"Guardar sesión"</strong> para registrar el tiempo acumulado. El anillo da una vuelta completa por cada hora. En este modo la tarjeta de Configuración se atenúa porque no aplica.</p>
+        <p class="help-text">Escribe en qué vas a trabajar (o elige uno de tus tipos más usados en "Recomendados") antes de empezar. Las sesiones de menos de un minuto no se registran.</p>
+        <p class="help-text">¿No usaste el temporizador? Con <strong>"Registrar sesión manual"</strong> puedes anotar los minutos directamente.</p>
       </div>
       <div class="chart-card card">
-        <h3><i class="ti ti-folder" aria-hidden="true"></i> Carpetas</h3>
-        <p class="help-text">Agrupan tus sesiones en categorías como "Semestre 1" o "Trabajo" para separar tu análisis por contexto.</p>
-        <p class="help-text">El selector <strong>Carpeta</strong> del Timer define dónde se guarda cada nueva sesión; con el botón <strong>+</strong> de al lado puedes crear una carpeta nueva sin salir del Timer. El selector del encabezado (arriba) filtra <strong>toda la app</strong> — estadísticas, historial y exportación — para enfocarte en una sola carpeta a la vez.</p>
-        <p class="help-text">Renómbralas o archívalas desde <strong>Configuración</strong>. Archivar una carpeta la oculta de los selectores de registro, pero sus datos siguen disponibles para análisis.</p>
+        <h3><i class="ti ti-folders" aria-hidden="true"></i> Carpetas</h3>
+        <p class="help-text">Agrupan tus sesiones por contexto — "Semestre 1", "Trabajo", "Tesis" — y admiten <strong>subcarpetas anidadas</strong>, así que puedes bajar todo el detalle que quieras:</p>
+        <p class="help-text" style="font-family:var(--font-mono);font-size:12.5px;line-height:1.9;">
+          Universidad<br>
+          &nbsp;&nbsp;└ Semestre 1<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;└ Cálculo<br>
+          &nbsp;&nbsp;└ Semestre 2
+        </p>
+        <p class="help-text">Desde la pestaña <strong>Carpetas</strong> puedes crear una carpeta, añadirle una <strong>subcarpeta</strong>, <strong>renombrarla</strong>, <strong>moverla</strong> a otra rama o <strong>archivarla</strong>. Dos carpetas pueden llamarse igual si están en ramas distintas (un "Cálculo" en Semestre 1 y otro en Semestre 2), pero no dentro de la misma.</p>
+        <p class="help-text"><strong>Archivar</strong> una carpeta archiva también todas sus subcarpetas; al restaurar una subcarpeta se restaura la cadena completa hacia arriba, para que nunca quede escondida. Los datos de una carpeta archivada siguen contando en tus estadísticas.</p>
+      </div>
+      <div class="chart-card card">
+        <h3><i class="ti ti-layout-navbar" aria-hidden="true"></i> Activa y Filtro</h3>
+        <p class="help-text">En la barra superior hay dos selectores de carpeta que hacen <strong>cosas distintas</strong>:</p>
+        <p class="help-text"><strong>Activa</strong> — la carpeta <em>donde se guardan</em> las sesiones nuevas. Cámbiala antes de empezar a trabajar para que el tiempo se registre en el sitio correcto.</p>
+        <p class="help-text"><strong>Filtro</strong> — <em>qué ves</em> en Estadísticas y en el Registro. No afecta a dónde se guardan las sesiones. Al filtrar por una carpeta se incluyen también las sesiones de todas sus subcarpetas, así que filtrar por "Universidad" te da el total de todos sus ramos.</p>
       </div>
       <div class="chart-card card">
         <h3><i class="ti ti-chart-bar" aria-hidden="true"></i> Estadísticas</h3>
         <p class="help-text"><strong>Racha</strong> (actual y máxima), <strong>regularidad semanal</strong>, <strong>descanso activo</strong> y <strong>enfoque Pomodoro</strong> resumen tus hábitos de un vistazo.</p>
-        <p class="help-text">Gráficos de los últimos 7 días, distribución y minutos por tipo de estudio, densidad por hora del día, y un <strong>heatmap</strong> de consistencia (26 semanas).</p>
+        <p class="help-text">Gráficos de los últimos 7 días, distribución y minutos por tipo de trabajo, densidad por hora del día, y un <strong>heatmap</strong> de consistencia (26 semanas).</p>
+        <p class="help-text">El <strong>enfoque Pomodoro</strong> es el porcentaje de tu tiempo medido con el temporizador Pomodoro. Las sesiones de cronómetro y las manuales cuentan como trabajo, pero no suben ese porcentaje.</p>
       </div>
       <div class="chart-card card">
         <h3><i class="ti ti-calendar" aria-hidden="true"></i> Registro</h3>
-        <p class="help-text">Historial completo de tus sesiones, filtrable por tipo de estudio y por rango de días.</p>
-        <p class="help-text">Puedes cambiar la <strong>carpeta</strong> de una sesión directamente desde la tabla, exportar todo a <strong>CSV</strong> o borrar el historial por completo.</p>
+        <p class="help-text">Historial completo de tus sesiones, filtrable por tipo y por rango de días. Cada sesión lleva una insignia según cómo se midió: <strong>pomodoro</strong>, <strong>cronometro</strong> o <strong>manual</strong>.</p>
+        <p class="help-text">Puedes cambiar la <strong>carpeta</strong> de una sesión directamente desde la tabla, o exportar todo a <strong>CSV</strong> (se abre bien en Excel, con acentos incluidos).</p>
+        <p class="help-text">El botón <strong>Limpiar</strong> borra tu historial completo, también en el servidor. No se puede deshacer.</p>
       </div>
       <div class="chart-card card">
         <h3><i class="ti ti-settings" aria-hidden="true"></i> Configuración</h3>
-        <p class="help-text">Elige un <strong>color de acento</strong> propio, o personalizado con el selector de color. El botón de sol/luna de la barra superior alterna entre <strong>modo claro</strong> y <strong>oscuro</strong>.</p>
-        <p class="help-text">Aquí también se administran las <strong>carpetas</strong>: crear nuevas, renombrar o archivar las que ya no uses.</p>
+        <p class="help-text">Elige un <strong>color de acento</strong> de la paleta, o uno propio con el selector de color. El botón de sol/luna de la barra superior alterna entre <strong>modo claro</strong> y <strong>oscuro</strong>.</p>
+        <p class="help-text">La gestión de carpetas ya no vive aquí: está en su propia pestaña <strong>Carpetas</strong>.</p>
+      </div>
+      <div class="chart-card card">
+        <h3><i class="ti ti-device-floppy" aria-hidden="true"></i> Tus datos</h3>
+        <p class="help-text">Cada sesión se guarda en el servidor y queda ligada a tu cuenta: puedes entrar desde otro dispositivo y tu historial estará ahí.</p>
+        <p class="help-text">El navegador conserva además una copia local, así que si registras algo sin conexión se sube cuando vuelvas a abrir la app.</p>
       </div>
     </div>
   </main>
@@ -907,12 +928,12 @@
   <div class="update-modal">
     <div class="update-modal-icon"><i class="ti ti-sparkles" aria-hidden="true"></i></div>
     <h3>Novedades en FocusData</h3>
-    <p class="update-modal-sub">Le dimos una vuelta al diseño de la app.</p>
+    <p class="update-modal-sub">Nuevas formas de organizar y medir tu tiempo.</p>
     <ul>
-      <li><i class="ti ti-layout-sidebar" aria-hidden="true"></i> Navegación en barra lateral y un look más simple y plano.</li>
-      <li><i class="ti ti-moon" aria-hidden="true"></i> Botón de sol/luna arriba a la derecha para cambiar entre claro y oscuro al instante.</li>
-      <li><i class="ti ti-chart-donut" aria-hidden="true"></i> Nueva distribución por tema (gráfico de dona) en Estadísticas.</li>
-      <li><i class="ti ti-player-play" aria-hidden="true"></i> El Timer ahora muestra la sesión, el ciclo y el % completado de un vistazo.</li>
+      <li><i class="ti ti-folders" aria-hidden="true"></i> <strong>Subcarpetas anidadas</strong>: organiza tus carpetas en árbol, con el detalle que quieras.</li>
+      <li><i class="ti ti-stopwatch" aria-hidden="true"></i> <strong>Modo cronómetro</strong>: cuenta hacia adelante cuando no sabes cuánto vas a trabajar.</li>
+      <li><i class="ti ti-layout-navbar" aria-hidden="true"></i> <strong>Activa</strong> y <strong>Filtro</strong> ahora están arriba: una decide dónde se guarda, el otro qué ves.</li>
+      <li><i class="ti ti-folder-cog" aria-hidden="true"></i> Las carpetas tienen <strong>su propia pestaña</strong>, con crear, mover y archivar en un solo sitio.</li>
     </ul>
     <button class="btn-primary full-width" onclick="dismissUpdateNotice()"><i class="ti ti-check" aria-hidden="true"></i> Entendido, ¡vamos!</button>
   </div>
@@ -1130,7 +1151,7 @@ function renderClock() {
   ring.className.baseVal = 'ring-fg' + (state.phase !== 'work' ? ' break' : '');
   document.getElementById('timer-percent').textContent = Math.round((1 - rem / total) * 100) + '% completado';
 
-  document.getElementById('phase-label').textContent = state.phase === 'work' ? 'Tiempo de estudio' : (state.phase === 'short' ? 'Descanso corto' : 'Descanso largo');
+  document.getElementById('phase-label').textContent = state.phase === 'work' ? 'Tiempo de trabajo' : (state.phase === 'short' ? 'Descanso corto' : 'Descanso largo');
   const currentCycle = Math.min(cfg.cycles, (state.cycleCount % cfg.cycles) + 1);
   document.getElementById('timer-meta').textContent = `Sesión ${state.session} · Ciclo ${currentCycle}/${cfg.cycles}`;
 
@@ -1742,7 +1763,7 @@ function toast(msg) {
 
 // Aviso de novedades: se muestra una vez por navegador tras esta actualización.
 // Cambiar UPDATE_NOTICE_VERSION en el próximo rediseño relevante para volver a mostrarlo.
-const UPDATE_NOTICE_VERSION = 'redesign-v1';
+const UPDATE_NOTICE_VERSION = 'subcarpetas-v2';
 function showUpdateNoticeIfNeeded() {
   if (localStorage.getItem('fd_update_seen') === UPDATE_NOTICE_VERSION) return;
   document.getElementById('update-overlay').style.display = 'flex';

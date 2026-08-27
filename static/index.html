@@ -966,6 +966,12 @@ const filteredDb = () => {
   return db.filter(r => ids.has(+r.category_id));
 };
 
+// Etiqueta de carpeta para un <option>: sangría por nivel + nombre.
+// Se usa el espacio duro ( ) porque los navegadores colapsan los normales.
+function catOptionLabel(c) {
+  return '  '.repeat(c.depth || 0) + (c.depth ? '└ ' : '') + c.name;
+}
+
 // Helper: local date string YYYY-MM-DD (avoids toISOString() which uses UTC)
 function localDateStr(d) {
   if (!d) d = new Date();
@@ -1577,7 +1583,7 @@ function catSelectHtml(r) {
   if (r.remote_id == null) return r.category_name || '—';
   const options = categories
     .filter(c => !c.archived || c.id === +r.category_id)
-    .map(c => `<option value="${c.id}" ${c.id === +r.category_id ? 'selected' : ''}>${esc(c.name)}${c.archived ? ' (archivada)' : ''}</option>`)
+    .map(c => `<option value="${c.id}" ${c.id === +r.category_id ? 'selected' : ''}>${esc(catOptionLabel(c))}${c.archived ? ' (archivada)' : ''}</option>`)
     .join('');
   return `<select class="cat-select" onchange="reassignSession('${esc(r.ts)}', this.value)" aria-label="Carpeta de la sesión">${options}</select>`;
 }
@@ -1744,7 +1750,7 @@ function renderCategoryUI() {
   // Filtro global (todas las carpetas, incluidas archivadas)
   const filterSel = document.getElementById('global-category-filter');
   filterSel.innerHTML = '<option value="">Todas las carpetas</option>' + categories
-    .map(c => `<option value="${c.id}">${esc(c.name)}${c.archived ? ' (archivada)' : ''}</option>`)
+    .map(c => `<option value="${c.id}">${esc(catOptionLabel(c))}${c.archived ? ' (archivada)' : ''}</option>`)
     .join('');
   filterSel.value = filterCategoryId;
   if (filterSel.value !== filterCategoryId) { filterCategoryId = ''; filterSel.value = ''; }
@@ -1752,14 +1758,18 @@ function renderCategoryUI() {
   // Selector de carpeta activa del Timer (solo no archivadas)
   const activeSel = document.getElementById('active-category-select');
   const active = categories.filter(c => !c.archived);
-  activeSel.innerHTML = active.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  activeSel.innerHTML = active.map(c => `<option value="${c.id}">${esc(catOptionLabel(c))}</option>`).join('');
   if (!categoryById(activeCategoryId) || categoryById(activeCategoryId).archived) {
     activeCategoryId = active.length ? active[0].id : null;
   }
   if (activeCategoryId != null) activeSel.value = activeCategoryId;
   const activeCat = categoryById(activeCategoryId);
   const dot = document.getElementById('active-cat-dot');
-  if (dot) dot.style.background = activeCat ? activeCat.color : 'transparent';
+  if (dot) {
+    dot.style.background = activeCat ? activeCat.color : 'transparent';
+    if (activeCat) dot.title = activeCat.path;
+  }
+  if (activeSel && activeCat) activeSel.title = activeCat.path;
 
   // Lista de gestión en Configuración
   const list = document.getElementById('category-list');
@@ -1789,7 +1799,12 @@ function setActiveCategory(id) {
   activeCategoryId = +id;
   const dot = document.getElementById('active-cat-dot');
   const cat = categoryById(activeCategoryId);
-  if (dot) dot.style.background = cat ? cat.color : 'transparent';
+  if (dot) {
+    dot.style.background = cat ? cat.color : 'transparent';
+    if (cat) dot.title = cat.path;
+  }
+  const activeSel = document.getElementById('active-category-select');
+  if (activeSel && cat) activeSel.title = cat.path;
   fetch('/api/preferences', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -897,7 +897,9 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<!-- Servido localmente (static/vendor/): la app funciona sin conexión a internet
+     y no depende de la disponibilidad de un CDN externo. -->
+<script src="/static/vendor/chart.umd.js"></script>
 <script>
 // El historial en caché se guarda bajo una clave propia de cada usuario: compartir
 // una clave global filtraba las sesiones de una cuenta a otra en el mismo navegador

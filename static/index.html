@@ -899,9 +899,33 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-const STORAGE_KEY = 'studylog_v1';
-let db = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+// El historial en caché se guarda bajo una clave propia de cada usuario: compartir
+// una clave global filtraba las sesiones de una cuenta a otra en el mismo navegador
+// (y syncSessions() acababa subiéndolas a la cuenta equivocada).
+const LEGACY_STORAGE_KEY = 'studylog_v1';
+let storageKey = null;          // se resuelve al conocer el id del usuario
+let db = [];
+const save = () => {
+  if (storageKey) localStorage.setItem(storageKey, JSON.stringify(db));
+};
+
+function initStorage(uid) {
+  storageKey = `studylog_v1_u${uid}`;
+  const own = localStorage.getItem(storageKey);
+  if (own !== null) {
+    try { db = JSON.parse(own) || []; } catch { db = []; }
+    return;
+  }
+  // Primera carga con clave por usuario. El blob antiguo era de propiedad
+  // ambigua, así que no se importa: se archiva por si hiciera falta rescatarlo
+  // a mano y se deja que syncSessions() repueble desde el backend.
+  const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (legacy !== null) {
+    localStorage.setItem('studylog_v1_backup', legacy);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  }
+  db = [];
+}
 
 // ── Carpetas (categorías) ──
 let categories = [];          // [{id, name, color, archived}]
@@ -1904,6 +1928,7 @@ fetch('/api/me').then(r => {
   return r.json();
 }).then(data => {
   if (data && data.username) {
+    initStorage(data.id);
     document.getElementById('user-display').textContent = data.username;
     const avatarInitial = document.getElementById('sidebar-avatar-initial');
     if (avatarInitial) avatarInitial.textContent = data.username.charAt(0).toUpperCase();

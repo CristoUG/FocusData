@@ -602,7 +602,13 @@ def export_csv():
     buf.write("\ufeff")          # BOM para Excel
     w = csv.writer(buf)
     w.writerow(["fecha","hora","hora_num","minutos","tipo","modo","carpeta","timestamp"])
-    w.writerows(rows)
+
+    def _csv_safe(v):
+        """Neutraliza la inyección de fórmulas al abrir el CSV en Excel/Sheets."""
+        s = "" if v is None else str(v)
+        return "'" + s if s[:1] in ("=", "+", "-", "@") else s
+
+    w.writerows([[_csv_safe(v) for v in row] for row in rows])
     buf.seek(0)
     return send_file(
         io.BytesIO(buf.getvalue().encode("utf-8")),

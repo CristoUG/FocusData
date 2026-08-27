@@ -1583,14 +1583,21 @@ function renderLog() {
 
 function clearLog() {
   if (!confirm('¿Borrar todos los registros? Esto no se puede deshacer.')) return;
-  db = []; save(); renderLog(); updateSideInfo(); renderTypeRecos(); toast('Registros eliminados');
+  fetch('/api/sessions/all', { method: 'DELETE' })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) { toast('No se pudieron borrar los registros'); return; }
+      db = []; save();
+      renderLog(); updateSideInfo(); renderTypeRecos();
+      if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+      toast('Registros eliminados');
+    })
+    .catch(() => toast('Error de conexión'));
 }
 
 function exportCSV() {
-  const rows = [['fecha','hora','minutos','tipo','carpeta','modo'], ...filteredDb().map(r => [r.date,r.time,r.minutes,r.type,r.category_name || '',r.mode])];
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'estudio_' + localDateStr() + '.csv'; a.click();
+  // El backend genera el CSV con escapado correcto y BOM para Excel.
+  window.location.href = '/api/export/csv';
   toast('CSV exportado ✓');
 }
 

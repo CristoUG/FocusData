@@ -452,16 +452,36 @@ def save_preferences():
 # ── Categorías (carpetas) ───────────────────────────────
 
 def _category_json(row):
-    return {"id": row["id"], "name": row["name"], "color": row["color"], "archived": row["archived"]}
+    # Las claves originales (id, name, color, archived) se mantienen intactas:
+    # el frontend antiguo sigue funcionando. parent_id/depth/path son añadidos.
+    data = {"id": row["id"], "name": row["name"], "color": row["color"], "archived": row["archived"]}
+    for extra in ("parent_id", "depth", "path"):
+        if extra in row.keys():
+            data[extra] = row[extra]
+    return data
 
 @app.route("/api/categories", methods=["GET"])
 @login_required
 def get_categories():
+    # Recorrido en preorden: cada carpeta aparece justo detrás de su padre, con
+    # las hermanas en orden alfabético. El frontend puede pintar el árbol
+    # recorriendo la lista tal cual, sin reordenar.
     with closing(get_db()) as conn, conn:
-        rows = conn.execute(
-            "SELECT id, name, color, archived FROM categories WHERE user_id = ? ORDER BY archived, name",
-            (current_user.id,)
-        ).fetchall()
+        rows = conn.execute("""
+            WITH RECURSIVE tree(id, parent_id, name, color, archived, depth, path, sortkey) AS (
+                SELECT id, parent_id, name, color, archived, 0, name,
+                       lower(name) || '/'
+                  FROM categories WHERE user_id = ? AND parent_id = 0
+                UNION ALL
+                SELECT c.id, c.parent_id, c.name, c.color, c.archived,
+                       t.depth + 1, t.path || ' › ' || c.name,
+                       t.sortkey || lower(c.name) || '/'
+                  FROM categories c JOIN tree t ON c.parent_id = t.id
+                 WHERE c.user_id = ?
+            )
+            SELECT id, parent_id, name, color, archived, depth, path
+              FROM tree ORDER BY sortkey
+        """, (current_user.id, current_user.id)).fetchall()
     return jsonify([_category_json(r) for r in rows])
 
 @app.route("/api/categories", methods=["POST"])
@@ -474,16 +494,23 @@ def create_category():
         return jsonify({"error": f"El nombre debe tener entre 1 y {CATEGORY_NAME_MAX} caracteres"}), 400
     if not isinstance(color, str) or not HEX_RE.match(color):
         return jsonify({"error": "Color no válido"}), 400
-    try:
-        with closing(get_db()) as conn, conn:
+    with closing(get_db()) as conn, conn:
+        parent_id, err = validate_parent(conn, current_user.id, data.get("parent_id"))
+        if err:
+            return jsonify({"error": err}), 400
+        if parent_id != ROOT_PARENT_ID:
+            if category_depth(conn, current_user.id, parent_id) + 1 >= MAX_CATEGORY_DEPTH:
+                return jsonify({"error": f"No puedes anidar más de {MAX_CATEGORY_DEPTH} niveles"}), 400
+        try:
             cur = conn.execute(
-                "INSERT INTO categories (user_id, name, color) VALUES (?, ?, ?)",
-                (current_user.id, name, color)
+                "INSERT INTO categories (user_id, name, color, parent_id) VALUES (?, ?, ?, ?)",
+                (current_user.id, name, color, parent_id)
             )
             conn.commit()
-        return jsonify({"ok": True, "id": cur.lastrowid, "name": name, "color": color, "archived": 0})
-    except sqlite3.IntegrityError:
-        return jsonify({"error": "Ya existe una carpeta con ese nombre"}), 409
+        except sqlite3.IntegrityError:
+            return jsonify({"error": "Ya existe una carpeta con ese nombre en el mismo nivel"}), 409
+    return jsonify({"ok": True, "id": cur.lastrowid, "name": name, "color": color,
+                    "archived": 0, "parent_id": parent_id})
 
 @app.route("/api/categories/<int:cid>", methods=["PATCH"])
 @login_required
@@ -498,6 +525,8 @@ def update_category(cid):
             return jsonify({"error": "Carpeta no encontrada"}), 404
 
         updates, params = [], []
+        archivadas = []
+
         if "name" in data:
             name = (data.get("name") or "").strip()
             if not name or len(name) > CATEGORY_NAME_MAX:
@@ -509,32 +538,61 @@ def update_category(cid):
                 return jsonify({"error": "Color no válido"}), 400
             updates.append("color = ?")
             params.append(data["color"])
+        if "parent_id" in data:
+            new_parent, err = validate_parent(conn, uid, data["parent_id"])
+            if err:
+                return jsonify({"error": err}), 400
+            if new_parent == cid:
+                return jsonify({"error": "Una carpeta no puede ser su propia carpeta padre"}), 400
+            # Prevención de ciclos: el destino no puede colgar de la propia carpeta.
+            if new_parent in category_descendants(conn, uid, cid):
+                return jsonify({"error": "No puedes mover una carpeta dentro de sí misma"}), 400
+            nueva_prof = (0 if new_parent == ROOT_PARENT_ID
+                          else category_depth(conn, uid, new_parent) + 1)
+            if nueva_prof + category_subtree_height(conn, uid, cid) >= MAX_CATEGORY_DEPTH:
+                return jsonify({"error": f"El movimiento superaría los {MAX_CATEGORY_DEPTH} niveles"}), 400
+            updates.append("parent_id = ?")
+            params.append(new_parent)
         if "archived" in data:
             archived = 1 if data["archived"] else 0
+            afectadas = (category_descendants(conn, uid, cid) if archived
+                         else [cid] + category_ancestors(conn, uid, cid))
             if archived and not row["archived"]:
-                others = conn.execute(
-                    "SELECT COUNT(*) FROM categories WHERE user_id = ? AND archived = 0 AND id != ?", (uid, cid)
+                # Debe quedar al menos una carpeta activa DESPUÉS de la cascada.
+                marcas = ",".join("?" * len(afectadas))
+                otras = conn.execute(
+                    f"SELECT COUNT(*) FROM categories WHERE user_id = ? AND archived = 0 AND id NOT IN ({marcas})",
+                    [uid] + afectadas
                 ).fetchone()[0]
-                if others == 0:
+                if otras == 0:
                     return jsonify({"error": "No puedes archivar tu única carpeta activa"}), 400
-            updates.append("archived = ?")
-            params.append(archived)
+            marcas = ",".join("?" * len(afectadas))
+            conn.execute(
+                f"UPDATE categories SET archived = ? WHERE user_id = ? AND id IN ({marcas})",
+                [archived, uid] + afectadas
+            )
+            if archived:
+                archivadas = afectadas
 
         if updates:
             params.extend([cid, uid])
             try:
                 conn.execute(f"UPDATE categories SET {', '.join(updates)} WHERE id = ? AND user_id = ?", params)
             except sqlite3.IntegrityError:
-                return jsonify({"error": "Ya existe una carpeta con ese nombre"}), 409
-            # Si se archivó la carpeta activa, mover la activa a otra no archivada
-            if data.get("archived"):
-                conn.execute(
-                    """UPDATE users SET active_category_id = (
-                           SELECT id FROM categories WHERE user_id = ? AND archived = 0 ORDER BY id LIMIT 1
-                       ) WHERE id = ? AND active_category_id = ?""",
-                    (uid, uid, cid)
-                )
-            conn.commit()
+                return jsonify({"error": "Ya existe una carpeta con ese nombre en el mismo nivel"}), 409
+
+        # Si se archivó la carpeta activa (o cualquiera de sus ancestros en cascada),
+        # reasignar active_category_id a otra carpeta activa
+        if archivadas:
+            marcas = ",".join("?" * len(archivadas))
+            conn.execute(
+                f"""UPDATE users SET active_category_id = (
+                        SELECT id FROM categories WHERE user_id = ? AND archived = 0 ORDER BY id LIMIT 1
+                    ) WHERE id = ? AND active_category_id IN ({marcas})""",
+                [uid, uid] + archivadas
+            )
+        conn.commit()
+
         row = conn.execute(
             "SELECT id, name, color, archived FROM categories WHERE id = ? AND user_id = ?", (cid, uid)
         ).fetchone()

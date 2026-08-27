@@ -308,3 +308,147 @@ def test_session_cookie_has_httponly_and_samesite(client):
     set_cookie = r.headers.get("Set-Cookie", "")
     assert "HttpOnly" in set_cookie
     assert "SameSite=Lax" in set_cookie
+
+
+# ── Jerarquía de carpetas ────────────────────────────────
+
+def _cat_id(client, name):
+    return next(c["id"] for c in client.get("/api/categories").get_json() if c["name"] == name)
+
+
+def test_create_subcategory(client):
+    register(client)
+    padre = client.get("/api/categories").get_json()[0]["id"]
+    r = client.post("/api/categories", json={"name": "Cálculo", "parent_id": padre})
+    assert r.status_code == 200
+    assert r.get_json()["parent_id"] == padre
+
+
+def test_same_name_allowed_under_different_parents(client):
+    """El objetivo de la jerarquía: 'Álgebra' puede existir en dos ramas."""
+    register(client)
+    a = client.post("/api/categories", json={"name": "Semestre 1"}).get_json()["id"]
+    b = client.post("/api/categories", json={"name": "Semestre 2"}).get_json()["id"]
+    assert client.post("/api/categories", json={"name": "Álgebra", "parent_id": a}).status_code == 200
+    assert client.post("/api/categories", json={"name": "Álgebra", "parent_id": b}).status_code == 200
+
+
+def test_same_name_rejected_under_same_parent(client):
+    register(client)
+    a = client.post("/api/categories", json={"name": "Semestre 1"}).get_json()["id"]
+    client.post("/api/categories", json={"name": "Álgebra", "parent_id": a})
+    r = client.post("/api/categories", json={"name": "Álgebra", "parent_id": a})
+    assert r.status_code == 409
+
+
+def test_categories_return_depth_and_path(client):
+    register(client)
+    a = client.post("/api/categories", json={"name": "Uni"}).get_json()["id"]
+    b = client.post("/api/categories", json={"name": "Sem1", "parent_id": a}).get_json()["id"]
+    client.post("/api/categories", json={"name": "Cálculo", "parent_id": b})
+    cats = {c["name"]: c for c in client.get("/api/categories").get_json()}
+    assert cats["Uni"]["depth"] == 0
+    assert cats["Cálculo"]["depth"] == 2
+    assert cats["Cálculo"]["path"] == "Uni › Sem1 › Cálculo"
+
+
+def test_cannot_move_category_into_its_own_descendant(client):
+    register(client)
+    a = client.post("/api/categories", json={"name": "A"}).get_json()["id"]
+    b = client.post("/api/categories", json={"name": "B", "parent_id": a}).get_json()["id"]
+    r = client.patch(f"/api/categories/{a}", json={"parent_id": b})
+    assert r.status_code == 400
+
+
+def test_cannot_be_its_own_parent(client):
+    register(client)
+    a = client.post("/api/categories", json={"name": "A"}).get_json()["id"]
+    assert client.patch(f"/api/categories/{a}", json={"parent_id": a}).status_code == 400
+
+
+def test_move_category_to_another_branch(client):
+    register(client)
+    a = client.post("/api/categories", json={"name": "A"}).get_json()["id"]
+    b = client.post("/api/categories", json={"name": "B"}).get_json()["id"]
+    hija = client.post("/api/categories", json={"name": "Hija", "parent_id": a}).get_json()["id"]
+    assert client.patch(f"/api/categories/{hija}", json={"parent_id": b}).status_code == 200
+    cats = {c["name"]: c for c in client.get("/api/categories").get_json()}
+    assert cats["Hija"]["parent_id"] == b
+
+
+def test_archiving_parent_cascades_to_descendants(client):
+    register(client)
+    a = client.post("/api/categories", json={"name": "A"}).get_json()["id"]
+    b = client.post("/api/categories", json={"name": "B", "parent_id": a}).get_json()["id"]
+    client.post("/api/categories", json={"name": "C", "parent_id": b})
+    assert client.patch(f"/api/categories/{a}", json={"archived": True}).status_code == 200
+    cats = {c["name"]: c for c in client.get("/api/categories").get_json()}
+    assert cats["A"]["archived"] and cats["B"]["archived"] and cats["C"]["archived"]
+
+
+def test_unarchiving_child_restores_ancestors(client):
+    """Invariante: una carpeta activa siempre tiene ancestros activos."""
+    register(client)
+    a = client.post("/api/categories", json={"name": "A"}).get_json()["id"]
+    b = client.post("/api/categories", json={"name": "B", "parent_id": a}).get_json()["id"]
+    client.patch(f"/api/categories/{a}", json={"archived": True})
+    client.patch(f"/api/categories/{b}", json={"archived": False})
+    cats = {c["name"]: c for c in client.get("/api/categories").get_json()}
+    assert not cats["B"]["archived"]
+    assert not cats["A"]["archived"]
+
+
+def test_archiving_parent_reassigns_active_category(client):
+    """La carpeta activa puede ser un DESCENDIENTE de la que se archiva."""
+    register(client)
+    client.post("/api/categories", json={"name": "Otra"})
+    padre = client.post("/api/categories", json={"name": "Padre"}).get_json()["id"]
+    hija = client.post("/api/categories", json={"name": "Hija", "parent_id": padre}).get_json()["id"]
+    client.post("/api/preferences", json={"active_category_id": hija})
+    assert client.get("/api/me").get_json()["active_category_id"] == hija
+
+    client.patch(f"/api/categories/{padre}", json={"archived": True})
+    activa = client.get("/api/me").get_json()["active_category_id"]
+    cats = {c["id"]: c for c in client.get("/api/categories").get_json()}
+    assert activa not in (padre, hija)
+    assert not cats[activa]["archived"]
+
+
+def test_cannot_create_subcategory_of_another_user(client):
+    register(client, "ana")
+    ajena = client.get("/api/categories").get_json()[0]["id"]
+    client.get("/logout")
+    register(client, "beto")
+    r = client.post("/api/categories", json={"name": "Intrusa", "parent_id": ajena})
+    assert r.status_code == 400
+
+
+def test_max_depth_enforced(client):
+    register(client)
+    padre = client.get("/api/categories").get_json()[0]["id"]
+    ultimo, creadas = padre, 0
+    for i in range(app_module.MAX_CATEGORY_DEPTH + 3):
+        r = client.post("/api/categories", json={"name": f"N{i}", "parent_id": ultimo})
+        if r.status_code != 200:
+            assert r.status_code == 400
+            break
+        ultimo = r.get_json()["id"]
+        creadas += 1
+    else:
+        pytest.fail("El tope de profundidad no se aplicó")
+    assert creadas < app_module.MAX_CATEGORY_DEPTH + 3
+
+
+# ── Modo cronómetro ──────────────────────────────────────
+
+def test_cronometro_mode_accepted(client):
+    register(client)
+    r = client.post("/api/sessions", json={"minutes": 45, "type": "Tesis", "mode": "cronometro"})
+    assert r.status_code == 200
+    assert client.get("/api/sessions").get_json()[0]["mode"] == "cronometro"
+
+
+def test_cronometro_counts_as_study_not_break(client):
+    register(client)
+    client.post("/api/sessions", json={"minutes": 45, "type": "Tesis", "mode": "cronometro"})
+    assert client.get("/api/stats").get_json()["total"] == 45

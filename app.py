@@ -54,6 +54,10 @@ DEFAULT_CATEGORY_NAME = "General"
 DEFAULT_CATEGORY_COLOR = "#6366f1"
 CATEGORY_NAME_MAX = 30
 
+# Validación de registro (usadas por register(), más abajo)
+USERNAME_MAX = 30
+PASSWORD_MIN = 8
+
 # ── Flask-Login setup ───────────────────────────────────
 
 login_manager = LoginManager()
@@ -317,8 +321,6 @@ TYPE_MAX     = 40
 TS_MAX       = 40
 MINUTES_MIN  = 1
 MINUTES_MAX  = 600
-USERNAME_MAX = 30
-PASSWORD_MIN = 8
 
 @app.route("/api/preferences", methods=["POST"])
 @login_required
@@ -450,7 +452,7 @@ def update_category(cid):
 @app.route("/api/sessions/<int:sid>", methods=["PATCH"])
 @login_required
 def update_session(sid):
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     uid = current_user.id
     try:
         cid_req = int(data.get("category_id"))

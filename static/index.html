@@ -927,6 +927,10 @@ function initStorage(uid) {
   db = [];
 }
 
+// Escapa texto de usuario antes de interpolarlo en plantillas innerHTML.
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
 // ── Carpetas (categorías) ──
 let categories = [];          // [{id, name, color, archived}]
 let activeCategoryId = null;  // carpeta donde se registran las nuevas sesiones
@@ -1418,13 +1422,13 @@ function renderTypeBreakdown(typeTotals) {
       <div class="donut-center"><span class="val">${totalLabel}</span><span class="lbl">total</span></div>
     </div>
     <div class="donut-legend">${entries.map(([t, m], i) => `
-      <div class="row"><span class="dot" style="background:${typeShade(i, n)}"></span>${t}<span class="pct">${Math.round(m / total * 100)}%</span></div>
+      <div class="row"><span class="dot" style="background:${typeShade(i, n)}"></span>${esc(t)}<span class="pct">${Math.round(m / total * 100)}%</span></div>
     `).join('')}</div>`;
 
   const max = entries[0][1];
   hbarsWrap.innerHTML = entries.map(([t, m], i) => `
     <div class="hbar-row">
-      <span class="hbar-label">${t}</span>
+      <span class="hbar-label">${esc(t)}</span>
       <div class="hbar-track"><div class="hbar-fill" style="width:${max ? Math.round(m / max * 100) : 0}%;background:${typeShade(i, n)}"></div></div>
       <span class="hbar-val">${m}</span>
     </div>`).join('');
@@ -1549,9 +1553,9 @@ function catSelectHtml(r) {
   if (r.remote_id == null) return r.category_name || '—';
   const options = categories
     .filter(c => !c.archived || c.id === +r.category_id)
-    .map(c => `<option value="${c.id}" ${c.id === +r.category_id ? 'selected' : ''}>${c.name}${c.archived ? ' (archivada)' : ''}</option>`)
+    .map(c => `<option value="${c.id}" ${c.id === +r.category_id ? 'selected' : ''}>${esc(c.name)}${c.archived ? ' (archivada)' : ''}</option>`)
     .join('');
-  return `<select class="cat-select" onchange="reassignSession('${r.ts}', this.value)" aria-label="Carpeta de la sesión">${options}</select>`;
+  return `<select class="cat-select" onchange="reassignSession('${esc(r.ts)}', this.value)" aria-label="Carpeta de la sesión">${options}</select>`;
 }
 
 function renderLog() {
@@ -1566,7 +1570,7 @@ function renderLog() {
   if (!recs.length) { wrap.innerHTML = '<div class="empty-state"><i class="ti ti-calendar-off" aria-hidden="true"></i>No hay sesiones registradas</div>'; return; }
 
   wrap.innerHTML = `<table><thead><tr><th>Fecha</th><th>Hora</th><th>Duración</th><th>Tipo</th><th>Carpeta</th><th>Modo</th></tr></thead><tbody>` +
-    recs.map(r => `<tr><td class="mono-cell">${r.date}</td><td class="mono-cell">${r.time}</td><td><strong class="mono-strong">${r.minutes} min</strong></td><td>${r.type}</td><td>${catSelectHtml(r)}</td><td><span class="badge badge-${r.mode}">${r.mode}</span></td></tr>`).join('') +
+    recs.map(r => `<tr><td class="mono-cell">${r.date}</td><td class="mono-cell">${r.time}</td><td><strong class="mono-strong">${r.minutes} min</strong></td><td>${esc(r.type)}</td><td>${catSelectHtml(r)}</td><td><span class="badge badge-${r.mode}">${esc(r.mode)}</span></td></tr>`).join('') +
     `</tbody></table>`;
 }
 
@@ -1702,7 +1706,7 @@ function renderCategoryUI() {
   // Filtro global (todas las carpetas, incluidas archivadas)
   const filterSel = document.getElementById('global-category-filter');
   filterSel.innerHTML = '<option value="">Todas las carpetas</option>' + categories
-    .map(c => `<option value="${c.id}">${c.name}${c.archived ? ' (archivada)' : ''}</option>`)
+    .map(c => `<option value="${c.id}">${esc(c.name)}${c.archived ? ' (archivada)' : ''}</option>`)
     .join('');
   filterSel.value = filterCategoryId;
   if (filterSel.value !== filterCategoryId) { filterCategoryId = ''; filterSel.value = ''; }
@@ -1710,7 +1714,7 @@ function renderCategoryUI() {
   // Selector de carpeta activa del Timer (solo no archivadas)
   const activeSel = document.getElementById('active-category-select');
   const active = categories.filter(c => !c.archived);
-  activeSel.innerHTML = active.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  activeSel.innerHTML = active.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
   if (!categoryById(activeCategoryId) || categoryById(activeCategoryId).archived) {
     activeCategoryId = active.length ? active[0].id : null;
   }
@@ -1726,8 +1730,8 @@ function renderCategoryUI() {
   } else {
     list.innerHTML = categories.map(c => `
       <div class="cat-row${c.archived ? ' archived' : ''}">
-        <span class="cat-dot" style="background:${c.color}"></span>
-        <span class="cat-name">${c.name}</span>
+        <span class="cat-dot" style="background:${esc(c.color)}"></span>
+        <span class="cat-name">${esc(c.name)}</span>
         <span class="spacer"></span>
         <button class="cat-action" onclick="renameCategory(${c.id})"><i class="ti ti-pencil" aria-hidden="true"></i> Renombrar</button>
         <button class="cat-action" onclick="toggleArchive(${c.id})">

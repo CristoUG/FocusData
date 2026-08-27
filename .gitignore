@@ -8,3 +8,6 @@ __pycache__/
 # Datos locales y secretos
 study.db*
 .secret_key
+
+# Documentación generada: la fuente versionada es DOCUMENTACION.md
+DOCUMENTACION.pdf

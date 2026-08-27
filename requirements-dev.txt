@@ -1,0 +1,4 @@
+# Dependencias de desarrollo (tests). No se instalan en producción
+# (PythonAnywhere solo necesita requirements.txt).
+-r requirements.txt
+pytest>=8.0.0

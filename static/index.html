@@ -494,6 +494,7 @@
     .cat-row .cat-name { font-weight: 500; font-size: 13.5px; }
     .cat-row.archived .cat-name { color: var(--muted); text-decoration: line-through; }
     .cat-row .spacer { flex: 1; }
+    .cat-branch { color: var(--faint); margin-right: 4px; font-size: 12px; }
     .cat-action {
       background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm);
       padding: 6px 10px; font-size: 12.5px; color: var(--muted); cursor: pointer;
@@ -939,10 +940,31 @@ let activeCategoryId = null;  // carpeta donde se registran las nuevas sesiones
 let filterCategoryId = '';    // filtro global de análisis ('' = todas)
 
 const categoryById = id => categories.find(c => c.id === +id);
-// Vista de `db` con el filtro global aplicado; stats/log/export consumen esto.
-const filteredDb = () => filterCategoryId
-  ? db.filter(r => String(r.category_id) === String(filterCategoryId))
-  : db;
+
+// El backend ya devuelve las carpetas en preorden y con `depth`/`path`, así que
+// estos helpers solo navegan el array plano, sin recalcular el árbol.
+const childrenOf = pid => categories.filter(c => +c.parent_id === +pid);
+
+// IDs de una carpeta y todos sus descendientes. Con tope de iteraciones por si
+// los datos llegaran corruptos: nunca debe colgar la UI.
+function descendantIds(id) {
+  const out = new Set([+id]);
+  let cambio = true, vueltas = 0;
+  while (cambio && vueltas++ < 100) {
+    cambio = false;
+    categories.forEach(c => {
+      if (out.has(+c.parent_id) && !out.has(+c.id)) { out.add(+c.id); cambio = true; }
+    });
+  }
+  return out;
+}
+
+// Filtrar por una carpeta incluye las sesiones de todas sus subcarpetas.
+const filteredDb = () => {
+  if (!filterCategoryId) return db;
+  const ids = descendantIds(filterCategoryId);
+  return db.filter(r => ids.has(+r.category_id));
+};
 
 // Helper: local date string YYYY-MM-DD (avoids toISOString() which uses UTC)
 function localDateStr(d) {
@@ -1745,11 +1767,14 @@ function renderCategoryUI() {
     list.innerHTML = '<div class="empty-state"><i class="ti ti-folder-off"></i>Sin carpetas aún</div>';
   } else {
     list.innerHTML = categories.map(c => `
-      <div class="cat-row${c.archived ? ' archived' : ''}">
+      <div class="cat-row${c.archived ? ' archived' : ''}" style="padding-left:${8 + c.depth * 22}px">
+        ${c.depth > 0 ? '<span class="cat-branch" aria-hidden="true">└</span>' : ''}
         <span class="cat-dot" style="background:${esc(c.color)}"></span>
-        <span class="cat-name">${esc(c.name)}</span>
+        <span class="cat-name" title="${esc(c.path)}">${esc(c.name)}</span>
         <span class="spacer"></span>
+        <button class="cat-action" onclick="addSubcategory(${c.id})"><i class="ti ti-folder-plus" aria-hidden="true"></i> Subcarpeta</button>
         <button class="cat-action" onclick="renameCategory(${c.id})"><i class="ti ti-pencil" aria-hidden="true"></i> Renombrar</button>
+        <button class="cat-action" onclick="moveCategory(${c.id})"><i class="ti ti-arrows-move" aria-hidden="true"></i> Mover</button>
         <button class="cat-action" onclick="toggleArchive(${c.id})">
           <i class="ti ti-${c.archived ? 'archive-off' : 'archive'}" aria-hidden="true"></i> ${c.archived ? 'Restaurar' : 'Archivar'}
         </button>
@@ -1895,6 +1920,46 @@ function toggleArchive(id) {
     } else {
       toast(d.error || 'No se pudo archivar');
     }
+  }).catch(() => toast('Error de conexión'));
+}
+
+function addSubcategory(parentId) {
+  const padre = categoryById(parentId);
+  if (!padre) return;
+  const name = prompt(`Nombre de la nueva subcarpeta dentro de "${padre.name}":`, '');
+  if (name === null) return;
+  const limpio = name.trim();
+  if (!limpio) return;
+  fetch('/api/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: limpio, parent_id: parentId })
+  }).then(r => r.json()).then(d => {
+    if (!d.ok) { toast(d.error || 'No se pudo crear la subcarpeta'); return; }
+    loadCategories().then(() => toast('Subcarpeta creada ✓'));
+  }).catch(() => toast('Error de conexión'));
+}
+
+function moveCategory(id) {
+  const cat = categoryById(id);
+  if (!cat) return;
+  // Destinos válidos: cualquier carpeta que no sea ella misma ni su descendencia.
+  const prohibidos = descendantIds(id);
+  const destinos = categories.filter(c => !c.archived && !prohibidos.has(+c.id));
+  const opciones = ['0) Raíz (sin carpeta padre)']
+    .concat(destinos.map((c, i) => `${i + 1}) ${c.path}`)).join('\n');
+  const resp = prompt(`¿Dónde quieres mover "${cat.name}"?\n\n${opciones}\n\nEscribe el número:`, '0');
+  if (resp === null) return;
+  const idx = parseInt(resp, 10);
+  if (isNaN(idx) || idx < 0 || idx > destinos.length) { toast('Destino no válido'); return; }
+  const parent_id = idx === 0 ? 0 : destinos[idx - 1].id;
+  fetch(`/api/categories/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ parent_id })
+  }).then(r => r.json()).then(d => {
+    if (!d.ok) { toast(d.error || 'No se pudo mover la carpeta'); return; }
+    loadCategories().then(() => toast('Carpeta movida ✓'));
   }).catch(() => toast('Error de conexión'));
 }
 

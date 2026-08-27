@@ -53,6 +53,8 @@ DEFAULT_ACCENT = "#3b82f6"
 DEFAULT_CATEGORY_NAME = "General"
 DEFAULT_CATEGORY_COLOR = "#6366f1"
 CATEGORY_NAME_MAX = 30
+ROOT_PARENT_ID = 0      # centinela de raíz: NO usar NULL (rompería el UNIQUE)
+MAX_CATEGORY_DEPTH = 10 # tope de seguridad del anidamiento (raíz = nivel 0)
 
 # Validación de registro (usadas por register(), más abajo)
 USERNAME_MAX = 30
@@ -159,9 +161,35 @@ def init_db():
                 SELECT id FROM categories c WHERE c.user_id = users.id AND c.archived = 0 ORDER BY c.id LIMIT 1
             ) WHERE active_category_id IS NULL
         """)
+        # Migración a jerarquía: añade parent_id y cambia UNIQUE(user_id,name)
+        # por UNIQUE(user_id,parent_id,name). SQLite no permite alterar una
+        # restricción de tabla con ALTER, así que hay que reconstruirla.
+        # La raíz se representa con parent_id = 0 y NO con NULL: en SQLite los
+        # NULL se comparan como distintos, así que con NULL el UNIQUE dejaría
+        # pasar carpetas raíz duplicadas.
+        cat_cols = {row["name"] for row in conn.execute("PRAGMA table_info(categories)").fetchall()}
+        if "parent_id" not in cat_cols:
+            conn.execute("""
+                CREATE TABLE categories_new (
+                    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id   INTEGER NOT NULL REFERENCES users(id),
+                    parent_id INTEGER NOT NULL DEFAULT 0,
+                    name      TEXT    NOT NULL,
+                    color     TEXT    NOT NULL DEFAULT '#6366f1',
+                    archived  INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE(user_id, parent_id, name)
+                )
+            """)
+            conn.execute("""
+                INSERT INTO categories_new (id, user_id, parent_id, name, color, archived)
+                SELECT id, user_id, 0, name, color, archived FROM categories
+            """)
+            conn.execute("DROP TABLE categories")
+            conn.execute("ALTER TABLE categories_new RENAME TO categories")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_date ON sessions(user_id, date)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_ts   ON sessions(user_id, ts)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_user    ON categories(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_parent  ON categories(parent_id)")
         conn.commit()
 
 def resolve_category(conn, uid, category_id):
@@ -197,6 +225,71 @@ def resolve_category(conn, uid, category_id):
         "SELECT id FROM categories WHERE user_id = ? ORDER BY id LIMIT 1", (uid,)
     ).fetchone()
     return row["id"]
+
+
+def category_descendants(conn, uid, cid):
+    """IDs de una carpeta y TODOS sus descendientes (incluye la propia).
+
+    UNION (y no UNION ALL) es deliberado: corta el recorrido si los datos
+    llegaran a contener un ciclo, en vez de colgarse.
+    """
+    rows = conn.execute("""
+        WITH RECURSIVE d(id) AS (
+            SELECT id FROM categories WHERE id = ? AND user_id = ?
+            UNION
+            SELECT c.id FROM categories c JOIN d ON c.parent_id = d.id WHERE c.user_id = ?
+        ) SELECT id FROM d
+    """, (cid, uid, uid)).fetchall()
+    return [r["id"] for r in rows]
+
+
+def category_ancestors(conn, uid, cid):
+    """IDs de los ancestros de una carpeta, de la más cercana a la raíz."""
+    rows = conn.execute("""
+        WITH RECURSIVE a(id, parent_id) AS (
+            SELECT id, parent_id FROM categories WHERE id = ? AND user_id = ?
+            UNION
+            SELECT c.id, c.parent_id FROM categories c JOIN a ON c.id = a.parent_id
+        ) SELECT id FROM a WHERE id != ?
+    """, (cid, uid, cid)).fetchall()
+    return [r["id"] for r in rows]
+
+
+def category_depth(conn, uid, cid):
+    """Nivel de anidamiento: 0 para una carpeta raíz."""
+    if cid == ROOT_PARENT_ID:
+        return -1
+    return len(category_ancestors(conn, uid, cid))
+
+
+def category_subtree_height(conn, uid, cid):
+    """Cuántos niveles cuelgan por debajo de una carpeta (0 si no tiene hijas)."""
+    row = conn.execute("""
+        WITH RECURSIVE d(id, lvl) AS (
+            SELECT id, 0 FROM categories WHERE id = ? AND user_id = ?
+            UNION
+            SELECT c.id, d.lvl + 1 FROM categories c JOIN d ON c.parent_id = d.id WHERE c.user_id = ?
+        ) SELECT MAX(lvl) AS h FROM d
+    """, (cid, uid, uid)).fetchone()
+    return row["h"] or 0
+
+
+def validate_parent(conn, uid, parent_id):
+    """Valida un parent_id de destino. Devuelve (parent_id_ok, error_o_None)."""
+    if parent_id in (None, ROOT_PARENT_ID):
+        return ROOT_PARENT_ID, None
+    try:
+        parent_id = int(parent_id)
+    except (TypeError, ValueError):
+        return None, "Carpeta padre no válida"
+    row = conn.execute(
+        "SELECT id, archived FROM categories WHERE id = ? AND user_id = ?", (parent_id, uid)
+    ).fetchone()
+    if not row:
+        return None, "Carpeta padre no válida"
+    if row["archived"]:
+        return None, "No puedes crear subcarpetas dentro de una carpeta archivada"
+    return parent_id, None
 
 # ── Auth Routes ─────────────────────────────────────────
 

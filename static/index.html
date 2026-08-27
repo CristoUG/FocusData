@@ -157,6 +157,19 @@
     }
     .header-cat i { color: var(--muted); font-size: 16px; }
     .header-cat .cat-select { border: none; background: transparent; padding: 0; font-size: 13px; color: var(--text); font-weight: 500; max-width: 180px; }
+    /* Etiqueta que distingue "Activa" de "Filtro" en la barra superior. */
+    .header-cat-tag {
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--faint); flex-shrink: 0;
+    }
+    .header-cat .cat-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+    .header-cat .cat-add-btn { width: 24px; height: 24px; font-size: 13px; }
+    /* En pantallas estrechas la barra tiene que poder envolver en vez de desbordarse. */
+    @media (max-width: 1000px) {
+      .topbar { height: auto; flex-wrap: wrap; gap: 10px; padding: 12px 20px; }
+      .topbar-actions { flex-wrap: wrap; gap: 8px; }
+      .header-cat .cat-select { max-width: 130px; }
+    }
 
     .theme-toggle-btn {
       display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--surface-2);
@@ -398,15 +411,8 @@
 
     /* Carpeta activa (Timer) */
     .folder-card { margin-bottom: 1rem; }
-    .folder-card-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .folder-card-label { font-size: 12px; color: var(--muted); font-weight: 500; display: flex; align-items: center; gap: 6px; }
-    .folder-card-value { display: flex; align-items: center; gap: 8px; }
-    .folder-card-value .cat-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
-    .cat-select-plain {
-      border: none; background: transparent; font-weight: 600; font-size: 13.5px; color: var(--text);
-      cursor: pointer; font-family: var(--font-sans); outline: none;
-    }
-    .folder-card-divider { height: 1px; background: var(--border); margin: 14px 0; }
+    .folders-hint { font-size: 13px; color: var(--muted); line-height: 1.6; margin: -4px 0 16px; }
+    .folders-hint strong { color: var(--text); font-weight: 600; }
     .btn-secondary.dashed { border-style: dashed; background: transparent; }
 
     /* STATS TAB */
@@ -485,16 +491,8 @@
       transition: color 0.2s ease, border-color 0.2s ease; font-size: 15px;
     }
     .cat-add-btn:hover { color: var(--text); border-color: var(--accent); }
-    .timer-cat-form { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
-    .timer-cat-form input[type="text"] {
-      padding: 8px 12px; border-radius: var(--radius-sm); max-width: 160px;
-      border: 1px solid var(--border); background: var(--surface-2);
-      color: var(--text); font-family: var(--font-sans); font-size: 13px; outline: none;
-    }
-    .timer-cat-form input[type="text"]:focus { border-color: var(--accent); }
-    .timer-cat-form input[type="color"] { width: 34px; height: 32px; border: none; background: transparent; cursor: pointer; }
 
-    /* Gestión de carpetas (Configuración) */
+    /* Gestión de carpetas (pestaña Carpetas) */
     .cat-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; }
     .cat-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
     .cat-row .cat-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
@@ -620,11 +618,12 @@
       <span class="sidebar-brand-name">FocusData</span>
     </div>
     <div class="sidebar-label">Panel</div>
-    <button class="nav-item active" onclick="switchTab('timer')"><i class="ti ti-player-play" aria-hidden="true"></i><span class="nav-label">Timer</span></button>
-    <button class="nav-item" onclick="switchTab('stats')"><i class="ti ti-chart-bar" aria-hidden="true"></i><span class="nav-label">Estadísticas</span></button>
-    <button class="nav-item" onclick="switchTab('log')"><i class="ti ti-calendar" aria-hidden="true"></i><span class="nav-label">Registro</span></button>
-    <button class="nav-item" onclick="switchTab('settings')"><i class="ti ti-settings" aria-hidden="true"></i><span class="nav-label">Configuración</span></button>
-    <button class="nav-item" onclick="switchTab('help')"><i class="ti ti-help" aria-hidden="true"></i><span class="nav-label">Ayuda</span></button>
+    <button class="nav-item active" data-tab="timer" onclick="switchTab('timer')"><i class="ti ti-player-play" aria-hidden="true"></i><span class="nav-label">Timer</span></button>
+    <button class="nav-item" data-tab="stats" onclick="switchTab('stats')"><i class="ti ti-chart-bar" aria-hidden="true"></i><span class="nav-label">Estadísticas</span></button>
+    <button class="nav-item" data-tab="log" onclick="switchTab('log')"><i class="ti ti-calendar" aria-hidden="true"></i><span class="nav-label">Registro</span></button>
+    <button class="nav-item" data-tab="folders" onclick="switchTab('folders')"><i class="ti ti-folders" aria-hidden="true"></i><span class="nav-label">Carpetas</span></button>
+    <button class="nav-item" data-tab="settings" onclick="switchTab('settings')"><i class="ti ti-settings" aria-hidden="true"></i><span class="nav-label">Configuración</span></button>
+    <button class="nav-item" data-tab="help" onclick="switchTab('help')"><i class="ti ti-help" aria-hidden="true"></i><span class="nav-label">Ayuda</span></button>
     <div class="sidebar-spacer"></div>
     <div class="sidebar-user">
       <div class="sidebar-user-avatar"><span id="sidebar-avatar-initial">?</span></div>
@@ -640,8 +639,18 @@
     <div class="topbar">
       <span class="topbar-title" id="topbar-title">Timer</span>
       <div class="topbar-actions">
-        <div class="header-cat">
-          <i class="ti ti-folder" aria-hidden="true"></i>
+        <!-- Dos controles distintos y contiguos: "Activa" decide DÓNDE se guardan
+             las sesiones nuevas; "Filtro" decide QUÉ se muestra en Estadísticas
+             e Historial. La etiqueta de cada uno evita confundirlos. -->
+        <div class="header-cat" title="Carpeta donde se registran las sesiones nuevas">
+          <span class="header-cat-tag">Activa</span>
+          <span class="cat-dot" id="active-cat-dot"></span>
+          <select id="active-category-select" class="cat-select" onchange="setActiveCategory(this.value)" aria-label="Carpeta activa"></select>
+          <button type="button" class="cat-add-btn" onclick="switchTab('folders')" aria-label="Gestionar carpetas" title="Gestionar carpetas"><i class="ti ti-folder-cog" aria-hidden="true"></i></button>
+        </div>
+        <div class="header-cat" title="Filtra lo que ves en Estadísticas e Historial">
+          <span class="header-cat-tag">Filtro</span>
+          <i class="ti ti-filter" aria-hidden="true"></i>
           <select id="global-category-filter" class="cat-select" onchange="setGlobalFilter(this.value)" aria-label="Filtrar por carpeta">
             <option value="">Todas las carpetas</option>
           </select>
@@ -728,21 +737,8 @@
           </div>
 
           <div class="folder-card card">
-            <div class="folder-card-row">
-              <span class="folder-card-label"><i class="ti ti-folder" aria-hidden="true"></i> Carpeta activa</span>
-              <div class="folder-card-value">
-                <span class="cat-dot" id="active-cat-dot"></span>
-                <select id="active-category-select" class="cat-select-plain" onchange="setActiveCategory(this.value)"></select>
-                <button type="button" class="cat-add-btn" onclick="toggleTimerCatForm()" aria-label="Crear carpeta" title="Crear carpeta"><i class="ti ti-plus" aria-hidden="true"></i></button>
-              </div>
-            </div>
-            <div class="timer-cat-form" id="timer-cat-form" style="display:none;">
-              <input type="text" id="timer-new-cat-name" maxlength="30" placeholder="Nombre de la carpeta" onkeydown="if(event.key==='Enter')createCategoryFromTimer()">
-              <input type="color" id="timer-new-cat-color" value="#6366f1" aria-label="Color de la carpeta">
-              <button type="button" class="cat-action" onclick="createCategoryFromTimer()"><i class="ti ti-check" aria-hidden="true"></i></button>
-              <button type="button" class="cat-action" onclick="toggleTimerCatForm()"><i class="ti ti-x" aria-hidden="true"></i></button>
-            </div>
-            <div class="folder-card-divider"></div>
+            <!-- La carpeta activa vive ahora en la barra superior; aquí solo queda
+                 el registro manual, que es una acción de tiempo, no de carpetas. -->
             <button class="btn-secondary dashed full-width" id="btn-manual-toggle" onclick="toggleManualForm()" style="margin-top:0;"><i class="ti ti-plus"></i> Registrar sesión manual</button>
             <div class="manual-form" id="manual-form" style="display:none;">
               <div class="manual-form-title"><i class="ti ti-pencil"></i> Nueva sesión manual</div>
@@ -829,6 +825,24 @@
       <div class="table-responsive" id="log-table-wrap"></div>
     </div>
 
+    <!-- FOLDERS TAB -->
+    <div id="tab-folders" class="tab-panel" style="max-width:900px;">
+      <div class="chart-card card">
+        <h3><i class="ti ti-folders" aria-hidden="true"></i> Tus carpetas</h3>
+        <p class="folders-hint">
+          Organiza tus sesiones en carpetas y subcarpetas. La carpeta <strong>Activa</strong>
+          de la barra superior es donde se guardan las sesiones nuevas; el <strong>Filtro</strong>
+          solo cambia lo que ves en Estadísticas e Historial.
+        </p>
+        <div class="cat-list" id="category-list"></div>
+        <div class="cat-form">
+          <input type="text" id="new-cat-name" maxlength="30" placeholder="Nueva carpeta (ej. Semestre 2)" onkeydown="if(event.key==='Enter')createCategory()">
+          <input type="color" id="new-cat-color" value="#6366f1" aria-label="Color de la carpeta">
+          <button class="btn-secondary" style="padding: 9px 16px; font-size: 13.5px;" onclick="createCategory()"><i class="ti ti-plus" aria-hidden="true"></i> Crear</button>
+        </div>
+      </div>
+    </div>
+
     <!-- SETTINGS TAB -->
     <div id="tab-settings" class="tab-panel" style="max-width:760px;">
       <div class="chart-card card">
@@ -846,16 +860,6 @@
             <i class="ti ti-color-picker"></i> Personalizado
             <input type="color" id="accent-input" value="#3b82f6" oninput="selectAccent(this.value)">
           </label>
-        </div>
-      </div>
-
-      <div class="chart-card card">
-        <h3><i class="ti ti-folder" aria-hidden="true"></i> Carpetas</h3>
-        <div class="cat-list" id="category-list"></div>
-        <div class="cat-form">
-          <input type="text" id="new-cat-name" maxlength="30" placeholder="Nueva carpeta (ej. Semestre 2)" onkeydown="if(event.key==='Enter')createCategory()">
-          <input type="color" id="new-cat-color" value="#6366f1" aria-label="Color de la carpeta">
-          <button class="btn-secondary" style="padding: 9px 16px; font-size: 13.5px;" onclick="createCategory()"><i class="ti ti-plus" aria-hidden="true"></i> Crear</button>
         </div>
       </div>
 
@@ -1409,10 +1413,12 @@ function updateSideInfo() {
   setStatVal('t-stat-sessions', todaySessions, 'hoy');
 }
 
-const NAV_LABELS = { timer: 'Timer', stats: 'Estadísticas', log: 'Registro', settings: 'Configuración', help: 'Ayuda' };
+const NAV_LABELS = { timer: 'Timer', stats: 'Estadísticas', log: 'Registro', folders: 'Carpetas', settings: 'Configuración', help: 'Ayuda' };
 
 function switchTab(t) {
-  document.querySelectorAll('.nav-item').forEach((b,i) => b.classList.toggle('active', ['timer','stats','log','settings','help'][i] === t));
+  // Se resuelve por data-tab y no por posición: añadir o reordenar pestañas en el
+  // HTML ya no descuadra el resaltado del menú.
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + t).classList.add('active');
   const title = document.getElementById('topbar-title');
@@ -1851,7 +1857,7 @@ function renderCategoryUI() {
   filterSel.value = filterCategoryId;
   if (filterSel.value !== filterCategoryId) { filterCategoryId = ''; filterSel.value = ''; }
 
-  // Selector de carpeta activa del Timer (solo no archivadas)
+  // Selector de carpeta activa de la barra superior (solo no archivadas)
   const activeSel = document.getElementById('active-category-select');
   const active = categories.filter(c => !c.archived);
   activeSel.innerHTML = active.map(c => `<option value="${c.id}">${esc(catOptionLabel(c))}</option>`).join('');
@@ -1867,7 +1873,7 @@ function renderCategoryUI() {
   }
   if (activeSel && activeCat) activeSel.title = activeCat.path;
 
-  // Lista de gestión en Configuración
+  // Lista de gestión (pestaña Carpetas)
   const list = document.getElementById('category-list');
   if (!categories.length) {
     list.innerHTML = '<div class="empty-state"><i class="ti ti-folder-off"></i>Sin carpetas aún</div>';
@@ -1938,39 +1944,8 @@ function reassignSession(ts, catId) {
   }).catch(() => { toast('Error de conexión'); renderLog(); });
 }
 
-function toggleTimerCatForm() {
-  const form = document.getElementById('timer-cat-form');
-  const isHidden = form.style.display === 'none';
-  form.style.display = isHidden ? 'flex' : 'none';
-  if (isHidden) {
-    document.getElementById('timer-new-cat-name').value = '';
-    document.getElementById('timer-new-cat-name').focus();
-  }
-}
 
 // Crea una carpeta desde el Timer y la deja activa de inmediato.
-function createCategoryFromTimer() {
-  const nameInput = document.getElementById('timer-new-cat-name');
-  const name = nameInput.value.trim();
-  const color = document.getElementById('timer-new-cat-color').value;
-  if (!name) { nameInput.focus(); return; }
-  fetch('/api/categories', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, color })
-  }).then(r => r.json()).then(d => {
-    if (d.ok) {
-      toast('Carpeta "' + d.name + '" creada ✓');
-      toggleTimerCatForm();
-      loadCategories().then(() => {
-        document.getElementById('active-category-select').value = d.id;
-        setActiveCategory(d.id);
-      });
-    } else {
-      toast(d.error || 'No se pudo crear la carpeta');
-    }
-  }).catch(() => toast('Error de conexión'));
-}
 
 function createCategory() {
   const nameInput = document.getElementById('new-cat-name');

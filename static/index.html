@@ -1564,7 +1564,14 @@ function renderLog() {
   const today = new Date();
   let recs = [...filteredDb()].filter(r => r.mode !== 'break').reverse();
   if (filterType) recs = recs.filter(r => r.type === filterType);
-  if (filterDays > 0) { const cutoff = new Date(today); cutoff.setDate(today.getDate()-filterDays); recs = recs.filter(r => new Date(r.date) >= cutoff); }
+  if (filterDays > 0) {
+    // Comparación como cadena YYYY-MM-DD: evita el desfase de new Date(), que
+    // interpreta ese formato como UTC en vez de hora local.
+    const cutoff = new Date(today);
+    cutoff.setDate(today.getDate() - filterDays);
+    const cutoffStr = localDateStr(cutoff);
+    recs = recs.filter(r => r.date >= cutoffStr);
+  }
 
   const wrap = document.getElementById('log-table-wrap');
   if (!recs.length) { wrap.innerHTML = '<div class="empty-state"><i class="ti ti-calendar-off" aria-hidden="true"></i>No hay sesiones registradas</div>'; return; }

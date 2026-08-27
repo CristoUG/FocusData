@@ -691,7 +691,7 @@
             <button class="mode-btn active" id="mode-btn-pomodoro" role="tab" aria-selected="true"
                     onclick="setTimerMode('pomodoro')"><i class="ti ti-clock-play" aria-hidden="true"></i> Pomodoro</button>
             <button class="mode-btn" id="mode-btn-cronometro" role="tab" aria-selected="false"
-                    onclick="setTimerMode('cronometro')"><i class="ti ti-stopwatch" aria-hidden="true"></i> Cronómetro</button>
+                    onclick="setTimerMode('cronometro')"><i class="ti ti-clock-up" aria-hidden="true"></i> Cronómetro</button>
           </div>
 
           <div class="btn-row">
@@ -930,10 +930,12 @@
     <h3>Novedades en FocusData</h3>
     <p class="update-modal-sub">Nuevas formas de organizar y medir tu tiempo.</p>
     <ul>
-      <li><i class="ti ti-folders" aria-hidden="true"></i> <strong>Subcarpetas anidadas</strong>: organiza tus carpetas en árbol, con el detalle que quieras.</li>
-      <li><i class="ti ti-stopwatch" aria-hidden="true"></i> <strong>Modo cronómetro</strong>: cuenta hacia adelante cuando no sabes cuánto vas a trabajar.</li>
-      <li><i class="ti ti-layout-navbar" aria-hidden="true"></i> <strong>Activa</strong> y <strong>Filtro</strong> ahora están arriba: una decide dónde se guarda, el otro qué ves.</li>
-      <li><i class="ti ti-folder-cog" aria-hidden="true"></i> Las carpetas tienen <strong>su propia pestaña</strong>, con crear, mover y archivar en un solo sitio.</li>
+      <!-- El texto va dentro de un <span>: el <li> es flex, así que cada hijo
+           suelto se convertiría en una columna y partiría la frase. -->
+      <li><i class="ti ti-folders" aria-hidden="true"></i> <span><strong>Subcarpetas anidadas</strong>: organiza tus carpetas en árbol, con el detalle que quieras.</span></li>
+      <li><i class="ti ti-clock-up" aria-hidden="true"></i> <span><strong>Modo cronómetro</strong>: cuenta hacia adelante cuando no sabes cuánto vas a trabajar.</span></li>
+      <li><i class="ti ti-layout-navbar" aria-hidden="true"></i> <span><strong>Activa</strong> y <strong>Filtro</strong> ahora están arriba: una decide dónde se guarda, el otro qué ves.</span></li>
+      <li><i class="ti ti-folder-cog" aria-hidden="true"></i> <span>Las carpetas tienen <strong>su propia pestaña</strong>, con crear, mover y archivar en un solo sitio.</span></li>
     </ul>
     <button class="btn-primary full-width" onclick="dismissUpdateNotice()"><i class="ti ti-check" aria-hidden="true"></i> Entendido, ¡vamos!</button>
   </div>

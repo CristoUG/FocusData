@@ -48,6 +48,7 @@ DB = os.path.join(BASE_DIR, "study.db")
 # obsoleto en tablas ya creadas, así que se aplican explícitamente al registrar).
 DEFAULT_THEME = "dark"
 DEFAULT_ACCENT = "#3b82f6"
+DEFAULT_SCENE = "aurora"
 
 # Carpetas (categorías) de sesiones
 DEFAULT_CATEGORY_NAME = "General"
@@ -100,7 +101,8 @@ def init_db():
                 username TEXT    UNIQUE NOT NULL,
                 password TEXT    NOT NULL,
                 theme    TEXT    NOT NULL DEFAULT 'dark',
-                accent   TEXT    NOT NULL DEFAULT '#3b82f6'
+                accent   TEXT    NOT NULL DEFAULT '#3b82f6',
+                scene    TEXT    NOT NULL DEFAULT 'aurora'
             )
         """)
         # Migración: añadir columnas de preferencias si la tabla ya existía sin ellas
@@ -109,6 +111,8 @@ def init_db():
             conn.execute("ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT 'dark'")
         if "accent" not in existing_cols:
             conn.execute("ALTER TABLE users ADD COLUMN accent TEXT NOT NULL DEFAULT '#3b82f6'")
+        if "scene" not in existing_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN scene TEXT NOT NULL DEFAULT 'aurora'")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -315,8 +319,8 @@ def register():
     try:
         with closing(get_db()) as conn, conn:
             conn.execute(
-                "INSERT INTO users (username, password, theme, accent) VALUES (?, ?, ?, ?)",
-                (username, generate_password_hash(password), DEFAULT_THEME, DEFAULT_ACCENT)
+                "INSERT INTO users (username, password, theme, accent, scene) VALUES (?, ?, ?, ?, ?)",
+                (username, generate_password_hash(password), DEFAULT_THEME, DEFAULT_ACCENT, DEFAULT_SCENE)
             )
             row = conn.execute("SELECT id, username FROM users WHERE username = ?", (username,)).fetchone()
             # Carpeta inicial del usuario, activa por defecto
@@ -393,17 +397,22 @@ def logout():
 @login_required
 def me():
     with closing(get_db()) as conn, conn:
-        row = conn.execute("SELECT theme, accent, active_category_id FROM users WHERE id = ?", (current_user.id,)).fetchone()
+        row = conn.execute("SELECT theme, accent, scene, active_category_id FROM users WHERE id = ?", (current_user.id,)).fetchone()
     return jsonify({
         "id": current_user.id,
         "username": current_user.username,
         "theme": row["theme"] if row else DEFAULT_THEME,
         "accent": row["accent"] if row else DEFAULT_ACCENT,
+        "scene": row["scene"] if row else DEFAULT_SCENE,
         "active_category_id": row["active_category_id"] if row else None,
     })
 
 # Temas válidos y validación del color de acento (#rgb o #rrggbb)
 VALID_THEMES = {"dark", "light", "ocean", "forest"}
+
+# Catálogo fijo de escenas de fondo. Debe coincidir con SCENES en static/index.html:
+# el servidor rechaza cualquier valor fuera de esta lista.
+VALID_SCENES = {"none", "aurora", "ocean", "forest", "arena", "nebula", "dusk", "summit"}
 HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 
 # Validación de entrada de sesiones
@@ -432,6 +441,11 @@ def save_preferences():
             return jsonify({"error": "Color de acento no válido"}), 400
         updates.append("accent = ?")
         params.append(data["accent"])
+    if "scene" in data:
+        if data["scene"] not in VALID_SCENES:
+            return jsonify({"error": "Escena no válida"}), 400
+        updates.append("scene = ?")
+        params.append(data["scene"])
 
     with closing(get_db()) as conn, conn:
         if "active_category_id" in data:
@@ -599,6 +613,101 @@ def update_category(cid):
     result = _category_json(row)
     result["ok"] = True
     return jsonify(result)
+
+@app.route("/api/categories/<int:cid>", methods=["DELETE"])
+@login_required
+def delete_category(cid):
+    """Borra una carpeta y TODO su subárbol, de forma definitiva.
+
+    El cuerpo decide qué pasa con las sesiones que había dentro:
+        {"content": "move", "target_id": <id>}  → se reasignan a esa carpeta
+        {"content": "delete"}                   → se borran con la carpeta
+
+    Archivar sigue siendo la opción reversible; esto no lo es.
+    """
+    data = request.get_json(silent=True) or {}
+    uid = current_user.id
+    content = data.get("content")
+    if content not in ("move", "delete"):
+        return jsonify({"error": "Indica qué hacer con el contenido"}), 400
+
+    with closing(get_db()) as conn, conn:
+        row = conn.execute(
+            "SELECT id, name FROM categories WHERE id = ? AND user_id = ?", (cid, uid)
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Carpeta no encontrada"}), 404
+
+        # El subárbol entero desaparece: la carpeta y todas sus subcarpetas.
+        ids = category_descendants(conn, uid, cid)
+        marcas = ",".join("?" * len(ids))
+
+        # Tiene que quedar al menos una carpeta activa donde registrar sesiones.
+        quedan = conn.execute(
+            f"SELECT COUNT(*) FROM categories WHERE user_id = ? AND archived = 0 AND id NOT IN ({marcas})",
+            [uid] + ids
+        ).fetchone()[0]
+        if quedan == 0:
+            return jsonify({"error": "No puedes eliminar tu única carpeta activa"}), 400
+
+        target_id = None
+        if content == "move":
+            try:
+                target_id = int(data.get("target_id"))
+            except (TypeError, ValueError):
+                return jsonify({"error": "Carpeta de destino no válida"}), 400
+            # El destino no puede estar dentro de lo que se va a borrar.
+            if target_id in ids:
+                return jsonify({"error": "El destino no puede ser la carpeta que estás eliminando"}), 400
+            destino = conn.execute(
+                "SELECT id FROM categories WHERE id = ? AND user_id = ? AND archived = 0",
+                (target_id, uid)
+            ).fetchone()
+            if not destino:
+                return jsonify({"error": "Carpeta de destino no válida"}), 400
+
+        afectadas = conn.execute(
+            f"SELECT COUNT(*) FROM sessions WHERE user_id = ? AND category_id IN ({marcas})",
+            [uid] + ids
+        ).fetchone()[0]
+
+        if content == "move":
+            conn.execute(
+                f"UPDATE sessions SET category_id = ? WHERE user_id = ? AND category_id IN ({marcas})",
+                [target_id, uid] + ids
+            )
+        else:
+            conn.execute(
+                f"DELETE FROM sessions WHERE user_id = ? AND category_id IN ({marcas})",
+                [uid] + ids
+            )
+
+        conn.execute(
+            f"DELETE FROM categories WHERE user_id = ? AND id IN ({marcas})", [uid] + ids
+        )
+
+        # Si la carpeta activa era una de las borradas, hay que reapuntarla o el
+        # próximo POST de sesión se quedaría sin destino.
+        conn.execute(
+            f"""UPDATE users SET active_category_id = (
+                    SELECT id FROM categories WHERE user_id = ? AND archived = 0 ORDER BY id LIMIT 1
+                ) WHERE id = ? AND active_category_id IN ({marcas})""",
+            [uid, uid] + ids
+        )
+        conn.commit()
+
+        activa = conn.execute(
+            "SELECT active_category_id FROM users WHERE id = ?", (uid,)
+        ).fetchone()["active_category_id"]
+
+    return jsonify({
+        "ok": True,
+        "deleted_ids": ids,
+        "deleted_folders": len(ids),
+        "moved_sessions": afectadas if content == "move" else 0,
+        "deleted_sessions": afectadas if content == "delete" else 0,
+        "active_category_id": activa,
+    })
 
 @app.route("/api/sessions/<int:sid>", methods=["PATCH"])
 @login_required

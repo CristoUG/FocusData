@@ -11,3 +11,6 @@ study.db*
 
 # Documentación generada: la fuente versionada es DOCUMENTACION.md
 DOCUMENTACION.pdf
+
+# Carpeta de bocetos de diseño (no es parte de la app servida)
+nuevo diseño/

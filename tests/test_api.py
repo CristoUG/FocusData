@@ -452,3 +452,115 @@ def test_cronometro_counts_as_study_not_break(client):
     register(client)
     client.post("/api/sessions", json={"minutes": 45, "type": "Tesis", "mode": "cronometro"})
     assert client.get("/api/stats").get_json()["total"] == 45
+
+
+# ── Eliminar carpetas definitivamente ────────────────────
+
+def _sessions_in(client, cid):
+    return [s for s in client.get("/api/sessions?include_breaks=1").get_json()
+            if s["category_id"] == cid]
+
+
+def test_delete_category_moving_its_sessions(client):
+    register(client)
+    destino = client.get("/api/categories").get_json()[0]["id"]
+    victima = client.post("/api/categories", json={"name": "Ramo viejo"}).get_json()["id"]
+    client.post("/api/sessions", json={"minutes": 25, "type": "Estudio",
+                                       "mode": "pomodoro", "category_id": victima})
+
+    r = client.delete(f"/api/categories/{victima}", json={"content": "move", "target_id": destino})
+    assert r.status_code == 200
+    d = r.get_json()
+    assert d["moved_sessions"] == 1 and d["deleted_sessions"] == 0
+
+    nombres = [c["name"] for c in client.get("/api/categories").get_json()]
+    assert "Ramo viejo" not in nombres
+    assert len(_sessions_in(client, destino)) == 1      # la sesión sigue viva
+    assert client.get("/api/stats").get_json()["total"] == 25
+
+
+def test_delete_category_deleting_its_sessions(client):
+    register(client)
+    victima = client.post("/api/categories", json={"name": "Descartable"}).get_json()["id"]
+    client.post("/api/sessions", json={"minutes": 30, "type": "Estudio",
+                                       "mode": "pomodoro", "category_id": victima})
+
+    r = client.delete(f"/api/categories/{victima}", json={"content": "delete"})
+    assert r.status_code == 200
+    assert r.get_json()["deleted_sessions"] == 1
+    assert client.get("/api/sessions?include_breaks=1").get_json() == []
+    assert client.get("/api/stats").get_json()["total"] == 0
+
+
+def test_delete_category_takes_the_whole_subtree(client):
+    register(client)
+    destino = client.get("/api/categories").get_json()[0]["id"]
+    padre = client.post("/api/categories", json={"name": "Semestre"}).get_json()["id"]
+    hija = client.post("/api/categories", json={"name": "Ramo", "parent_id": padre}).get_json()["id"]
+    nieta = client.post("/api/categories", json={"name": "Unidad", "parent_id": hija}).get_json()["id"]
+    client.post("/api/sessions", json={"minutes": 15, "type": "Estudio",
+                                       "mode": "pomodoro", "category_id": nieta})
+
+    r = client.delete(f"/api/categories/{padre}", json={"content": "move", "target_id": destino})
+    assert r.status_code == 200
+    d = r.get_json()
+    assert d["deleted_folders"] == 3
+    assert set(d["deleted_ids"]) == {padre, hija, nieta}
+    assert d["moved_sessions"] == 1          # también arrastra lo de las subcarpetas
+
+    restantes = [c["id"] for c in client.get("/api/categories").get_json()]
+    assert padre not in restantes and hija not in restantes and nieta not in restantes
+
+
+def test_delete_category_rejects_target_inside_the_subtree(client):
+    register(client)
+    padre = client.post("/api/categories", json={"name": "Padre"}).get_json()["id"]
+    hija = client.post("/api/categories", json={"name": "Hija", "parent_id": padre}).get_json()["id"]
+
+    r = client.delete(f"/api/categories/{padre}", json={"content": "move", "target_id": hija})
+    assert r.status_code == 400
+    # La carpeta no se tocó
+    assert padre in [c["id"] for c in client.get("/api/categories").get_json()]
+
+
+def test_cannot_delete_last_active_category(client):
+    register(client)
+    unica = client.get("/api/categories").get_json()[0]["id"]
+    r = client.delete(f"/api/categories/{unica}", json={"content": "delete"})
+    assert r.status_code == 400
+    assert unica in [c["id"] for c in client.get("/api/categories").get_json()]
+
+
+def test_delete_active_category_reassigns_the_active_one(client):
+    register(client)
+    otra = client.get("/api/categories").get_json()[0]["id"]
+    activa = client.post("/api/categories", json={"name": "Activa"}).get_json()["id"]
+    client.post("/api/preferences", json={"active_category_id": activa})
+    assert client.get("/api/me").get_json()["active_category_id"] == activa
+
+    r = client.delete(f"/api/categories/{activa}", json={"content": "move", "target_id": otra})
+    assert r.status_code == 200
+    assert r.get_json()["active_category_id"] == otra
+    assert client.get("/api/me").get_json()["active_category_id"] == otra
+
+
+def test_delete_category_requires_a_content_policy(client):
+    register(client)
+    cid = client.post("/api/categories", json={"name": "Sin política"}).get_json()["id"]
+    assert client.delete(f"/api/categories/{cid}", json={}).status_code == 400
+    assert client.delete(f"/api/categories/{cid}", json={"content": "vaciar"}).status_code == 400
+    assert cid in [c["id"] for c in client.get("/api/categories").get_json()]
+
+
+def test_cannot_delete_another_users_category(client):
+    register(client, "alice3")
+    alice_cat = client.post("/api/categories", json={"name": "De Alice"}).get_json()["id"]
+    client.get("/logout")
+
+    register(client, "bob3")
+    r = client.delete(f"/api/categories/{alice_cat}", json={"content": "delete"})
+    assert r.status_code == 404
+
+    client.get("/logout")
+    login(client, "alice3")
+    assert alice_cat in [c["id"] for c in client.get("/api/categories").get_json()]

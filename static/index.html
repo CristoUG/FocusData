@@ -12,6 +12,12 @@
 
   <style>
     :root {
+      /* Sin esta declaración el navegador pinta con la paleta CLARA del sistema
+         todo lo que renderiza él y no nuestro CSS: la lista desplegada de un
+         <select>, los calendarios de <input type="date">, las barras de scroll y
+         el caret. Por eso los menús salían blancos estando en modo oscuro. */
+      color-scheme: dark;
+
       /* Palette (superficies planas y opacas) */
       --bg: #0b0f18;
       --surface: #141a26;
@@ -42,6 +48,7 @@
 
     /* ── Temas predefinidos ── */
     [data-theme="light"] {
+      color-scheme: light;
       --bg: #f4f6fa;
       --surface: #ffffff;
       --surface-2: #eef2f8;
@@ -53,6 +60,7 @@
       --chart-tick: #5c6675;
     }
     [data-theme="ocean"] {
+      color-scheme: dark;
       --bg: #07182b;
       --surface: #0e2740;
       --surface-2: #123152;
@@ -64,6 +72,7 @@
       --chart-tick: #7dd3fc;
     }
     [data-theme="forest"] {
+      color-scheme: dark;
       --bg: #0a1f16;
       --surface: #0f2e22;
       --surface-2: #123a2b;
@@ -76,6 +85,10 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Varios componentes fijan display, que por especificidad le gana al
+       display:none por defecto de [hidden]. Sin esto, ocultar con .hidden = true
+       no haría nada en .fp-search ni en los campos de los modales. */
+    [hidden] { display: none !important; }
 
     body {
       font-family: var(--font-sans);
@@ -156,7 +169,6 @@
       background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
     }
     .header-cat i { color: var(--muted); font-size: 16px; }
-    .header-cat .cat-select { border: none; background: transparent; padding: 0; font-size: 13px; color: var(--text); font-weight: 500; max-width: 180px; }
     /* Etiqueta que distingue "Activa" de "Filtro" en la barra superior. */
     .header-cat-tag {
       font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
@@ -168,7 +180,7 @@
     @media (max-width: 1000px) {
       .topbar { height: auto; flex-wrap: wrap; gap: 10px; padding: 12px 20px; }
       .topbar-actions { flex-wrap: wrap; gap: 8px; }
-      .header-cat .cat-select { max-width: 130px; }
+      .header-cat .fp-trigger { max-width: 130px; }
     }
 
     .theme-toggle-btn {
@@ -466,22 +478,9 @@
       display: flex; gap: 12px; margin-bottom: 1.5rem; align-items: center; flex-wrap: wrap;
       background: var(--surface); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);
     }
-    .log-filters select {
-      font-size: 13.5px; padding: 9px 14px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--surface-2);
-      color: var(--text); font-family: var(--font-sans); outline: none; cursor: pointer;
-    }
-    .log-filters select:focus { border-color: var(--accent); }
     .log-filters .spacer { flex: 1; }
+    .log-filters .fp-trigger { padding: 9px 14px; }
 
-    /* Selects de carpeta (header, timer, log) */
-    .cat-select {
-      font-size: 13.5px; padding: 8px 12px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--surface-2);
-      color: var(--text); font-family: var(--font-sans); outline: none; cursor: pointer;
-      max-width: 200px;
-    }
-    .cat-select:focus { border-color: var(--accent); }
     .timer-cat-wrap { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
     .timer-cat-wrap label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
     .cat-add-btn {
@@ -491,6 +490,104 @@
       transition: color 0.2s ease, border-color 0.2s ease; font-size: 15px;
     }
     .cat-add-btn:hover { color: var(--text); border-color: var(--accent); }
+
+    /* ── Selector desplegable propio ──
+       Sustituye a los <select> nativos: el sistema dibuja su lista fuera de
+       nuestro CSS, así que no admitía árbol, buscador ni el color del tema. */
+    .fp-trigger {
+      display: flex; align-items: center; gap: 8px; max-width: 220px;
+      padding: 8px 12px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface-2);
+      color: var(--text); font-family: var(--font-sans); font-size: 13.5px;
+      cursor: pointer; transition: border-color 0.2s ease;
+    }
+    .fp-trigger:hover, .fp-trigger[aria-expanded="true"] { border-color: var(--accent); }
+    .fp-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .fp-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+    .fp-caret, .fp-lead { font-size: 15px; color: var(--muted); flex-shrink: 0; }
+    .fp-caret { transition: transform 0.2s ease; }
+    .fp-trigger[aria-expanded="true"] .fp-caret { transform: rotate(180deg); }
+    /* Dentro de la barra superior el marco ya lo pone .header-cat. */
+    .header-cat .fp-trigger { border: none; background: transparent; padding: 0; font-weight: 500; font-size: 13px; max-width: 190px; }
+    .header-cat .fp-trigger:hover .fp-caret,
+    .header-cat .fp-trigger[aria-expanded="true"] .fp-caret { color: var(--accent); }
+    /* En la tabla del Registro el disparador se mantiene discreto hasta el hover. */
+    .fp-trigger.fp-inline { border-color: transparent; background: transparent; padding: 5px 8px; max-width: 200px; }
+    .fp-trigger.fp-inline:hover, .fp-trigger.fp-inline[aria-expanded="true"] { border-color: var(--border); background: var(--surface-2); }
+
+    .fp-panel {
+      position: fixed; z-index: 2300; display: none; flex-direction: column; overflow: hidden;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    }
+    .fp-panel.open { display: flex; }
+    .fp-search { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    .fp-search i { color: var(--muted); font-size: 15px; }
+    .fp-search input {
+      flex: 1; min-width: 0; border: none; background: transparent; outline: none;
+      color: var(--text); font-family: var(--font-sans); font-size: 13.5px;
+    }
+    .fp-list { overflow-y: auto; max-height: 300px; padding: 6px; display: flex; flex-direction: column; gap: 1px; }
+    .fp-opt {
+      display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+      padding: 8px 10px; border: none; border-radius: var(--radius-sm); background: transparent;
+      color: var(--text); font-family: var(--font-sans); font-size: 13.5px; cursor: pointer;
+    }
+    .fp-opt:hover:not(:disabled), .fp-opt.fp-active { background: var(--surface-2); }
+    .fp-opt[aria-selected="true"] { font-weight: 600; color: var(--accent); }
+    .fp-opt:disabled { opacity: 0.4; cursor: not-allowed; }
+    .fp-opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fp-opt-note { font-size: 11.5px; color: var(--faint); flex-shrink: 0; }
+    .fp-branch { color: var(--faint); font-size: 12px; flex-shrink: 0; }
+    .fp-check { font-size: 15px; color: var(--accent); flex-shrink: 0; visibility: hidden; }
+    .fp-opt[aria-selected="true"] .fp-check { visibility: visible; }
+    .fp-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+    .fp-empty { padding: 16px 12px; text-align: center; font-size: 13px; color: var(--muted); }
+
+    /* ── Modales genéricos (mover / eliminar carpeta) ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 2100;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      width: 100%; max-width: 460px; padding: 26px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      max-height: calc(100vh - 40px); overflow-y: auto;
+    }
+    .modal-card h3 { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+    .modal-sub { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 18px; }
+    .modal-sub strong { color: var(--text); }
+    .modal-label { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
+    .modal-field { margin-bottom: 18px; }
+    .modal-field .fp-trigger { max-width: none; width: 100%; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
+    .modal-actions .btn-primary, .modal-actions .btn-secondary, .modal-actions .btn-danger { padding: 9px 16px; font-size: 13.5px; }
+    .choice-list { display: flex; flex-direction: column; gap: 8px; }
+    .choice {
+      display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; cursor: pointer;
+      border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
+      transition: border-color 0.2s ease;
+    }
+    .choice:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+    .choice:has(input:checked) {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+    }
+    .choice input { margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
+    .choice-text { font-size: 13.5px; color: var(--text); line-height: 1.5; }
+    .choice-text small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .modal-warn {
+      display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; margin-bottom: 18px;
+      border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5;
+      background: var(--danger-bg); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); color: var(--text);
+    }
+    .modal-warn i { color: var(--danger); font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+    .modal-confirm-input {
+      width: 100%; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13.5px;
+      border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+      font-family: var(--font-sans); outline: none;
+    }
+    .modal-confirm-input:focus { border-color: var(--danger); }
 
     /* Gestión de carpetas (pestaña Carpetas) */
     .cat-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; }
@@ -506,6 +603,7 @@
       font-family: var(--font-sans); transition: color 0.2s ease, border-color 0.2s ease;
     }
     .cat-action:hover { color: var(--text); border-color: var(--accent); }
+    .cat-action-danger:hover { color: var(--danger); border-color: var(--danger); }
     .cat-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .cat-form input[type="text"] {
       flex: 1; min-width: 160px; padding: 10px 14px; border-radius: var(--radius-sm);
@@ -604,9 +702,232 @@
     .hm-l4 { background: var(--accent); }
     .heatmap-legend { display: flex; align-items: center; gap: 6px; justify-content: flex-end; margin-top: 14px; font-size: 12px; color: var(--muted); }
     .heatmap-legend .hm-cell { width: 13px; height: 13px; aspect-ratio: auto; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       ESCENAS DE FONDO
+       Una escena = un fondo a pantalla completa (degradado propio + una
+       foto opcional encima) con movimiento lento. Vive en una capa fija
+       detrás de #app, así que se ve en TODAS las pestañas.
+
+       Capas, de atrás hacia delante:
+         .scene-base   degradado de la escena (siempre presente)
+         .scene-photo  la foto de static/scenes/, si carga (fade-in)
+         .scene-veil   dos manchas de luz que derivan: da movimiento
+                       incluso a las escenas que no tienen foto
+         .scene-scrim  oscurecido + rejilla: es lo que hace legible la UI
+       ══════════════════════════════════════════════════════════════════ */
+
+    .scene {
+      position: fixed; inset: 0; z-index: -2; overflow: hidden;
+      pointer-events: none; background: var(--scene-bg, var(--bg));
+    }
+    /* Oculta por completo la escena en modo claro y cuando el usuario
+       elige "Sin escena": la app vuelve a su aspecto plano de siempre. */
+    html:not(.scene-on) .scene { display: none; }
+
+    /* El zoom/paneo se aplica al grupo, para que degradado y foto se
+       muevan juntos. El bleed negativo evita que asomen los bordes. */
+    .scene-motion {
+      position: absolute; inset: -8%;
+      animation: scene-drift 75s ease-in-out infinite;
+      will-change: transform;
+    }
+    .scene-base, .scene-photo { position: absolute; inset: 0; background-size: cover; background-position: center; }
+    .scene-base { background-image: var(--scene-image); }
+    .scene-photo {
+      background-image: var(--scene-photo, none);
+      opacity: 0; transition: opacity 900ms ease;
+    }
+    html.scene-photo-ready .scene-photo { opacity: 1; }
+
+    @keyframes scene-drift {
+      0%   { transform: scale(1.05) translate3d(0, 0, 0); }
+      33%  { transform: scale(1.11) translate3d(-1.6%, -1.1%, 0); }
+      66%  { transform: scale(1.09) translate3d(1.4%, 0.9%, 0); }
+      100% { transform: scale(1.05) translate3d(0, 0, 0); }
+    }
+
+    /* Velo: dos manchas de luz enormes y difusas que se cruzan muy despacio. */
+    .scene-veil { position: absolute; inset: -20%; opacity: 0.55; transition: opacity 900ms ease; }
+    html.scene-photo-ready .scene-veil { opacity: 0.2; }
+    .scene-veil::before, .scene-veil::after {
+      content: ""; position: absolute; width: 70%; height: 70%; border-radius: 50%;
+      filter: blur(90px); will-change: transform;
+    }
+    .scene-veil::before {
+      top: -10%; left: -5%; background: var(--scene-veil-1, rgba(80, 140, 255, 0.35));
+      animation: veil-a 48s ease-in-out infinite;
+    }
+    .scene-veil::after {
+      bottom: -15%; right: -5%; background: var(--scene-veil-2, rgba(140, 90, 255, 0.3));
+      animation: veil-b 62s ease-in-out infinite;
+    }
+    @keyframes veil-a {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+      50%      { transform: translate3d(18%, 12%, 0) scale(1.18); }
+    }
+    @keyframes veil-b {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); }
+      50%      { transform: translate3d(-16%, -14%, 0) scale(0.92); }
+    }
+
+    /* Scrim: sin él, el texto blanco sobre una foto clara es ilegible.
+       --scrim-strength lo sube en las pestañas densas en datos. */
+    .scene-scrim {
+      position: absolute; inset: 0;
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 64px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 64px),
+        radial-gradient(ellipse 90% 70% at 50% 45%, transparent 0%, rgba(4, 7, 14, 0.55) 100%),
+        linear-gradient(180deg, rgba(4, 7, 14, 0.55) 0%, rgba(4, 7, 14, 0.35) 40%, rgba(4, 7, 14, 0.72) 100%);
+      opacity: var(--scrim-strength, 0.9);
+      transition: opacity 0.45s ease;
+    }
+    /* El Timer respira: casi todo es fondo. Estadísticas y Registro son
+       tablas y gráficos, y ahí la foto tiene que ceder el paso. */
+    body[data-view="timer"] { --scrim-strength: 0.62; }
+    body[data-view="stats"],
+    body[data-view="log"] { --scrim-strength: 1; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .scene-motion, .scene-veil::before, .scene-veil::after { animation: none; }
+      .scene-motion { inset: 0; }
+    }
+
+    /* ── Paletas de escena ──
+       --scene-image es el degradado propio: se ve siempre, y es lo único
+       que se ve si la foto de static/scenes/ todavía no existe. */
+    [data-scene="aurora"] {
+      --scene-bg: #060a14;
+      --scene-image: linear-gradient(165deg, #0a1530 0%, #0d1b3d 35%, #071026 70%, #04070f 100%);
+      --scene-veil-1: rgba(56, 189, 248, 0.34);
+      --scene-veil-2: rgba(129, 92, 255, 0.30);
+    }
+    [data-scene="ocean"] {
+      --scene-bg: #04121f;
+      --scene-image: linear-gradient(170deg, #06263f 0%, #0a3a5c 40%, #05203a 75%, #030d18 100%);
+      --scene-veil-1: rgba(45, 212, 191, 0.30);
+      --scene-veil-2: rgba(56, 152, 248, 0.34);
+    }
+    [data-scene="forest"] {
+      --scene-bg: #061109;
+      --scene-image: linear-gradient(165deg, #0c2c1c 0%, #14472e 45%, #0a2418 78%, #040c07 100%);
+      --scene-veil-1: rgba(132, 204, 22, 0.26);
+      --scene-veil-2: rgba(16, 185, 129, 0.30);
+    }
+    [data-scene="arena"] {
+      --scene-bg: #12060a;
+      --scene-image: linear-gradient(170deg, #350d16 0%, #5c1220 40%, #2a0810 76%, #0d0407 100%);
+      --scene-veil-1: rgba(244, 63, 94, 0.30);
+      --scene-veil-2: rgba(249, 115, 22, 0.26);
+    }
+    [data-scene="nebula"] {
+      --scene-bg: #0a0616;
+      --scene-image: linear-gradient(160deg, #1e0f3d 0%, #3a1560 42%, #17092e 76%, #070313 100%);
+      --scene-veil-1: rgba(217, 70, 239, 0.30);
+      --scene-veil-2: rgba(99, 102, 241, 0.34);
+    }
+    [data-scene="dusk"] {
+      --scene-bg: #140a08;
+      --scene-image: linear-gradient(170deg, #46180f 0%, #7a2c17 38%, #331009 74%, #0e0503 100%);
+      --scene-veil-1: rgba(251, 146, 60, 0.32);
+      --scene-veil-2: rgba(236, 72, 153, 0.24);
+    }
+    [data-scene="summit"] {
+      --scene-bg: #080d14;
+      --scene-image: linear-gradient(170deg, #1a2b3d 0%, #2b4055 40%, #131f2c 76%, #060a10 100%);
+      --scene-veil-1: rgba(148, 197, 232, 0.28);
+      --scene-veil-2: rgba(100, 130, 175, 0.30);
+    }
+
+    /* ── Modo escena: las superficies pasan a ser cristal ──
+       Solo hace falta redefinir los tokens: el resto de la hoja de estilo
+       ya los usa en todas partes. */
+    html.scene-on {
+      --surface: rgba(9, 14, 24, 0.52);
+      --surface-2: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #f3f6fb;
+      --muted: rgba(238, 243, 251, 0.68);
+      --faint: rgba(238, 243, 251, 0.44);
+      --chart-grid: rgba(255, 255, 255, 0.10);
+      --chart-tick: rgba(238, 243, 251, 0.68);
+    }
+    html.scene-on body { background: transparent; }
+
+    html.scene-on .card,
+    html.scene-on .sidebar,
+    html.scene-on .topbar,
+    html.scene-on .log-filters,
+    html.scene-on .table-responsive,
+    html.scene-on .update-modal {
+      -webkit-backdrop-filter: blur(18px) saturate(125%);
+      backdrop-filter: blur(18px) saturate(125%);
+    }
+    /* Un borde superior claro de 1px: es lo que hace que el cristal
+       parezca cristal y no un rectángulo translúcido. */
+    html.scene-on .card,
+    html.scene-on .table-responsive {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 18px 40px rgba(0, 0, 0, 0.28);
+    }
+    /* Un desplegable o un modal se leen ENCIMA de otro contenido: con la
+       translucidez de una tarjeta, el texto de debajo se cuela y no hay
+       quien lea las opciones. */
+    html.scene-on .fp-panel,
+    html.scene-on .modal-card {
+      background: rgba(9, 14, 24, 0.94);
+      -webkit-backdrop-filter: blur(22px) saturate(125%);
+      backdrop-filter: blur(22px) saturate(125%);
+    }
+    html.scene-on .sidebar { border-right-color: rgba(255, 255, 255, 0.09); }
+    html.scene-on .topbar { border-bottom-color: rgba(255, 255, 255, 0.09); }
+    /* El centro del donut tapa el agujero del gráfico: ahí el cristal no
+       vale, tiene que ser opaco o se ven las porciones por debajo. */
+    html.scene-on .donut-center { background: rgba(9, 14, 24, 0.92); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+    html.scene-on thead th { background: rgba(255, 255, 255, 0.05); }
+    html.scene-on tbody tr:hover { background: rgba(255, 255, 255, 0.06); }
+    html.scene-on .hbar-track,
+    html.scene-on input[type=range] { background: rgba(255, 255, 255, 0.10); }
+    html.scene-on .manual-form { background: rgba(255, 255, 255, 0.03); }
+
+    /* Navegadores sin backdrop-filter: superficies más opacas, porque sin
+       desenfoque la foto atraviesa el texto. */
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      html.scene-on { --surface: rgba(9, 14, 24, 0.88); --surface-2: rgba(255, 255, 255, 0.10); }
+      html.scene-on .scene-scrim { opacity: 1; }
+    }
+
+    /* ── Galería de escenas (pestaña Configuración) ── */
+    .scene-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 14px; }
+    .scene-swatch {
+      position: relative; padding: 0; border-radius: var(--radius-md); overflow: hidden;
+      border: 1px solid var(--border); background: var(--surface-2); cursor: pointer;
+      aspect-ratio: 16 / 10; font-family: var(--font-sans);
+      transition: border-color 0.2s ease, transform 0.15s ease;
+    }
+    .scene-swatch:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .scene-swatch-bg { position: absolute; inset: 0; background-size: cover; background-position: center; background-image: var(--scene-image); }
+    .scene-swatch-name {
+      position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px; text-align: left;
+      font-size: 12.5px; font-weight: 600; color: #fff;
+      background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
+    }
+    .scene-swatch.selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+    .scene-swatch.selected .scene-swatch-name::after { content: " ✓"; }
+    .scene-swatch[data-scene-id="none"] .scene-swatch-bg { background: repeating-linear-gradient(45deg, rgba(128,128,128,0.18) 0 8px, transparent 8px 16px); }
   </style>
 </head>
-<body>
+<body data-view="timer">
+
+<!-- Capa de escena: fija, detrás de todo, común a todas las pestañas. -->
+<div class="scene" aria-hidden="true">
+  <div class="scene-motion">
+    <div class="scene-base"></div>
+    <div class="scene-photo"></div>
+  </div>
+  <div class="scene-veil"></div>
+  <div class="scene-scrim"></div>
+</div>
 
 <h2 class="sr-only" style="display:none;">Tracker de tiempo de estudio con Pomodoro, estadísticas y registro de sesiones</h2>
 <div id="app">
@@ -645,15 +966,26 @@
         <div class="header-cat" title="Carpeta donde se registran las sesiones nuevas">
           <span class="header-cat-tag">Activa</span>
           <span class="cat-dot" id="active-cat-dot"></span>
-          <select id="active-category-select" class="cat-select" onchange="setActiveCategory(this.value)" aria-label="Carpeta activa"></select>
+          <button type="button" class="fp-trigger" id="active-category-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Carpeta activa" onclick="openActivePicker(this)">
+            <span class="fp-value" id="active-category-value">—</span>
+            <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
+          </button>
           <button type="button" class="cat-add-btn" onclick="switchTab('folders')" aria-label="Gestionar carpetas" title="Gestionar carpetas"><i class="ti ti-folder-cog" aria-hidden="true"></i></button>
         </div>
         <div class="header-cat" title="Filtra lo que ves en Estadísticas e Historial">
           <span class="header-cat-tag">Filtro</span>
           <i class="ti ti-filter" aria-hidden="true"></i>
-          <select id="global-category-filter" class="cat-select" onchange="setGlobalFilter(this.value)" aria-label="Filtrar por carpeta">
-            <option value="">Todas las carpetas</option>
-          </select>
+          <button type="button" class="fp-trigger" id="global-filter-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Filtrar por carpeta" onclick="openFilterPicker(this)">
+            <span class="fp-value" id="global-filter-value">Todas las carpetas</span>
+            <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="header-cat" title="Fondo de la aplicación">
+          <span class="header-cat-tag">Escena</span>
+          <button type="button" class="fp-trigger" id="scene-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Escena de fondo" onclick="openScenePicker(this)">
+            <span class="fp-value" id="scene-value">—</span>
+            <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
+          </button>
         </div>
         <button type="button" class="theme-toggle-btn" onclick="toggleQuickTheme()" aria-label="Cambiar tema">
           <i class="ti ti-moon" id="theme-toggle-icon" aria-hidden="true"></i>
@@ -716,22 +1048,22 @@
             <h3>Configuración</h3>
             <div class="config-row">
               <label>Trabajo</label>
-              <input type="range" min="5" max="60" value="25" step="5" id="cfg-work" oninput="updateConfig()">
+              <input type="range" min="5" max="60" value="25" step="5" id="cfg-work" oninput="updateConfig('work')">
               <input type="number" class="config-val" id="val-work" value="25" min="5" max="60" step="5" oninput="updateConfigFromInput('work')" onblur="clampConfigInput('work')">
             </div>
             <div class="config-row">
               <label>Descanso corto</label>
-              <input type="range" min="1" max="15" value="5" step="1" id="cfg-short" oninput="updateConfig()">
+              <input type="range" min="1" max="15" value="5" step="1" id="cfg-short" oninput="updateConfig('short')">
               <input type="number" class="config-val" id="val-short" value="5" min="1" max="15" step="1" oninput="updateConfigFromInput('short')" onblur="clampConfigInput('short')">
             </div>
             <div class="config-row">
               <label>Descanso largo</label>
-              <input type="range" min="10" max="30" value="15" step="5" id="cfg-long" oninput="updateConfig()">
+              <input type="range" min="10" max="30" value="15" step="5" id="cfg-long" oninput="updateConfig('long')">
               <input type="number" class="config-val" id="val-long" value="15" min="10" max="30" step="5" oninput="updateConfigFromInput('long')" onblur="clampConfigInput('long')">
             </div>
             <div class="config-row">
               <label>Ciclos hasta descanso</label>
-              <input type="range" min="2" max="6" value="4" step="1" id="cfg-cycles" oninput="updateConfig()">
+              <input type="range" min="2" max="6" value="4" step="1" id="cfg-cycles" oninput="updateConfig('cycles')">
               <input type="number" class="config-val" id="val-cycles" value="4" min="2" max="6" step="1" oninput="updateConfigFromInput('cycles')" onblur="clampConfigInput('cycles')">
             </div>
           </div>
@@ -809,15 +1141,16 @@
     <!-- LOG TAB -->
     <div id="tab-log" class="tab-panel">
       <div class="log-filters">
-        <select id="filter-type" onchange="renderLog()">
-          <option value="">Todos los tipos</option>
-          <option>General</option><option>Matemáticas</option><option>Programación</option><option>Idiomas</option><option>Lectura</option><option>Otro</option>
-        </select>
-        <select id="filter-days" onchange="renderLog()">
-          <option value="7">Últimos 7 días</option>
-          <option value="30">Últimos 30 días</option>
-          <option value="0">Todo</option>
-        </select>
+        <button type="button" class="fp-trigger" id="filter-type-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Filtrar por tipo" onclick="openLogTypePicker(this)">
+          <i class="ti ti-tag fp-lead" aria-hidden="true"></i>
+          <span class="fp-value" id="filter-type-value">Todos los tipos</span>
+          <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="fp-trigger" id="filter-days-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Filtrar por periodo" onclick="openLogDaysPicker(this)">
+          <i class="ti ti-calendar fp-lead" aria-hidden="true"></i>
+          <span class="fp-value" id="filter-days-value">Últimos 7 días</span>
+          <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
+        </button>
         <div class="spacer"></div>
         <button class="btn-secondary" style="padding: 9px 16px; font-size: 13.5px;" onclick="exportCSV()"><i class="ti ti-download" aria-hidden="true"></i> CSV</button>
         <button class="btn-danger" onclick="clearLog()"><i class="ti ti-trash" aria-hidden="true"></i> Limpiar</button>
@@ -845,6 +1178,17 @@
 
     <!-- SETTINGS TAB -->
     <div id="tab-settings" class="tab-panel" style="max-width:760px;">
+      <div class="chart-card card">
+        <h3>Escena de fondo</h3>
+        <p class="folders-hint">
+          La escena se ve en toda la app, con un movimiento lento de fondo.
+          Cada escena tiene su propio degradado; si dejas la foto correspondiente
+          en <strong>static/scenes/</strong> se superpone automáticamente.
+          El <strong>modo claro</strong> desactiva la escena.
+        </p>
+        <div class="scene-grid" id="scene-gallery"></div>
+      </div>
+
       <div class="chart-card card">
         <h3>Color de acento</h3>
         <div class="accent-row">
@@ -887,7 +1231,8 @@
           &nbsp;&nbsp;&nbsp;&nbsp;└ Cálculo<br>
           &nbsp;&nbsp;└ Semestre 2
         </p>
-        <p class="help-text">Desde la pestaña <strong>Carpetas</strong> puedes crear una carpeta, añadirle una <strong>subcarpeta</strong>, <strong>renombrarla</strong>, <strong>moverla</strong> a otra rama o <strong>archivarla</strong>. Dos carpetas pueden llamarse igual si están en ramas distintas (un "Cálculo" en Semestre 1 y otro en Semestre 2), pero no dentro de la misma.</p>
+        <p class="help-text">Desde la pestaña <strong>Carpetas</strong> puedes crear una carpeta, añadirle una <strong>subcarpeta</strong>, <strong>renombrarla</strong>, <strong>moverla</strong> a otra rama, <strong>archivarla</strong> o <strong>eliminarla</strong>. Dos carpetas pueden llamarse igual si están en ramas distintas (un "Cálculo" en Semestre 1 y otro en Semestre 2), pero no dentro de la misma.</p>
+        <p class="help-text"><strong>Eliminar</strong> es definitivo y se lleva también las subcarpetas: antes de hacerlo, la app te pregunta si prefieres <strong>mover</strong> las sesiones que hubiera dentro a otra carpeta o <strong>borrarlas</strong> con ella. Si solo quieres quitarla de en medio sin perder nada, archívala en vez de eliminarla.</p>
         <p class="help-text"><strong>Archivar</strong> una carpeta archiva también todas sus subcarpetas; al restaurar una subcarpeta se restaura la cadena completa hacia arriba, para que nunca quede escondida. Los datos de una carpeta archivada siguen contando en tus estadísticas.</p>
       </div>
       <div class="chart-card card">
@@ -928,14 +1273,14 @@
   <div class="update-modal">
     <div class="update-modal-icon"><i class="ti ti-sparkles" aria-hidden="true"></i></div>
     <h3>Novedades en FocusData</h3>
-    <p class="update-modal-sub">Nuevas formas de organizar y medir tu tiempo.</p>
+    <p class="update-modal-sub">Un Pomodoro más fiable y carpetas más fáciles de gestionar.</p>
     <ul>
       <!-- El texto va dentro de un <span>: el <li> es flex, así que cada hijo
            suelto se convertiría en una columna y partiría la frase. -->
-      <li><i class="ti ti-folders" aria-hidden="true"></i> <span><strong>Subcarpetas anidadas</strong>: organiza tus carpetas en árbol, con el detalle que quieras.</span></li>
-      <li><i class="ti ti-clock-up" aria-hidden="true"></i> <span><strong>Modo cronómetro</strong>: cuenta hacia adelante cuando no sabes cuánto vas a trabajar.</span></li>
-      <li><i class="ti ti-layout-navbar" aria-hidden="true"></i> <span><strong>Activa</strong> y <strong>Filtro</strong> ahora están arriba: una decide dónde se guarda, el otro qué ves.</span></li>
-      <li><i class="ti ti-folder-cog" aria-hidden="true"></i> <span>Las carpetas tienen <strong>su propia pestaña</strong>, con crear, mover y archivar en un solo sitio.</span></li>
+      <li><i class="ti ti-bug-off" aria-hidden="true"></i> <span>Arreglado un <strong>bug del Pomodoro</strong>: cambiar los minutos de descanso antes de iniciarlo ya no dejaba el reloj en negativo.</span></li>
+      <li><i class="ti ti-list-search" aria-hidden="true"></i> <span>Los selectores de <strong>carpeta, filtro y escena</strong> estrenan buscador y árbol propio — y ya no se ven claros por error en modo oscuro.</span></li>
+      <li><i class="ti ti-arrows-move" aria-hidden="true"></i> <span><strong>Mover una carpeta</strong> ahora es un diálogo visual, no un cuadro de texto con números.</span></li>
+      <li><i class="ti ti-trash" aria-hidden="true"></i> <span><strong>Eliminar una carpeta</strong> de forma definitiva, eligiendo si sus sesiones se mueven a otra carpeta o se borran con ella.</span></li>
     </ul>
     <button class="btn-primary full-width" onclick="dismissUpdateNotice()"><i class="ti ti-check" aria-hidden="true"></i> Entendido, ¡vamos!</button>
   </div>
@@ -1009,12 +1354,6 @@ const filteredDb = () => {
   return db.filter(r => ids.has(+r.category_id));
 };
 
-// Etiqueta de carpeta para un <option>: sangría por nivel + nombre.
-// Se usa el espacio duro ( ) porque los navegadores colapsan los normales.
-function catOptionLabel(c) {
-  return '  '.repeat(c.depth || 0) + (c.depth ? '└ ' : '') + c.name;
-}
-
 // Helper: local date string YYYY-MM-DD (avoids toISOString() which uses UTC)
 function localDateStr(d) {
   if (!d) d = new Date();
@@ -1035,6 +1374,7 @@ let cfg = { work: 25, short: 5, long: 15, cycles: 4 };
 let state = {
   running: false, paused: false, phase: 'work', session: 1,
   remaining: cfg.work * 60, endTime: null, // endTime = timestamp when timer hits 0
+  phaseTotal: cfg.work * 60, // duración con la que arrancó la fase actual (segundos)
   type: 'General', cycleCount: 0,
   timerMode: 'pomodoro',   // 'pomodoro' | 'cronometro'
   elapsed: 0,              // segundos acumulados (solo cronómetro)
@@ -1053,7 +1393,22 @@ function paintAllSliders() {
   ['work','short','long','cycles'].forEach(k => paintSlider(document.getElementById('cfg-' + k)));
 }
 
-function updateConfig() {
+// El reloj ocioso tiene que seguir a la duración de LA FASE QUE ESTÁ EN PANTALLA.
+// Antes se reseteaba siempre a cfg.work: al terminar un pomodoro el estado queda
+// "ocioso en fase de descanso", así que mover cualquier slider dejaba remaining con
+// los minutos de trabajo sobre un total de descanso → porcentaje negativo, anillo
+// desbordado y un descanso que corría los minutos equivocados al pulsar Iniciar.
+// `key` es la duración que el usuario acaba de tocar; coincide con state.phase
+// ('work' | 'short' | 'long'), y 'cycles' no afecta a ninguna fase.
+function syncIdleRemaining(key) {
+  if (state.timerMode !== 'pomodoro' || state.running || state.paused) return;
+  if (key && key !== state.phase) return;
+  state.phaseTotal = phaseDuration();
+  state.remaining = state.phaseTotal;
+  renderClock();
+}
+
+function updateConfig(key) {
   cfg.work = +document.getElementById('cfg-work').value;
   cfg.short = +document.getElementById('cfg-short').value;
   cfg.long = +document.getElementById('cfg-long').value;
@@ -1063,7 +1418,7 @@ function updateConfig() {
   document.getElementById('val-long').value = cfg.long;
   document.getElementById('val-cycles').value = cfg.cycles;
   paintAllSliders();
-  if (state.timerMode === 'pomodoro' && !state.running && !state.paused) { state.remaining = cfg.work * 60; renderClock(); }
+  syncIdleRemaining(key);
 }
 
 function updateConfigFromInput(key) {
@@ -1077,7 +1432,7 @@ function updateConfigFromInput(key) {
   slider.value = val;
   cfg[key] = val;
   paintSlider(slider);
-  if (state.timerMode === 'pomodoro' && !state.running && !state.paused && key === 'work') { state.remaining = cfg.work * 60; renderClock(); }
+  syncIdleRemaining(key);
 }
 
 function clampConfigInput(key) {
@@ -1092,7 +1447,7 @@ function clampConfigInput(key) {
   slider.value = val;
   cfg[key] = val;
   paintSlider(slider);
-  if (state.timerMode === 'pomodoro' && !state.running && !state.paused && key === 'work') { state.remaining = cfg.work * 60; renderClock(); }
+  syncIdleRemaining(key);
 }
 
 function phaseDuration() {
@@ -1145,13 +1500,16 @@ function renderClock() {
   const rem = Math.max(0, state.remaining);
   const m = Math.floor(rem / 60), s = rem % 60;
   document.getElementById('timer-display').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-  const total = phaseDuration();
-  // offset = CIRC when full (no time elapsed), drains to 0 as time passes
-  const offset = CIRC * (rem / total);
+  // El total es el de la fase EN CURSO, no el que dicta cfg ahora mismo: si la
+  // duración cambia a mitad de fase, el anillo sigue midiendo lo que se arrancó.
+  const total = state.phaseTotal || phaseDuration();
+  // frac va de 1 (fase entera por delante) a 0 (fase agotada); el clamp evita que
+  // un estado inconsistente saque el anillo del círculo o dé un % negativo.
+  const frac = Math.min(1, Math.max(0, rem / total));
   const ring = document.getElementById('ring');
-  ring.style.strokeDashoffset = offset;
+  ring.style.strokeDashoffset = CIRC * frac;
   ring.className.baseVal = 'ring-fg' + (state.phase !== 'work' ? ' break' : '');
-  document.getElementById('timer-percent').textContent = Math.round((1 - rem / total) * 100) + '% completado';
+  document.getElementById('timer-percent').textContent = Math.round((1 - frac) * 100) + '% completado';
 
   document.getElementById('phase-label').textContent = state.phase === 'work' ? 'Tiempo de trabajo' : (state.phase === 'short' ? 'Descanso corto' : 'Descanso largo');
   const currentCycle = Math.min(cfg.cycles, (state.cycleCount % cfg.cycles) + 1);
@@ -1191,6 +1549,7 @@ function startTimer() {
     state.paused = false;
   } else {
     // Fresh start: calculate endTime from current phase duration
+    state.phaseTotal = state.remaining;
     state.endTime = Date.now() + state.remaining * 1000;
   }
   state.running = true;
@@ -1223,6 +1582,7 @@ function resetTimer() {
   state.session = 1;
   state.cycleCount = 0;
   state.remaining = cfg.work * 60;
+  state.phaseTotal = cfg.work * 60;
   state.endTime = null;
   state.elapsed = 0;
   state.startedAt = null;
@@ -1307,8 +1667,11 @@ function sendNotification(title, body) {
 function phaseComplete() {
   clearInterval(interval);
   playAlarm();
+  // Se registra lo que la fase REALMENTE duró, no lo que cfg diga ahora: si el
+  // usuario movió el slider a mitad de camino, cfg ya no describe esta sesión.
+  const minutosReales = Math.max(1, Math.round((state.phaseTotal || phaseDuration()) / 60));
   if (state.phase === 'work') {
-    logSession(cfg.work, state.type, 'pomodoro');
+    logSession(minutosReales, state.type, 'pomodoro');
     state.cycleCount++;
     state.phase = state.cycleCount % cfg.cycles === 0 ? 'long' : 'short';
     const msg = state.phase === 'long' ? '🎉 ¡Gran descanso! Sesión guardada.' : '☕ Descanso corto. Sesión guardada.';
@@ -1316,14 +1679,14 @@ function phaseComplete() {
     sendNotification('⏰ Sesión completada', state.phase === 'long' ? '¡Tómate un gran descanso!' : '¡Hora de un descanso corto!');
   } else {
     // El descanso terminó: registrarlo para poder calcular el Ratio de Descanso Activo
-    const breakMins = state.phase === 'long' ? cfg.long : cfg.short;
-    logSession(breakMins, 'Descanso', 'break');
+    logSession(minutosReales, 'Descanso', 'break');
     state.session++;
     state.phase = 'work';
     toast('💪 ¡A estudiar!');
     sendNotification('⏰ Descanso terminado', '¡Es hora de volver a estudiar!');
   }
-  state.remaining = phaseDuration();
+  state.phaseTotal = phaseDuration();
+  state.remaining = state.phaseTotal;
   state.running = false;
   updateToggleButton();
   renderClock(); updateSideInfo();
@@ -1446,6 +1809,8 @@ function switchTab(t) {
   document.getElementById('tab-' + t).classList.add('active');
   const title = document.getElementById('topbar-title');
   if (title) title.textContent = NAV_LABELS[t] || '';
+  // El CSS sube el oscurecido de la escena en las pestañas densas en datos.
+  document.body.dataset.view = t;
   if (t === 'stats') renderStats();
   if (t === 'log') renderLog();
 }
@@ -1702,20 +2067,36 @@ function renderStats() {
   renderHeatmap();
 }
 
-// Select de carpeta por fila para reasignar; las filas aún no sincronizadas
+// Selector de carpeta por fila para reasignar; las filas aún no sincronizadas
 // (sin id de servidor) muestran solo el nombre hasta el próximo sync.
+// El disparador no lleva su propia lista: el panel es único y se abre bajo
+// demanda, así que una tabla de mil filas no crea mil menús.
 function catSelectHtml(r) {
-  if (r.remote_id == null) return r.category_name || '—';
-  const options = categories
-    .filter(c => !c.archived || c.id === +r.category_id)
-    .map(c => `<option value="${c.id}" ${c.id === +r.category_id ? 'selected' : ''}>${esc(catOptionLabel(c))}${c.archived ? ' (archivada)' : ''}</option>`)
-    .join('');
-  return `<select class="cat-select" onchange="reassignSession('${esc(r.ts)}', this.value)" aria-label="Carpeta de la sesión">${options}</select>`;
+  if (r.remote_id == null) return esc(r.category_name || '—');
+  const cat = categoryById(r.category_id);
+  const nombre = cat ? cat.name + (cat.archived ? ' (archivada)' : '') : (r.category_name || '—');
+  const color = cat ? cat.color : 'transparent';
+  return `<button type="button" class="fp-trigger fp-inline" aria-haspopup="listbox" aria-expanded="false"
+            aria-label="Carpeta de la sesión" data-session-ts="${esc(r.ts)}" onclick="openRowCategoryPicker(this)">
+            <span class="fp-dot" style="background:${esc(color)}"></span>
+            <span class="fp-value">${esc(nombre)}</span>
+            <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
+          </button>`;
 }
 
+// Filtros del Registro: antes vivían en el value de dos <select>; ahora que el
+// desplegable es propio, el estado lo guarda el módulo.
+let logFilters = { type: '', days: 7 };
+const LOG_TYPES = ['General', 'Matemáticas', 'Programación', 'Idiomas', 'Lectura', 'Otro'];
+const LOG_RANGES = [
+  { value: 7,  label: 'Últimos 7 días' },
+  { value: 30, label: 'Últimos 30 días' },
+  { value: 0,  label: 'Todo' },
+];
+
 function renderLog() {
-  const filterType = document.getElementById('filter-type').value;
-  const filterDays = +document.getElementById('filter-days').value;
+  const filterType = logFilters.type;
+  const filterDays = logFilters.days;
   const today = new Date();
   let recs = [...filteredDb()].filter(r => r.mode !== 'break').reverse();
   if (filterType) recs = recs.filter(r => r.type === filterType);
@@ -1765,7 +2146,7 @@ function toast(msg) {
 
 // Aviso de novedades: se muestra una vez por navegador tras esta actualización.
 // Cambiar UPDATE_NOTICE_VERSION en el próximo rediseño relevante para volver a mostrarlo.
-const UPDATE_NOTICE_VERSION = 'subcarpetas-v2';
+const UPDATE_NOTICE_VERSION = 'pomodoro-menus-v3';
 function showUpdateNoticeIfNeeded() {
   if (localStorage.getItem('fd_update_seen') === UPDATE_NOTICE_VERSION) return;
   document.getElementById('update-overlay').style.display = 'flex';
@@ -1787,7 +2168,7 @@ if ('Notification' in window && Notification.permission === 'default') {
 
 // ── Apariencia (tema + acento) ──
 const VALID_THEMES = ['dark', 'light', 'ocean', 'forest'];
-let prefs = { theme: 'dark', accent: '#3b82f6' };
+let prefs = { theme: 'dark', accent: '#3b82f6', scene: 'aurora' };
 
 // Convierte #rrggbb a "r, g, b"
 function hexToRgb(hex) {
@@ -1809,6 +2190,8 @@ function applyTheme(theme) {
   const label = document.getElementById('theme-toggle-label');
   if (icon) icon.className = 'ti ' + (isLight ? 'ti-sun' : 'ti-moon');
   if (label) label.textContent = isLight ? 'Modo claro' : 'Modo oscuro';
+  updateSceneMode();
+  cacheAppearance();
 }
 
 function applyAccent(accent) {
@@ -1850,12 +2233,409 @@ function savePreferences() {
   fetch('/api/preferences', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ theme: prefs.theme, accent: prefs.accent })
+    body: JSON.stringify({ theme: prefs.theme, accent: prefs.accent, scene: prefs.scene })
   }).then(r => r.json()).then(d => {
     if (d.ok) toast('Apariencia guardada ✓');
     else toast(d.error || 'No se pudo guardar');
   }).catch(() => toast('Error de conexión'))
     .finally(() => { btn.disabled = false; });
+}
+
+// ── Escenas de fondo ──
+// Catálogo fijo: los ids tienen que coincidir con VALID_SCENES en app.py
+// y con los bloques [data-scene="..."] del CSS.
+// photo:true busca /static/scenes/<id>.webp y, si no existe, .jpg. Si no hay
+// ninguna, la escena se queda con su degradado — nunca se ve rota.
+const SCENES = [
+  { id: 'aurora', label: 'Aurora',     photo: false },
+  { id: 'ocean',  label: 'Océano',     photo: true  },
+  { id: 'forest', label: 'Bosque',     photo: true  },
+  { id: 'summit', label: 'Cumbre',     photo: true  },
+  { id: 'dusk',   label: 'Atardecer',  photo: true  },
+  { id: 'arena',  label: 'Arena',      photo: true  },
+  { id: 'nebula', label: 'Nebulosa',   photo: false },
+  { id: 'none',   label: 'Sin escena', photo: false },
+];
+const DEFAULT_SCENE = 'aurora';
+const SCENE_EXTS = ['webp', 'jpg'];
+
+// Contador para descartar la carga de una foto cuyo cambio de escena ya
+// quedó obsoleto (el usuario pasó a otra antes de que terminara de bajar).
+let scenePhotoToken = 0;
+
+function applyScene(id) {
+  if (!SCENES.some(sc => sc.id === id)) id = DEFAULT_SCENE;
+  prefs.scene = id;
+  const root = document.documentElement;
+  root.setAttribute('data-scene', id);
+  root.classList.remove('scene-photo-ready');
+  root.style.removeProperty('--scene-photo');
+  scenePhotoToken++;
+  updateSceneMode();
+  syncSceneUI();
+  cacheAppearance();
+  const def = SCENES.find(sc => sc.id === id);
+  if (def && def.photo) loadScenePhoto(id, 0, scenePhotoToken);
+}
+
+function loadScenePhoto(id, extIndex, token) {
+  if (extIndex >= SCENE_EXTS.length) return;
+  const url = '/static/scenes/' + id + '.' + SCENE_EXTS[extIndex];
+  const img = new Image();
+  img.onload = () => {
+    if (token !== scenePhotoToken) return;
+    document.documentElement.style.setProperty('--scene-photo', 'url("' + url + '")');
+    document.documentElement.classList.add('scene-photo-ready');
+  };
+  img.onerror = () => { if (token === scenePhotoToken) loadScenePhoto(id, extIndex + 1, token); };
+  img.src = url;
+}
+
+// El cristal (superficies translúcidas + desenfoque) solo tiene sentido si hay
+// algo detrás: con "Sin escena" o en modo claro se vuelve a superficies opacas.
+function updateSceneMode() {
+  const on = prefs.scene !== 'none' && prefs.theme !== 'light';
+  document.documentElement.classList.toggle('scene-on', on);
+}
+
+function selectScene(id) {
+  applyScene(id);
+  if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+  fetch('/api/preferences', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scene: prefs.scene })
+  }).catch(() => {});
+}
+
+// Rellena la galería de Configuración. El desplegable de la barra superior
+// construye su lista al abrirse (openScenePicker), así que aquí no hace falta.
+function buildSceneUI() {
+  const gal = document.getElementById('scene-gallery');
+  if (gal && !gal.children.length) {
+    SCENES.forEach(sc => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'scene-swatch';
+      // data-scene hace que el propio swatch herede el degradado de esa escena.
+      b.setAttribute('data-scene', sc.id);
+      b.dataset.sceneId = sc.id;
+      b.setAttribute('aria-label', 'Escena ' + sc.label);
+      b.innerHTML = '<span class="scene-swatch-bg"></span><span class="scene-swatch-name"></span>';
+      b.querySelector('.scene-swatch-name').textContent = sc.label;
+      b.onclick = () => selectScene(sc.id);
+      gal.appendChild(b);
+    });
+  }
+  syncSceneUI();
+}
+
+function syncSceneUI() {
+  const def = SCENES.find(sc => sc.id === prefs.scene);
+  setTriggerText('scene-trigger', 'scene-value', def ? def.label : '—');
+  document.querySelectorAll('.scene-swatch').forEach(b => {
+    b.classList.toggle('selected', b.dataset.sceneId === prefs.scene);
+  });
+}
+
+// Copia local de la apariencia: se aplica antes de que responda /api/me para
+// que no haya un parpadeo de fondo plano al abrir la app.
+const APPEARANCE_KEY = 'focusdata.appearance';
+
+function cacheAppearance() {
+  try {
+    localStorage.setItem(APPEARANCE_KEY, JSON.stringify({
+      theme: prefs.theme, accent: prefs.accent, scene: prefs.scene
+    }));
+  } catch (e) { /* almacenamiento no disponible: no es crítico */ }
+}
+
+function applyCachedAppearance() {
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(APPEARANCE_KEY) || 'null'); } catch (e) { cached = null; }
+  applyTheme(cached && cached.theme ? cached.theme : 'dark');
+  applyAccent(cached && cached.accent ? cached.accent : '#3b82f6');
+  applyScene(cached && cached.scene ? cached.scene : DEFAULT_SCENE);
+  buildSceneUI();
+}
+
+// ── Desplegable propio (Picker) ─────────────────────────
+// Un solo panel, reutilizado por todos los disparadores. Un <select> nativo
+// delega su lista al sistema operativo: no acepta árbol ni buscador, y se
+// pintaba con la paleta clara aunque la app estuviera en modo oscuro.
+// Cada item: { value, label, depth?, color?, note?, disabled?, search? }
+const Picker = (() => {
+  let panel, listEl, searchEl, ctx = null, items = [], vista = [], activo = -1;
+
+  // Comparación tolerante a mayúsculas y acentos ("logistica" encuentra "Logística").
+  const norm = s => (s == null ? '' : String(s)).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  function build() {
+    panel = document.createElement('div');
+    panel.className = 'fp-panel';
+    panel.innerHTML = `
+      <div class="fp-search">
+        <i class="ti ti-search" aria-hidden="true"></i>
+        <input type="text" placeholder="Buscar…" aria-label="Buscar" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="fp-list" role="listbox" tabindex="-1"></div>`;
+    document.body.appendChild(panel);
+    listEl = panel.querySelector('.fp-list');
+    searchEl = panel.querySelector('.fp-search input');
+
+    searchEl.addEventListener('input', () => { renderList(); position(); });
+    panel.addEventListener('keydown', onKeyDown);
+    listEl.addEventListener('click', e => {
+      const btn = e.target.closest('.fp-opt');
+      if (btn && !btn.disabled) elegir(+btn.dataset.i);
+    });
+    // pointerdown y no click: cierra antes de que el navegador mueva el foco.
+    document.addEventListener('pointerdown', e => {
+      if (!ctx) return;
+      if (panel.contains(e.target) || ctx.anchor.contains(e.target)) return;
+      close();
+    }, true);
+    // Un scroll del contenido dejaría el panel flotando lejos de su disparador.
+    window.addEventListener('scroll', () => { if (ctx) close(); }, true);
+    window.addEventListener('resize', () => { if (ctx) close(); });
+  }
+
+  function renderList() {
+    const q = norm(searchEl.value.trim());
+    vista = q ? items.filter(it => norm(it.search || it.label).includes(q)) : items.slice();
+    if (!vista.length) {
+      listEl.innerHTML = '<div class="fp-empty">Sin resultados</div>';
+      activo = -1;
+      return;
+    }
+    // Al buscar la sangría estorba (el padre puede no estar en la lista), así
+    // que se muestra la ruta completa en plano.
+    const plano = !!q;
+    listEl.innerHTML = vista.map((it, i) => {
+      const depth = plano ? 0 : (it.depth || 0);
+      const label = plano && it.search ? it.search : it.label;
+      const sel = String(it.value) === String(ctx.value);
+      return `<button type="button" class="fp-opt" role="option" data-i="${i}"
+                aria-selected="${sel}" ${it.disabled ? 'disabled' : ''}
+                style="padding-left:${10 + depth * 16}px" title="${esc(it.search || it.label)}">
+                ${depth ? '<span class="fp-branch" aria-hidden="true">└</span>' : ''}
+                ${it.color ? `<span class="fp-dot" style="background:${esc(it.color)}"></span>` : ''}
+                ${it.icon ? `<i class="ti ${esc(it.icon)}" aria-hidden="true"></i>` : ''}
+                <span class="fp-opt-label">${esc(label)}</span>
+                ${it.note ? `<span class="fp-opt-note">${esc(it.note)}</span>` : ''}
+                <i class="ti ti-check fp-check" aria-hidden="true"></i>
+              </button>`;
+    }).join('');
+    // Arranca sobre la opción ya seleccionada, para que ↑/↓ partan de ahí.
+    activo = vista.findIndex(it => String(it.value) === String(ctx.value));
+    marcarActivo(false);
+  }
+
+  function marcarActivo(scroll = true) {
+    const opts = listEl.querySelectorAll('.fp-opt');
+    opts.forEach((o, i) => o.classList.toggle('fp-active', i === activo));
+    if (scroll && activo >= 0 && opts[activo]) opts[activo].scrollIntoView({ block: 'nearest' });
+  }
+
+  function mover(paso) {
+    if (!vista.length) return;
+    let i = activo;
+    for (let n = 0; n < vista.length; n++) {
+      i = (i + paso + vista.length) % vista.length;
+      if (!vista[i].disabled) { activo = i; marcarActivo(); return; }
+    }
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); mover(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); mover(-1); }
+    else if (e.key === 'Home') { e.preventDefault(); activo = -1; mover(1); }
+    else if (e.key === 'End') { e.preventDefault(); activo = vista.length; mover(-1); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (activo >= 0) elegir(activo); }
+    else if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); close(); }
+  }
+
+  function elegir(i) {
+    const it = vista[i];
+    if (!it || it.disabled) return;
+    const cb = ctx.onSelect;
+    close();
+    if (cb) cb(it.value, it);
+  }
+
+  function position() {
+    const r = ctx.anchor.getBoundingClientRect();
+    const ancho = Math.min(Math.max(r.width, ctx.minWidth || 260), window.innerWidth - 16);
+    panel.style.width = ancho + 'px';
+    panel.style.left = Math.round(Math.min(Math.max(8, r.left), window.innerWidth - ancho - 8)) + 'px';
+    // Si abajo no cabe pero arriba sí, el panel se voltea sobre el disparador.
+    const alto = panel.offsetHeight;
+    const hueco = window.innerHeight - r.bottom - 8;
+    panel.style.top = (hueco >= alto || hueco >= r.top ? r.bottom + 6 : Math.max(8, r.top - alto - 6)) + 'px';
+  }
+
+  function open(opts) {
+    if (!panel) build();
+    if (ctx && ctx.anchor === opts.anchor) { close(); return; }  // segundo clic = cerrar
+    if (ctx) close();
+    ctx = opts;
+    items = opts.items || [];
+    searchEl.value = '';
+    // Con pocas opciones el buscador sobra y roba el foco a las flechas.
+    const conBuscador = opts.searchable !== false && items.length > 5;
+    panel.querySelector('.fp-search').hidden = !conBuscador;
+    panel.classList.add('open');
+    renderList();
+    position();
+    opts.anchor.setAttribute('aria-expanded', 'true');
+    (conBuscador ? searchEl : listEl).focus({ preventScroll: true });
+  }
+
+  function close() {
+    if (!ctx) return;
+    const anchor = ctx.anchor;
+    ctx = null;
+    panel.classList.remove('open');
+    anchor.setAttribute('aria-expanded', 'false');
+    // Solo devolvemos el foco si seguía dentro del panel: si el usuario hizo
+    // clic en otro sitio, robárselo sería peor que no hacer nada.
+    if (panel.contains(document.activeElement) && document.contains(anchor)) anchor.focus({ preventScroll: true });
+  }
+
+  return { open, close, isOpen: () => !!ctx };
+})();
+
+// Convierte las carpetas en items del Picker.
+//   archived : 'hide' oculta las archivadas | 'show' las lista con nota
+//   keepId   : id que se muestra aunque esté archivado (la carpeta actual de una fila)
+//   exclude  : Set de ids no seleccionables (una carpeta no puede ir dentro de sí misma)
+//   lead     : item fijo al principio ("Todas las carpetas", "Raíz"…)
+function folderItems({ archived = 'hide', keepId = null, exclude = null, lead = null } = {}) {
+  const items = lead ? [lead] : [];
+  categories.forEach(c => {
+    const esArchivada = !!c.archived;
+    if (esArchivada && archived === 'hide' && +c.id !== +keepId) return;
+    items.push({
+      value: c.id,
+      label: c.name,
+      search: c.path || c.name,
+      depth: c.depth || 0,
+      color: c.color,
+      note: esArchivada ? 'archivada' : '',
+      disabled: exclude ? exclude.has(+c.id) : false,
+    });
+  });
+  return items;
+}
+
+// Pinta el texto (y el punto de color) de un disparador ya montado.
+function setTriggerText(triggerId, valueId, text, color) {
+  const val = document.getElementById(valueId);
+  if (val) val.textContent = text;
+  const trigger = document.getElementById(triggerId);
+  if (trigger && color !== undefined) {
+    const dot = trigger.querySelector('.fp-dot');
+    if (dot) dot.style.background = color || 'transparent';
+  }
+}
+
+// ── Disparadores concretos ──
+
+function openActivePicker(anchor) {
+  Picker.open({
+    anchor, value: activeCategoryId,
+    items: folderItems({ archived: 'hide' }),
+    onSelect: v => setActiveCategory(v),
+  });
+}
+
+function openFilterPicker(anchor) {
+  Picker.open({
+    anchor, value: filterCategoryId,
+    items: folderItems({
+      archived: 'show',
+      lead: { value: '', label: 'Todas las carpetas', icon: 'ti-stack-2' },
+    }),
+    onSelect: v => setGlobalFilter(v),
+  });
+}
+
+function openScenePicker(anchor) {
+  Picker.open({
+    anchor, value: prefs.scene, searchable: false,
+    items: SCENES.map(sc => ({ value: sc.id, label: sc.label, icon: 'ti-photo' })),
+    onSelect: v => selectScene(v),
+  });
+}
+
+function openLogTypePicker(anchor) {
+  Picker.open({
+    anchor, value: logFilters.type, searchable: false,
+    items: [{ value: '', label: 'Todos los tipos' }].concat(LOG_TYPES.map(t => ({ value: t, label: t }))),
+    onSelect: v => {
+      logFilters.type = v;
+      document.getElementById('filter-type-value').textContent = v || 'Todos los tipos';
+      renderLog();
+    },
+  });
+}
+
+function openLogDaysPicker(anchor) {
+  Picker.open({
+    anchor, value: logFilters.days, searchable: false,
+    items: LOG_RANGES.map(r => ({ value: r.value, label: r.label })),
+    onSelect: v => {
+      logFilters.days = +v;
+      const r = LOG_RANGES.find(x => x.value === +v);
+      document.getElementById('filter-days-value').textContent = r ? r.label : 'Todo';
+      renderLog();
+    },
+  });
+}
+
+// Fila del Registro: el disparador guarda el ts de la sesión en un data-*.
+function openRowCategoryPicker(anchor) {
+  const ts = anchor.dataset.sessionTs;
+  const rec = db.find(r => r.ts === ts);
+  if (!rec) return;
+  Picker.open({
+    anchor, value: rec.category_id,
+    items: folderItems({ archived: 'hide', keepId: rec.category_id }),
+    onSelect: v => reassignSession(ts, v),
+  });
+}
+
+// ── Modales ─────────────────────────────────────────────
+// Un overlay a la vez, creado y destruido al vuelo. Devuelve el <div> de la
+// tarjeta para que quien lo abre enganche sus propios controles.
+let modalActual = null;
+
+function closeModal() {
+  if (!modalActual) return;
+  Picker.close();
+  modalActual.remove();
+  modalActual = null;
+  document.removeEventListener('keydown', modalEscHandler, true);
+}
+
+function modalEscHandler(e) {
+  // Escape dentro del Picker lo cierra a él primero; el modal aguanta.
+  if (e.key === 'Escape' && !Picker.isOpen()) { e.preventDefault(); closeModal(); }
+}
+
+function openModal(html) {
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true">${html}</div>`;
+  overlay.addEventListener('mousedown', e => { if (e.target === overlay) closeModal(); });
+  document.body.appendChild(overlay);
+  modalActual = overlay;
+  document.addEventListener('keydown', modalEscHandler, true);
+  const card = overlay.querySelector('.modal-card');
+  const primer = card.querySelector('button, input, [tabindex]');
+  if (primer) primer.focus();
+  return card;
 }
 
 // ── Carpetas: carga, selectores y CRUD ──
@@ -1872,29 +2652,26 @@ function loadCategories() {
 }
 
 function renderCategoryUI() {
-  // Filtro global (todas las carpetas, incluidas archivadas)
-  const filterSel = document.getElementById('global-category-filter');
-  filterSel.innerHTML = '<option value="">Todas las carpetas</option>' + categories
-    .map(c => `<option value="${c.id}">${esc(catOptionLabel(c))}${c.archived ? ' (archivada)' : ''}</option>`)
-    .join('');
-  filterSel.value = filterCategoryId;
-  if (filterSel.value !== filterCategoryId) { filterCategoryId = ''; filterSel.value = ''; }
+  // Filtro global: si la carpeta filtrada desapareció, se vuelve a "Todas".
+  if (filterCategoryId && !categoryById(filterCategoryId)) filterCategoryId = '';
+  const filtroCat = categoryById(filterCategoryId);
+  setTriggerText('global-filter-trigger', 'global-filter-value',
+    filtroCat ? filtroCat.name + (filtroCat.archived ? ' (archivada)' : '') : 'Todas las carpetas');
 
-  // Selector de carpeta activa de la barra superior (solo no archivadas)
-  const activeSel = document.getElementById('active-category-select');
+  // Carpeta activa de la barra superior (solo no archivadas)
   const active = categories.filter(c => !c.archived);
-  activeSel.innerHTML = active.map(c => `<option value="${c.id}">${esc(catOptionLabel(c))}</option>`).join('');
   if (!categoryById(activeCategoryId) || categoryById(activeCategoryId).archived) {
     activeCategoryId = active.length ? active[0].id : null;
   }
-  if (activeCategoryId != null) activeSel.value = activeCategoryId;
   const activeCat = categoryById(activeCategoryId);
+  setTriggerText('active-category-trigger', 'active-category-value', activeCat ? activeCat.name : '—');
   const dot = document.getElementById('active-cat-dot');
   if (dot) {
     dot.style.background = activeCat ? activeCat.color : 'transparent';
     if (activeCat) dot.title = activeCat.path;
   }
-  if (activeSel && activeCat) activeSel.title = activeCat.path;
+  const activeTrigger = document.getElementById('active-category-trigger');
+  if (activeTrigger && activeCat) activeTrigger.title = activeCat.path;
 
   // Lista de gestión (pestaña Carpetas)
   const list = document.getElementById('category-list');
@@ -1913,10 +2690,11 @@ function renderCategoryUI() {
         <button class="cat-action" onclick="toggleArchive(${c.id})">
           <i class="ti ti-${c.archived ? 'archive-off' : 'archive'}" aria-hidden="true"></i> ${c.archived ? 'Restaurar' : 'Archivar'}
         </button>
+        <button class="cat-action cat-action-danger" onclick="deleteCategory(${c.id})"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>
       </div>`).join('');
   }
 
-  // Refrescar selects de reasignación si el log está visible
+  // Refrescar los selectores de reasignación si el Registro está visible
   if (document.getElementById('tab-log').classList.contains('active')) renderLog();
 }
 
@@ -1928,8 +2706,9 @@ function setActiveCategory(id) {
     dot.style.background = cat ? cat.color : 'transparent';
     if (cat) dot.title = cat.path;
   }
-  const activeSel = document.getElementById('active-category-select');
-  if (activeSel && cat) activeSel.title = cat.path;
+  setTriggerText('active-category-trigger', 'active-category-value', cat ? cat.name : '—');
+  const activeTrigger = document.getElementById('active-category-trigger');
+  if (activeTrigger && cat) activeTrigger.title = cat.path;
   fetch('/api/preferences', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1940,7 +2719,12 @@ function setActiveCategory(id) {
 }
 
 function setGlobalFilter(id) {
-  filterCategoryId = id;
+  filterCategoryId = id === '' ? '' : +id;
+  const cat = categoryById(filterCategoryId);
+  setTriggerText('global-filter-trigger', 'global-filter-value',
+    cat ? cat.name + (cat.archived ? ' (archivada)' : '') : 'Todas las carpetas');
+  const trigger = document.getElementById('global-filter-trigger');
+  if (trigger) trigger.title = cat ? cat.path : 'Filtra lo que ves en Estadísticas e Historial';
   updateSideInfo();
   if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
   if (document.getElementById('tab-log').classList.contains('active')) renderLog();
@@ -2049,26 +2833,223 @@ function addSubcategory(parentId) {
   }).catch(() => toast('Error de conexión'));
 }
 
+// Item "Raíz" que encabeza los selectores de destino. parent_id 0 es la raíz
+// en el backend (y no NULL: en SQLite dos NULL no chocan, así que el UNIQUE
+// dejaría pasar carpetas raíz duplicadas).
+const ITEM_RAIZ = { value: 0, label: 'Raíz (sin carpeta padre)', icon: 'ti-home' };
+
+// Destinos válidos para mover/reubicar: nunca la propia carpeta ni su
+// descendencia (sería un ciclo), y nunca una archivada.
+function destinoItems(id, { conRaiz = true } = {}) {
+  const prohibidos = descendantIds(id);
+  const items = folderItems({
+    archived: 'hide',
+    lead: conRaiz ? ITEM_RAIZ : null,
+  });
+  return items.map(it => it.value === 0 ? it
+    : { ...it, disabled: prohibidos.has(+it.value) });
+}
+
 function moveCategory(id) {
   const cat = categoryById(id);
   if (!cat) return;
-  // Destinos válidos: cualquier carpeta que no sea ella misma ni su descendencia.
-  const prohibidos = descendantIds(id);
-  const destinos = categories.filter(c => !c.archived && !prohibidos.has(+c.id));
-  const opciones = ['0) Raíz (sin carpeta padre)']
-    .concat(destinos.map((c, i) => `${i + 1}) ${c.path}`)).join('\n');
-  const resp = prompt(`¿Dónde quieres mover "${cat.name}"?\n\n${opciones}\n\nEscribe el número:`, '0');
-  if (resp === null) return;
-  const idx = parseInt(resp, 10);
-  if (isNaN(idx) || idx < 0 || idx > destinos.length) { toast('Destino no válido'); return; }
-  const parent_id = idx === 0 ? 0 : destinos[idx - 1].id;
+  let destino = 0;
+  const card = openModal(`
+    <h3><i class="ti ti-arrows-move" aria-hidden="true"></i> Mover carpeta</h3>
+    <p class="modal-sub">Elige dónde debe colgar <strong>${esc(cat.name)}</strong>. Sus subcarpetas se mueven con ella.</p>
+    <div class="modal-field">
+      <span class="modal-label">Nueva ubicación</span>
+      <button type="button" class="fp-trigger" id="move-target" aria-haspopup="listbox" aria-expanded="false">
+        <span class="fp-dot" style="background:transparent"></span>
+        <span class="fp-value">Raíz (sin carpeta padre)</span>
+        <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="move-cancel">Cancelar</button>
+      <button type="button" class="btn-primary" id="move-ok"><i class="ti ti-check" aria-hidden="true"></i> Mover</button>
+    </div>`);
+
+  const trigger = card.querySelector('#move-target');
+  trigger.onclick = () => Picker.open({
+    anchor: trigger, value: destino, items: destinoItems(id),
+    onSelect: (v, it) => {
+      destino = +v;
+      trigger.querySelector('.fp-value').textContent = it.search || it.label;
+      trigger.querySelector('.fp-dot').style.background = it.color || 'transparent';
+    },
+  });
+  card.querySelector('#move-cancel').onclick = closeModal;
+  card.querySelector('#move-ok').onclick = () => {
+    closeModal();
+    fetch(`/api/categories/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parent_id: destino })
+    }).then(r => r.json()).then(d => {
+      if (!d.ok) { toast(d.error || 'No se pudo mover la carpeta'); return; }
+      loadCategories().then(() => toast('Carpeta movida ✓'));
+    }).catch(() => toast('Error de conexión'));
+  };
+}
+
+// Lo que se llevaría por delante un borrado. Se calcula sobre la copia local
+// del historial, así que el modal puede mostrar el impacto sin pedir nada al
+// servidor (el backend vuelve a contarlo antes de tocar la base de datos).
+function impactoBorrado(id) {
+  const ids = descendantIds(id);
+  return {
+    ids,
+    carpetas: ids.size,
+    sesiones: db.filter(r => ids.has(+r.category_id)).length,
+  };
+}
+
+function deleteCategory(id) {
+  const cat = categoryById(id);
+  if (!cat) return;
+  const imp = impactoBorrado(id);
+  const subcarpetas = imp.carpetas - 1;
+
+  // Destinos posibles: todo lo que no vaya a desaparecer con esta carpeta.
+  const destinos = destinoItems(id, { conRaiz: false }).filter(it => !it.disabled);
+  // Sin sitio donde moverlas, la única salida es borrarlas.
+  const puedeMover = imp.sesiones > 0 && destinos.length > 0;
+
+  let modo = puedeMover ? 'move' : 'delete';
+  let destino = null;
+  if (puedeMover) {
+    const porDefecto = destinos.find(it => +it.value === +cat.parent_id) || destinos[0];
+    destino = +porDefecto.value;
+  }
+
+  const resumen = subcarpetas === 0
+    ? `<strong>${esc(cat.name)}</strong>`
+    : (subcarpetas === 1
+        ? `<strong>${esc(cat.name)}</strong> y su subcarpeta`
+        : `<strong>${esc(cat.name)}</strong> y sus <strong>${subcarpetas}</strong> subcarpetas`);
+  const conteo = imp.sesiones === 1 ? '1 sesión' : `${imp.sesiones} sesiones`;
+  const plural = imp.sesiones === 1 ? '' : 's';
+
+  const card = openModal(`
+    <h3><i class="ti ti-trash" aria-hidden="true"></i> Eliminar carpeta</h3>
+    <p class="modal-sub">Vas a eliminar ${resumen}. Contiene <strong>${conteo}</strong>.</p>
+    <div class="modal-warn">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+      <span>Esto no se puede deshacer. Si solo quieres quitarla de en medio sin perder nada, <strong>archívala</strong>.</span>
+    </div>
+    ${imp.sesiones > 0 ? `
+    <div class="modal-field">
+      <span class="modal-label">¿Qué hago con ${imp.sesiones === 1 ? 'esa sesión' : 'esas sesiones'}?</span>
+      <div class="choice-list">
+        ${destinos.length ? `
+        <label class="choice">
+          <input type="radio" name="del-content" value="move" ${modo === 'move' ? 'checked' : ''}>
+          <span class="choice-text">Moverla${plural} a otra carpeta
+            <small>El tiempo registrado se conserva en tus estadísticas.</small></span>
+        </label>` : ''}
+        <label class="choice">
+          <input type="radio" name="del-content" value="delete" ${modo === 'delete' ? 'checked' : ''}>
+          <span class="choice-text">Eliminarla${plural} también
+            <small>${imp.sesiones === 1 ? 'Desaparece' : 'Desaparecen'} del historial y de las estadísticas para siempre.</small></span>
+        </label>
+      </div>
+    </div>` : ''}
+    ${puedeMover ? `
+    <div class="modal-field" id="del-target-field">
+      <span class="modal-label">Mover a</span>
+      <button type="button" class="fp-trigger" id="del-target" aria-haspopup="listbox" aria-expanded="false">
+        <span class="fp-dot" style="background:transparent"></span>
+        <span class="fp-value">—</span>
+        <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
+      </button>
+    </div>` : ''}
+    <div class="modal-field" id="del-confirm-field" hidden>
+      <span class="modal-label">Escribe ELIMINAR para confirmar</span>
+      <input type="text" class="modal-confirm-input" id="del-confirm" autocomplete="off" spellcheck="false" placeholder="ELIMINAR">
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="del-cancel">Cancelar</button>
+      <button type="button" class="btn-danger" id="del-ok"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>
+    </div>`);
+
+  const targetField = card.querySelector('#del-target-field');
+  const targetBtn = card.querySelector('#del-target');
+  const confirmField = card.querySelector('#del-confirm-field');
+  const confirmInput = card.querySelector('#del-confirm');
+  const okBtn = card.querySelector('#del-ok');
+
+  function pintarDestino() {
+    if (!targetBtn) return;
+    const it = destinos.find(d => +d.value === destino);
+    targetBtn.querySelector('.fp-value').textContent = it ? (it.search || it.label) : '—';
+    targetBtn.querySelector('.fp-dot').style.background = it && it.color ? it.color : 'transparent';
+  }
+
+  // Solo se exige teclear ELIMINAR cuando de verdad se pierden sesiones.
+  function sincronizar() {
+    const borraSesiones = modo === 'delete' && imp.sesiones > 0;
+    if (targetField) targetField.hidden = modo !== 'move';
+    confirmField.hidden = !borraSesiones;
+    okBtn.disabled = borraSesiones
+      ? confirmInput.value.trim().toUpperCase() !== 'ELIMINAR'
+      : (modo === 'move' && destino == null);
+    okBtn.style.opacity = okBtn.disabled ? '0.5' : '';
+    okBtn.style.cursor = okBtn.disabled ? 'not-allowed' : '';
+  }
+
+  card.querySelectorAll('input[name="del-content"]').forEach(r => {
+    r.addEventListener('change', () => { modo = r.value; sincronizar(); });
+  });
+  confirmInput.addEventListener('input', sincronizar);
+  if (targetBtn) {
+    targetBtn.onclick = () => Picker.open({
+      anchor: targetBtn, value: destino, items: destinos,
+      onSelect: v => { destino = +v; pintarDestino(); sincronizar(); },
+    });
+  }
+  card.querySelector('#del-cancel').onclick = closeModal;
+  okBtn.onclick = () => confirmarBorrado(id, modo, destino);
+
+  pintarDestino();
+  sincronizar();
+}
+
+function confirmarBorrado(id, modo, destino) {
+  // El nombre del destino se lee ANTES de recargar las carpetas: después de
+  // borrar, la lista cambia y el caché local necesita ya el nombre nuevo.
+  const destinoCat = modo === 'move' ? categoryById(destino) : null;
+  closeModal();
   fetch(`/api/categories/${id}`, {
-    method: 'PATCH',
+    method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ parent_id })
+    body: JSON.stringify(modo === 'move' ? { content: 'move', target_id: destino } : { content: 'delete' })
   }).then(r => r.json()).then(d => {
-    if (!d.ok) { toast(d.error || 'No se pudo mover la carpeta'); return; }
-    loadCategories().then(() => toast('Carpeta movida ✓'));
+    if (!d.ok) { toast(d.error || 'No se pudo eliminar la carpeta'); return; }
+    const borradas = new Set((d.deleted_ids || []).map(Number));
+
+    // Espejo local del cambio: el historial en caché tiene que reflejar lo
+    // mismo que la base de datos, o el próximo sync resucitaría lo borrado.
+    if (modo === 'move' && destinoCat) {
+      db.forEach(r => {
+        if (borradas.has(+r.category_id)) { r.category_id = destinoCat.id; r.category_name = destinoCat.name; }
+      });
+    } else {
+      db = db.filter(r => !borradas.has(+r.category_id));
+    }
+    save();
+
+    if (borradas.has(+filterCategoryId)) setGlobalFilter('');
+    if (d.active_category_id != null) activeCategoryId = +d.active_category_id;
+
+    loadCategories().then(() => {
+      updateSideInfo(); renderTypeRecos();
+      if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
+      if (document.getElementById('tab-log').classList.contains('active')) renderLog();
+      const detalle = d.moved_sessions ? ` · ${d.moved_sessions} sesiones movidas`
+        : (d.deleted_sessions ? ` · ${d.deleted_sessions} sesiones eliminadas` : '');
+      toast(`Carpeta eliminada${detalle} ✓`);
+    });
   }).catch(() => toast('Error de conexión'));
 }
 
@@ -2117,6 +3098,7 @@ function syncSessions() {
 }
 
 // Load current user + preferencias
+applyCachedAppearance();
 fetch('/api/me').then(r => {
   if (r.status === 401) { window.location.href = '/login'; return; }
   return r.json();
@@ -2127,8 +3109,23 @@ fetch('/api/me').then(r => {
     const avatarInitial = document.getElementById('sidebar-avatar-initial');
     if (avatarInitial) avatarInitial.textContent = data.username.charAt(0).toUpperCase();
     showUpdateNoticeIfNeeded();
-    applyTheme(data.theme || 'dark');
+    // 'ocean' y 'forest' eran temas antes de que existieran las escenas:
+    // se reinterpretan como escena sobre el tema oscuro y se reguardan.
+    let theme = data.theme || 'dark';
+    let scene = data.scene || DEFAULT_SCENE;
+    const legacyTheme = (theme === 'ocean' || theme === 'forest');
+    if (legacyTheme) { scene = theme; theme = 'dark'; }
+    applyTheme(theme);
     applyAccent(data.accent || '#3b82f6');
+    applyScene(scene);
+    buildSceneUI();
+    if (legacyTheme) {
+      fetch('/api/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: theme, scene: scene })
+      }).catch(() => {});
+    }
     activeCategoryId = data.active_category_id != null ? +data.active_category_id : null;
     loadCategories();
     syncSessions();

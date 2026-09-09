@@ -980,7 +980,7 @@
             <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
           </button>
         </div>
-        <div class="header-cat" title="Fondo de la aplicación">
+        <div class="header-cat" id="scene-header-cat" title="Fondo de la aplicación">
           <span class="header-cat-tag">Escena</span>
           <button type="button" class="fp-trigger" id="scene-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Escena de fondo" onclick="openScenePicker(this)">
             <span class="fp-value" id="scene-value">—</span>
@@ -1178,7 +1178,7 @@
 
     <!-- SETTINGS TAB -->
     <div id="tab-settings" class="tab-panel" style="max-width:760px;">
-      <div class="chart-card card">
+      <div class="chart-card card" id="scene-settings-card">
         <h3>Escena de fondo</h3>
         <p class="folders-hint">
           La escena se ve en toda la app, con un movimiento lento de fondo.
@@ -2257,6 +2257,12 @@ const SCENES = [
   { id: 'none',   label: 'Sin escena', photo: false },
 ];
 const DEFAULT_SCENE = 'aurora';
+
+// Interruptor del apartado de escenas. En false la app esconde el selector de
+// la barra superior y la galería de Configuración, y se comporta como si
+// estuviera en "Sin escena". La preferencia guardada NO se toca: basta volver a
+// ponerlo en true para que todo reaparezca tal y como estaba.
+const SCENES_ENABLED = false;
 const SCENE_EXTS = ['webp', 'jpg'];
 
 // Contador para descartar la carga de una foto cuyo cambio de escena ya
@@ -2267,7 +2273,7 @@ function applyScene(id) {
   if (!SCENES.some(sc => sc.id === id)) id = DEFAULT_SCENE;
   prefs.scene = id;
   const root = document.documentElement;
-  root.setAttribute('data-scene', id);
+  root.setAttribute('data-scene', SCENES_ENABLED ? id : 'none');
   root.classList.remove('scene-photo-ready');
   root.style.removeProperty('--scene-photo');
   scenePhotoToken++;
@@ -2275,7 +2281,7 @@ function applyScene(id) {
   syncSceneUI();
   cacheAppearance();
   const def = SCENES.find(sc => sc.id === id);
-  if (def && def.photo) loadScenePhoto(id, 0, scenePhotoToken);
+  if (SCENES_ENABLED && def && def.photo) loadScenePhoto(id, 0, scenePhotoToken);
 }
 
 function loadScenePhoto(id, extIndex, token) {
@@ -2294,7 +2300,7 @@ function loadScenePhoto(id, extIndex, token) {
 // El cristal (superficies translúcidas + desenfoque) solo tiene sentido si hay
 // algo detrás: con "Sin escena" o en modo claro se vuelve a superficies opacas.
 function updateSceneMode() {
-  const on = prefs.scene !== 'none' && prefs.theme !== 'light';
+  const on = SCENES_ENABLED && prefs.scene !== 'none' && prefs.theme !== 'light';
   document.documentElement.classList.toggle('scene-on', on);
 }
 
@@ -2311,6 +2317,13 @@ function selectScene(id) {
 // Rellena la galería de Configuración. El desplegable de la barra superior
 // construye su lista al abrirse (openScenePicker), así que aquí no hace falta.
 function buildSceneUI() {
+  if (!SCENES_ENABLED) {
+    ['scene-header-cat', 'scene-settings-card'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.hidden = true;
+    });
+    return;
+  }
   const gal = document.getElementById('scene-gallery');
   if (gal && !gal.children.length) {
     SCENES.forEach(sc => {
@@ -2395,8 +2408,13 @@ const Picker = (() => {
       if (panel.contains(e.target) || ctx.anchor.contains(e.target)) return;
       close();
     }, true);
-    // Un scroll del contenido dejaría el panel flotando lejos de su disparador.
-    window.addEventListener('scroll', () => { if (ctx) close(); }, true);
+    // Un scroll de la PÁGINA dejaría el panel flotando lejos de su disparador,
+    // así que lo cierra. El scroll dentro de la propia lista es otra cosa —
+    // es cómo se llega a las últimas carpetas — y hay que dejarlo pasar.
+    window.addEventListener('scroll', e => {
+      if (!ctx || panel.contains(e.target)) return;
+      close();
+    }, true);
     window.addEventListener('resize', () => { if (ctx) close(); });
   }
 
@@ -2468,10 +2486,19 @@ const Picker = (() => {
     const ancho = Math.min(Math.max(r.width, ctx.minWidth || 260), window.innerWidth - 16);
     panel.style.width = ancho + 'px';
     panel.style.left = Math.round(Math.min(Math.max(8, r.left), window.innerWidth - ancho - 8)) + 'px';
+
+    // La lista se recorta al hueco que de verdad hay en pantalla. Con un alto
+    // fijo, en una ventana baja las últimas carpetas quedaban por debajo del
+    // borde y no había forma de llegar a ellas.
+    const abajo = window.innerHeight - r.bottom - 14;
+    const arriba = r.top - 14;
+    listEl.style.maxHeight = '';
+    const marco = panel.offsetHeight - listEl.offsetHeight;   // buscador + bordes
+    listEl.style.maxHeight = Math.max(160, Math.min(320, Math.max(abajo, arriba) - marco)) + 'px';
+
     // Si abajo no cabe pero arriba sí, el panel se voltea sobre el disparador.
     const alto = panel.offsetHeight;
-    const hueco = window.innerHeight - r.bottom - 8;
-    panel.style.top = (hueco >= alto || hueco >= r.top ? r.bottom + 6 : Math.max(8, r.top - alto - 6)) + 'px';
+    panel.style.top = (abajo >= alto || abajo >= arriba ? r.bottom + 6 : Math.max(8, r.top - alto - 6)) + 'px';
   }
 
   function open(opts) {

@@ -104,9 +104,11 @@ html.side-collapsed .open-side { display: grid !important; }
 }
 .topbar .icon-btn:hover { background: var(--surface-solid); }
 /* Textos sueltos sobre una foto: más tinta y un halo sutil */
+html.has-photo .v-head h2 { color: var(--on-photo); text-shadow: var(--photo-shadow); }
 html.has-photo .crumb, html.has-photo .v-head .sub, html.has-photo .v-body > .hint {
-  color: color-mix(in srgb, var(--text) 86%, transparent); text-shadow: var(--photo-shadow);
+  color: var(--on-photo-muted); text-shadow: var(--photo-shadow);
 }
+html.has-photo .v-body > .hint b { color: var(--on-photo); }
 .pill-label { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scroll { position: relative; z-index: 1; flex: 1; overflow: auto; }
 .view { padding: 0 44px 44px; }
@@ -171,8 +173,10 @@ html.has-photo .crumb, html.has-photo .v-head .sub, html.has-photo .v-body > .hi
 .home-stats span { display: inline-flex; align-items: center; gap: 7px; }
 .home-stats b { color: var(--text); font-weight: 600; }
 .home-stats .ic { width: 16px; height: 16px; }
-/* Sobre una foto, los textos sueltos llevan halo o cápsula de vidrio */
-html.has-photo .hello, html.has-photo .home-title, html.has-photo .ring-c { text-shadow: var(--photo-shadow); }
+/* Sobre una foto (oscurecida igual en ambos temas) los textos sueltos van en tinta clara con halo */
+html.has-photo .home-title, html.has-photo .ring-c { color: var(--on-photo); text-shadow: var(--photo-shadow); }
+html.has-photo .hello, html.has-photo .ring-sub { color: var(--on-photo-muted); text-shadow: var(--photo-shadow); }
+html.has-photo .ring-track { stroke: var(--track-photo); }
 html.has-photo .home-meta, html.has-photo .home-stats, html.has-photo .chips-lab {
   padding: 5px 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);

@@ -49,6 +49,11 @@
   --amb: 22%;
   --scrim: linear-gradient(180deg, rgba(21, 20, 19, .4) 0%, rgba(21, 20, 19, .66) 55%, rgba(21, 20, 19, .82) 100%);
   --photo-shadow: 0 1px 14px rgba(0, 0, 0, .6);
+  /* Textos que flotan directamente sobre la foto: tinta clara en ambos temas */
+  --on-photo: #F4F2EE;
+  --on-photo-muted: rgba(244, 242, 238, .8);
+  --track-photo: rgba(255, 255, 255, .2);
+  --amb-photo: .3;
   /* Paleta categórica validada (orden fijo; el color sigue al tipo, nunca al puesto) */
   --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
   --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
@@ -85,10 +90,8 @@
   --tip-muted: #5B616B;
   --tip-line: #D3D8DF;
   --amb: 44%;
-  /* Modo claro: halo suave solo detrás del contenido; la foto conserva su color */
-  --scrim: radial-gradient(ellipse 56% 60% at 50% 45%, rgba(247, 246, 244, .6) 0%, rgba(247, 246, 244, .32) 55%, rgba(247, 246, 244, .06) 100%),
-           linear-gradient(180deg, rgba(247, 246, 244, .12), rgba(247, 246, 244, .24));
-  --photo-shadow: 0 1px 14px rgba(255, 255, 255, .8);
+  /* Sobre una foto, velo y ambiente quedan igual que en modo oscuro (misma exposición) */
+  --amb-photo: .15;
   --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100;
   --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #4a3aa7; --cat-8: #e34948;
   --cat-other: #a8a29e;
@@ -150,7 +153,10 @@ h1, h2, h3, p { margin: 0; }
 }
 .scene-photo::after { content: ""; position: absolute; inset: 0; background: var(--scrim); }
 html.has-photo .scene-photo { opacity: 1; animation: ken-burns 48s ease-in-out infinite alternate; }
-html.has-photo .scene-amb { opacity: .3; }
+html.has-photo .scene-amb { opacity: var(--amb-photo); }
+/* Base oscura bajo la foto: el fundido de entrada parte de oscuro en ambos temas,
+   así los textos en tinta clara se leen desde el primer instante. */
+html.has-photo .scene { background: #151413; }
 html.no-scene .scene-amb { opacity: 0; }
 @keyframes amb-drift { to { transform: scale(1.07) translate(-1.5%, 1.2%); } }
 @keyframes ken-burns { from { transform: scale(1.02); } to { transform: scale(1.09) translate(-1%, -.8%); } }

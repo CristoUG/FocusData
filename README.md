@@ -7,8 +7,9 @@ Incluye **autenticación de usuarios** (registro / login) con Flask-Login, de mo
 - Temporizador Pomodoro configurable con tipos de estudio 100% manuales y recomendaciones de los 3 tipos más usados.
 - **Carpetas de sesiones** (ej. "Semestre 1", "Trabajo"): cada sesión pertenece a una carpeta; se gestionan desde Ajustes (crear, renombrar, archivar, color) y un filtro global en el header focaliza todas las estadísticas y el historial en una sola carpeta.
 - Sincronización del historial con el backend (SQLite) para no perder datos entre dispositivos.
-- Personalización de apariencia por usuario: 4 temas (`dark`, `light`, `ocean`, `forest`) y color de acento.
-- Estadísticas avanzadas: racha actual/máxima, índice de regularidad semanal (IRS), ratio de descanso activo (RDA), enfoque Pomodoro, heatmap de consistencia, radar de balance temático, tendencia de 7 días y densidad por hora (0–23).
+- Diseño inspirado en Copilot / Fluent: barra lateral plegable con carpetas y sesiones recientes, menús desplegables, modo claro y oscuro, y color de acento.
+- **Escenas de fondo** (Carretera, Cerezos, Atardecer, Océano, Bosque, Nebulosa o ninguna) y **fondos propios**: cada usuario puede subir hasta 6 imágenes, que se guardan en su cuenta.
+- Estadísticas avanzadas: racha actual/máxima, índice de regularidad semanal (IRS), ratio de descanso activo (RDA), enfoque Pomodoro, calendario de consistencia, distribución por tema, últimos 7 días y densidad por hora (0–23).
 
 ## Instalación
 
@@ -40,12 +41,18 @@ study_tracker/
 ├── ver_db.py           ← Script para inspeccionar la base de datos
 ├── study.db            ← Base de datos SQLite (se crea automáticamente)
 ├── requirements.txt
+├── uploads/            ← Fondos subidos por los usuarios (se crea sola; no se versiona)
 └── static/
     ├── index.html      ← Interfaz principal (requiere login)
-    └── login.html      ← Pantalla de registro / inicio de sesión
+    ├── login.html      ← Pantalla de registro / inicio de sesión
+    ├── css/            ← tokens.css (tema) y app.css (interfaz)
+    ├── js/             ← Módulos ES: app, store, ui, timer, folders, stats, log, scenes, settings…
+    ├── img/icons.svg   ← Iconos Fluent UI System Icons (MIT)
+    └── scenes/         ← Fotos de las escenas del catálogo (ver su README)
 ```
 
 > Los HTML se sirven directamente desde `static/` con `send_from_directory` (no se usa la carpeta `templates/`).
+> El frontend no necesita compilación: los módulos `static/js/*.js` se cargan con `<script type="module">`.
 
 ## API endpoints
 
@@ -56,8 +63,16 @@ study_tracker/
 | POST | `/api/register` | Crear cuenta (inicia sesión automáticamente) |
 | POST | `/api/login` | Iniciar sesión |
 | GET | `/logout` | Cerrar sesión |
-| GET | `/api/me` | Datos del usuario actual (incluye `theme`, `accent` y `active_category_id`) |
-| POST | `/api/preferences` | Guardar preferencias (parcial: `theme`, `accent` y/o `active_category_id`) |
+| GET | `/api/me` | Datos del usuario actual (incluye `theme`, `accent`, `scene` y `active_category_id`) |
+| POST | `/api/preferences` | Guardar preferencias (parcial: `theme`, `accent`, `scene` y/o `active_category_id`). `scene` es un id del catálogo o `bg:<id>` de un fondo propio |
+
+### Fondos propios _(requieren login)_
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/backgrounds` | Listar los fondos del usuario (`id`, `name`, `colors`, `url`, `thumb_url`) |
+| POST | `/api/backgrounds` | Subir un fondo (multipart: `file`, `thumb` opcional, `name`, `colors`). JPG/PNG/WebP, hasta 4 MB y 6 fondos por usuario |
+| GET | `/api/backgrounds/<id>/image` | Imagen del fondo (`?size=thumb` para la miniatura). Solo para su dueño |
+| DELETE | `/api/backgrounds/<id>` | Eliminar un fondo; si estaba en uso, la escena vuelve a la de por defecto |
 
 ### Carpetas _(requieren login)_
 | Método | Ruta | Descripción |

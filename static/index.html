@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,3157 +7,350 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-
-  <style>
-    :root {
-      /* Sin esta declaración el navegador pinta con la paleta CLARA del sistema
-         todo lo que renderiza él y no nuestro CSS: la lista desplegada de un
-         <select>, los calendarios de <input type="date">, las barras de scroll y
-         el caret. Por eso los menús salían blancos estando en modo oscuro. */
-      color-scheme: dark;
-
-      /* Palette (superficies planas y opacas) */
-      --bg: #0b0f18;
-      --surface: #141a26;
-      --surface-2: #1b2230;
-      --border: #252d3d;
-      --text: #e7ebf3;
-      --muted: #8892a6;
-      --faint: #5a6478;
-
-      --accent: #3b82f6;
-      --accent-hover: #2563eb;
-
-      --danger: #ef4444;
-      --danger-bg: rgba(239, 68, 68, 0.12);
-      --success: #10b981;
-      --info: #38bdf8;
-
-      --font-sans: 'Inter', sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
-      --radius-lg: 12px;
-      --radius-md: 8px;
-      --radius-sm: 6px;
-
-      /* Colores de ejes/rejilla de los gráficos (dependen del tema) */
-      --chart-grid: rgba(255, 255, 255, 0.06);
-      --chart-tick: #8892a6;
-    }
-
-    /* ── Temas predefinidos ── */
-    [data-theme="light"] {
-      color-scheme: light;
-      --bg: #f4f6fa;
-      --surface: #ffffff;
-      --surface-2: #eef2f8;
-      --border: #e2e7ef;
-      --text: #131722;
-      --muted: #5c6675;
-      --faint: #98a2b3;
-      --chart-grid: rgba(19, 23, 34, 0.08);
-      --chart-tick: #5c6675;
-    }
-    [data-theme="ocean"] {
-      color-scheme: dark;
-      --bg: #07182b;
-      --surface: #0e2740;
-      --surface-2: #123152;
-      --border: #1d3f63;
-      --text: #ecfeff;
-      --muted: #7dd3fc;
-      --faint: #4d7fa3;
-      --chart-grid: rgba(125, 211, 252, 0.10);
-      --chart-tick: #7dd3fc;
-    }
-    [data-theme="forest"] {
-      color-scheme: dark;
-      --bg: #0a1f16;
-      --surface: #0f2e22;
-      --surface-2: #123a2b;
-      --border: #1c4a38;
-      --text: #ecfdf5;
-      --muted: #6ee7b7;
-      --faint: #3f7d64;
-      --chart-grid: rgba(110, 231, 183, 0.10);
-      --chart-tick: #6ee7b7;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    /* Varios componentes fijan display, que por especificidad le gana al
-       display:none por defecto de [hidden]. Sin esto, ocultar con .hidden = true
-       no haría nada en .fp-search ni en los campos de los modales. */
-    [hidden] { display: none !important; }
-
-    body {
-      font-family: var(--font-sans);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-    }
-
-    ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
-
-    #app { width: 100%; min-height: 100vh; display: flex; }
-
-    /* ── Sidebar ── */
-    .sidebar {
-      width: 232px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
-      display: flex; flex-direction: column; padding: 22px 16px; gap: 4px; min-height: 100vh;
-      position: sticky; top: 0; align-self: flex-start;
-    }
-    .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 22px; }
-    .sidebar-brand-icon {
-      width: 30px; height: 30px; border-radius: 7px; background: var(--accent);
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .sidebar-brand-icon i { font-size: 18px; color: #fff; }
-    .sidebar-brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
-    .sidebar-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); padding: 8px 10px 6px; }
-
-    .nav-item {
-      text-align: left; width: 100%; border: none; cursor: pointer; font-family: var(--font-sans);
-      display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--radius-sm);
-      background: transparent; color: var(--muted); font-size: 14px; font-weight: 600;
-      border-left: 2px solid transparent; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-    }
-    .nav-item i { font-size: 18px; flex-shrink: 0; }
-    .nav-item:hover:not(.active) { background: var(--surface-2); color: var(--text); }
-    .nav-item.active {
-      background: color-mix(in srgb, var(--accent) 15%, transparent);
-      color: var(--text); border-left-color: var(--accent);
-    }
-    .nav-item.active i { color: var(--accent); }
-
-    .sidebar-spacer { flex: 1; }
-    .sidebar-user {
-      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-      border-top: 1px solid var(--border); margin-top: 8px;
-    }
-    .sidebar-user-avatar {
-      width: 30px; height: 30px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--muted);
-      flex-shrink: 0;
-    }
-    .sidebar-user-info { line-height: 1.2; min-width: 0; }
-    .sidebar-user-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sidebar-user-logout { font-size: 11px; color: var(--faint); text-decoration: none; }
-    .sidebar-user-logout:hover { color: var(--danger); }
-
-    @media (max-width: 720px) {
-      .sidebar { width: 64px; padding: 16px 8px; }
-      .sidebar-brand { justify-content: center; padding: 6px 0 22px; }
-      .sidebar-brand-name, .sidebar-label, .nav-label, .sidebar-user-info { display: none; }
-      .nav-item { justify-content: center; padding: 12px; }
-      .sidebar-user { justify-content: center; }
-    }
-
-    /* ── Main / topbar ── */
-    .main-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    .topbar {
-      height: 60px; flex-shrink: 0; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between; padding: 0 28px; background: var(--surface);
-    }
-    .topbar-title { font-size: 16px; font-weight: 600; color: var(--text); }
-    .topbar-actions { display: flex; align-items: center; gap: 12px; }
-
-    .header-cat {
-      display: flex; align-items: center; gap: 8px; padding: 8px 14px;
-      background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    }
-    .header-cat i { color: var(--muted); font-size: 16px; }
-    /* Etiqueta que distingue "Activa" de "Filtro" en la barra superior. */
-    .header-cat-tag {
-      font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
-      color: var(--faint); flex-shrink: 0;
-    }
-    .header-cat .cat-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
-    .header-cat .cat-add-btn { width: 24px; height: 24px; font-size: 13px; }
-    /* En pantallas estrechas la barra tiene que poder envolver en vez de desbordarse. */
-    @media (max-width: 1000px) {
-      .topbar { height: auto; flex-wrap: wrap; gap: 10px; padding: 12px 20px; }
-      .topbar-actions { flex-wrap: wrap; gap: 8px; }
-      .header-cat .fp-trigger { max-width: 130px; }
-    }
-
-    .theme-toggle-btn {
-      display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--surface-2);
-      border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
-      color: var(--text); cursor: pointer; font-family: var(--font-sans); transition: border-color 0.2s ease;
-    }
-    .theme-toggle-btn:hover { border-color: var(--accent); }
-    .theme-toggle-btn i { font-size: 16px; color: var(--accent); }
-
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; padding: 28px; max-width: 1200px; margin: 0 auto; width: 100%; animation: fadeIn 0.3s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-
-    /* Cards Base */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 1.75rem;
-    }
-
-    /* Timer Layout */
-    .timer-layout {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 2rem;
-      align-items: stretch;
-    }
-    @media (max-width: 800px) { .timer-layout { grid-template-columns: 1fr; } }
-
-    .timer-card { text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;}
-    .timer-header-row { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 8px; }
-    .timer-label {
-      font-size: 13px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .timer-meta { font-size: 12px; font-family: var(--font-mono); color: var(--faint); letter-spacing: 0.03em; text-transform: uppercase; }
-
-    .timer-ring-wrap {
-      position: relative;
-      width: 216px;
-      height: 216px;
-      margin: 0 auto 2rem;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .timer-ring-wrap svg {
-      width: 216px;
-      height: 216px;
-      transform: rotate(-90deg);
-    }
-    .ring-bg { fill: none; stroke: var(--surface-2); stroke-width: 9; }
-    .ring-fg {
-      fill: none;
-      stroke: var(--accent);
-      stroke-width: 9;
-      stroke-linecap: round;
-      transition: stroke-dashoffset 1s linear, stroke 0.4s ease;
-    }
-    .ring-fg.break { stroke: var(--info); }
-    .timer-time-wrap { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); display: flex; flex-direction: column; align-items: center; }
-    .timer-time {
-      font-family: var(--font-mono);
-      font-size: 48px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: var(--text);
-      font-variant-numeric: tabular-nums;
-    }
-    /* Buttons */
-    .timer-mode-switch { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
-    .mode-btn {
-      background: var(--surface-2); color: var(--muted); border: 1px solid var(--border);
-      border-radius: var(--radius-md); padding: 7px 14px; font-size: 13px; cursor: pointer;
-      display: inline-flex; align-items: center; gap: 6px;
-      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-    }
-    .mode-btn:hover { color: var(--text); }
-    .mode-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .btn-row { display: flex; gap: 12px; justify-content: center; width: 100%; margin-bottom: 2rem;}
-    .btn-primary, .btn-secondary {
-      border-radius: var(--radius-md);
-      padding: 14px 28px;
-      font-size: 15px;
-      cursor: pointer;
-      font-family: var(--font-sans);
-      font-weight: 600;
-      transition: background 0.2s ease, border-color 0.2s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      border: none;
-    }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      flex: 2;
-      justify-content: center;
-    }
-    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .btn-secondary {
-      background: var(--surface-2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      flex: 1;
-      justify-content: center;
-    }
-    .btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
-    .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-secondary.full-width { width: 100%; margin-top: 1rem; }
-
-    /* Type Chips */
-    .session-type { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-start; width: 100%; }
-    .type-recos-label {
-      text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; width: 100%;
-    }
-    .type-chip {
-      padding: 6px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 12.5px;
-      border: 1px solid var(--border);
-      cursor: pointer;
-      background: var(--surface-2);
-      color: var(--muted);
-      transition: background 0.2s ease, color 0.2s ease;
-      font-weight: 500;
-    }
-    .type-chip:hover { background: var(--surface); color: var(--text); }
-    .type-chip.selected {
-      background: color-mix(in srgb, var(--accent) 14%, transparent);
-      border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-      color: var(--accent);
-    }
-
-    /* Custom type input */
-    .custom-type-wrap { margin-top: 12px; width: 100%; text-align: left; }
-    .custom-type-label { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 8px; }
-    .custom-type-field {
-      display: flex; align-items: center; gap: 10px; padding: 11px 14px;
-      background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
-      transition: border-color 0.2s ease;
-    }
-    .custom-type-field:focus-within { border-color: var(--accent); }
-    .custom-type-field i { color: var(--faint); font-size: 16px; flex-shrink: 0; }
-    .custom-type-input {
-      flex: 1; width: auto; min-width: 0; padding: 0; border: none; background: transparent;
-      color: var(--text); font-family: var(--font-sans); font-size: 14px; font-weight: 500;
-      outline: none; text-align: left;
-    }
-    .custom-type-input::placeholder { color: var(--faint); }
-
-    /* Manual session form */
-    .manual-form {
-      margin-top: 1rem;
-      background: transparent;
-      border: 1px dashed var(--border);
-      border-radius: var(--radius-md);
-      padding: 1.25rem;
-    }
-    .manual-form-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .manual-form-title i { font-size: 16px; color: var(--accent); }
-    .manual-input-group { display: flex; gap: 8px; align-items: center; }
-    .manual-input {
-      flex: 1;
-      padding: 12px 16px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--surface-2);
-      color: var(--text);
-      font-family: var(--font-mono);
-      font-size: 15px;
-      font-weight: 600;
-      outline: none;
-      text-align: center;
-      transition: border-color 0.2s ease;
-    }
-    .manual-input::placeholder { color: var(--faint); font-weight: 400; }
-    .manual-input:focus { border-color: var(--accent); }
-    .manual-input-suffix { font-size: 14px; color: var(--muted); font-weight: 500; }
-    .manual-actions { display: flex; gap: 8px; margin-top: 10px; }
-    .btn-confirm {
-      flex: 1; padding: 10px; border: none; border-radius: var(--radius-sm);
-      background: var(--accent); color: #fff; font-family: var(--font-sans); font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: background 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;
-    }
-    .btn-confirm:hover { background: var(--accent-hover); }
-    .btn-cancel {
-      padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-      background: var(--surface-2); color: var(--muted); font-family: var(--font-sans); font-size: 14px; font-weight: 500;
-      cursor: pointer; transition: color 0.2s ease;
-    }
-    .btn-cancel:hover { color: var(--text); }
-
-    /* Configuration */
-    .config-card { margin-bottom: 1rem; }
-    .config-card h3 { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    .config-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-    .config-row label { font-size: 13.5px; color: var(--text); flex: 1; }
-
-    /* Range Sliders (el JS pinta el track con el % recorrido en color de acento) */
-    input[type=range] {
-      -webkit-appearance: none; appearance: none; width: 100px; height: 5px; border-radius: 3px;
-      background: var(--surface-2); outline: none; cursor: pointer;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; appearance: none; height: 15px; width: 15px; border-radius: 50%;
-      background: var(--accent); cursor: pointer; border: 2px solid var(--surface); transition: transform 0.1s;
-    }
-    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
-    input[type=range]::-moz-range-thumb {
-      height: 15px; width: 15px; border-radius: 50%;
-      background: var(--accent); cursor: pointer; border: 2px solid var(--surface);
-    }
-    .config-val {
-      font-size: 13px; font-weight: 600; color: var(--text); width: 56px; text-align: center;
-      background: var(--surface-2); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-      font-family: var(--font-mono); font-variant-numeric: tabular-nums; outline: none; cursor: pointer;
-      transition: border-color 0.2s ease; -moz-appearance: textfield;
-    }
-    .config-val::-webkit-outer-spin-button, .config-val::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .config-val:hover, .config-val:focus { border-color: var(--accent); }
-
-    /* Carpeta activa (Timer) */
-    .folder-card { margin-bottom: 1rem; }
-    .folders-hint { font-size: 13px; color: var(--muted); line-height: 1.6; margin: -4px 0 16px; }
-    .folders-hint strong { color: var(--text); font-weight: 600; }
-    .btn-secondary.dashed { border-style: dashed; background: transparent; }
-
-    /* STATS TAB */
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
-    @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 560px) { .stats-grid { grid-template-columns: 1fr; } }
-    .metric { text-align: left; padding: 18px; border-radius: 10px; }
-    .metric .m-label { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 10px; }
-    .metric .m-label i { font-size: 15px; color: var(--accent); }
-    .metric .m-val { font-family: var(--font-mono); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
-    .metric .m-val .m-unit { font-family: var(--font-sans); font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 3px; }
-    .metric .m-sub { font-size: 12px; color: var(--faint); margin-top: 6px; }
-
-    /* Fila de dos columnas: gráfico semanal + donut de distribución */
-    .charts-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-bottom: 1.5rem; align-items: stretch; }
-    .charts-row .chart-card { margin-bottom: 0; }
-    @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
-
-    /* Distribución por tema (donut) */
-    .donut-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
-    .donut { width: 150px; height: 150px; border-radius: 50%; flex-shrink: 0; position: relative; }
-    .donut-center {
-      position: absolute; inset: 26px; border-radius: 50%; background: var(--surface);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-    }
-    .donut-center .val { font-family: var(--font-mono); font-size: 19px; font-weight: 700; color: var(--text); }
-    .donut-center .lbl { font-size: 10px; color: var(--muted); }
-    .donut-legend { display: flex; flex-direction: column; gap: 9px; font-size: 12.5px; }
-    .donut-legend .row { display: flex; align-items: center; gap: 8px; }
-    .donut-legend .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-    .donut-legend .pct { color: var(--muted); margin-left: auto; padding-left: 12px; }
-
-    /* Por tipo de estudio (barras horizontales) */
-    .hbars { display: flex; flex-direction: column; gap: 14px; }
-    .hbar-row { display: flex; align-items: center; gap: 14px; }
-    .hbar-label { width: 110px; font-size: 13px; color: var(--text); flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .hbar-track { flex: 1; height: 22px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
-    .hbar-fill { height: 100%; border-radius: 5px; }
-    .hbar-val { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); width: 46px; text-align: right; flex-shrink: 0; }
-
-    .chart-card { margin-bottom: 1.5rem; }
-    .chart-card h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 1.5rem; color: var(--text); }
-
-    /* HELP TAB */
-    .help-text { color: var(--muted); font-size: 13.5px; line-height: 1.7; margin: 0; }
-    .help-text + .help-text { margin-top: 0.5rem; }
-    .help-text strong { color: var(--text); font-weight: 600; }
-
-    /* LOG TAB */
-    .log-filters {
-      display: flex; gap: 12px; margin-bottom: 1.5rem; align-items: center; flex-wrap: wrap;
-      background: var(--surface); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border);
-    }
-    .log-filters .spacer { flex: 1; }
-    .log-filters .fp-trigger { padding: 9px 14px; }
-
-    .timer-cat-wrap { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
-    .timer-cat-wrap label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
-    .cat-add-btn {
-      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-      border: 1px solid var(--border); background: var(--surface-2);
-      color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: color 0.2s ease, border-color 0.2s ease; font-size: 15px;
-    }
-    .cat-add-btn:hover { color: var(--text); border-color: var(--accent); }
-
-    /* ── Selector desplegable propio ──
-       Sustituye a los <select> nativos: el sistema dibuja su lista fuera de
-       nuestro CSS, así que no admitía árbol, buscador ni el color del tema. */
-    .fp-trigger {
-      display: flex; align-items: center; gap: 8px; max-width: 220px;
-      padding: 8px 12px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--surface-2);
-      color: var(--text); font-family: var(--font-sans); font-size: 13.5px;
-      cursor: pointer; transition: border-color 0.2s ease;
-    }
-    .fp-trigger:hover, .fp-trigger[aria-expanded="true"] { border-color: var(--accent); }
-    .fp-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .fp-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
-    .fp-caret, .fp-lead { font-size: 15px; color: var(--muted); flex-shrink: 0; }
-    .fp-caret { transition: transform 0.2s ease; }
-    .fp-trigger[aria-expanded="true"] .fp-caret { transform: rotate(180deg); }
-    /* Dentro de la barra superior el marco ya lo pone .header-cat. */
-    .header-cat .fp-trigger { border: none; background: transparent; padding: 0; font-weight: 500; font-size: 13px; max-width: 190px; }
-    .header-cat .fp-trigger:hover .fp-caret,
-    .header-cat .fp-trigger[aria-expanded="true"] .fp-caret { color: var(--accent); }
-    /* En la tabla del Registro el disparador se mantiene discreto hasta el hover. */
-    .fp-trigger.fp-inline { border-color: transparent; background: transparent; padding: 5px 8px; max-width: 200px; }
-    .fp-trigger.fp-inline:hover, .fp-trigger.fp-inline[aria-expanded="true"] { border-color: var(--border); background: var(--surface-2); }
-
-    .fp-panel {
-      position: fixed; z-index: 2300; display: none; flex-direction: column; overflow: hidden;
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
-    }
-    .fp-panel.open { display: flex; }
-    .fp-search { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); }
-    .fp-search i { color: var(--muted); font-size: 15px; }
-    .fp-search input {
-      flex: 1; min-width: 0; border: none; background: transparent; outline: none;
-      color: var(--text); font-family: var(--font-sans); font-size: 13.5px;
-    }
-    .fp-list { overflow-y: auto; max-height: 300px; padding: 6px; display: flex; flex-direction: column; gap: 1px; }
-    .fp-opt {
-      display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
-      padding: 8px 10px; border: none; border-radius: var(--radius-sm); background: transparent;
-      color: var(--text); font-family: var(--font-sans); font-size: 13.5px; cursor: pointer;
-    }
-    .fp-opt:hover:not(:disabled), .fp-opt.fp-active { background: var(--surface-2); }
-    .fp-opt[aria-selected="true"] { font-weight: 600; color: var(--accent); }
-    .fp-opt:disabled { opacity: 0.4; cursor: not-allowed; }
-    .fp-opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .fp-opt-note { font-size: 11.5px; color: var(--faint); flex-shrink: 0; }
-    .fp-branch { color: var(--faint); font-size: 12px; flex-shrink: 0; }
-    .fp-check { font-size: 15px; color: var(--accent); flex-shrink: 0; visibility: hidden; }
-    .fp-opt[aria-selected="true"] .fp-check { visibility: visible; }
-    .fp-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
-    .fp-empty { padding: 16px 12px; text-align: center; font-size: 13px; color: var(--muted); }
-
-    /* ── Modales genéricos (mover / eliminar carpeta) ── */
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 2100;
-      display: flex; align-items: center; justify-content: center; padding: 20px;
-    }
-    .modal-card {
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-      width: 100%; max-width: 460px; padding: 26px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-      max-height: calc(100vh - 40px); overflow-y: auto;
-    }
-    .modal-card h3 { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
-    .modal-sub { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 18px; }
-    .modal-sub strong { color: var(--text); }
-    .modal-label { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
-    .modal-field { margin-bottom: 18px; }
-    .modal-field .fp-trigger { max-width: none; width: 100%; }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
-    .modal-actions .btn-primary, .modal-actions .btn-secondary, .modal-actions .btn-danger { padding: 9px 16px; font-size: 13.5px; }
-    .choice-list { display: flex; flex-direction: column; gap: 8px; }
-    .choice {
-      display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; cursor: pointer;
-      border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
-      transition: border-color 0.2s ease;
-    }
-    .choice:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
-    .choice:has(input:checked) {
-      border-color: var(--accent);
-      background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
-    }
-    .choice input { margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
-    .choice-text { font-size: 13.5px; color: var(--text); line-height: 1.5; }
-    .choice-text small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .modal-warn {
-      display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; margin-bottom: 18px;
-      border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5;
-      background: var(--danger-bg); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); color: var(--text);
-    }
-    .modal-warn i { color: var(--danger); font-size: 17px; flex-shrink: 0; margin-top: 1px; }
-    .modal-confirm-input {
-      width: 100%; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13.5px;
-      border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
-      font-family: var(--font-sans); outline: none;
-    }
-    .modal-confirm-input:focus { border-color: var(--danger); }
-
-    /* Gestión de carpetas (pestaña Carpetas) */
-    .cat-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; }
-    .cat-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
-    .cat-row .cat-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
-    .cat-row .cat-name { font-weight: 500; font-size: 13.5px; }
-    .cat-row.archived .cat-name { color: var(--muted); text-decoration: line-through; }
-    .cat-row .spacer { flex: 1; }
-    .cat-branch { color: var(--faint); margin-right: 4px; font-size: 12px; }
-    .cat-action {
-      background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm);
-      padding: 6px 10px; font-size: 12.5px; color: var(--muted); cursor: pointer;
-      font-family: var(--font-sans); transition: color 0.2s ease, border-color 0.2s ease;
-    }
-    .cat-action:hover { color: var(--text); border-color: var(--accent); }
-    .cat-action-danger:hover { color: var(--danger); border-color: var(--danger); }
-    .cat-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .cat-form input[type="text"] {
-      flex: 1; min-width: 160px; padding: 10px 14px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--surface-2);
-      color: var(--text); font-family: var(--font-sans); font-size: 13.5px; outline: none;
-    }
-    .cat-form input[type="text"]:focus { border-color: var(--accent); }
-    .cat-form input[type="color"] { width: 40px; height: 38px; border: none; background: transparent; cursor: pointer; }
-
-    .btn-danger {
-      background: var(--danger-bg); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
-      border-radius: var(--radius-sm); padding: 9px 16px; font-size: 13.5px; font-weight: 500;
-      color: var(--danger); cursor: pointer; font-family: var(--font-sans); transition: background 0.2s ease, color 0.2s ease;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .btn-danger:hover { background: var(--danger); color: #fff; }
-
-    .table-responsive { overflow-x: auto; background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); }
-    table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 660px; }
-    thead th { text-align: left; padding: 14px 16px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--surface-2); }
-    tbody tr { transition: background 0.15s ease; border-bottom: 1px solid var(--border); }
-    tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: var(--surface-2); }
-    tbody td { padding: 14px 16px; color: var(--text); }
-    .mono-cell { font-family: var(--font-mono); color: var(--muted); font-size: 12.5px; }
-    .mono-strong { font-family: var(--font-mono); font-weight: 600; color: var(--text); }
-
-    .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); font-size: 15px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-    .empty-state i { font-size: 44px; opacity: 0.5; margin-bottom: 8px;}
-
-    .badge { display: inline-block; padding: 5px 11px; border-radius: 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;}
-    .badge-pomodoro { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
-    .badge-manual { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .badge-cronometro { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-
-    /* Contenedor de los gráficos de barras (canvas de Chart.js) */
-    .bar-container { display: flex; flex-direction: column; gap: 16px; }
-    .hour-peak {
-      margin-top: 1rem; display: flex; align-items: center; gap: 8px; padding: 9px 14px;
-      border-radius: var(--radius-sm); background: color-mix(in srgb, var(--accent) 8%, transparent);
-      border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); font-size: 13px; color: var(--muted);
-    }
-    .hour-peak strong { color: var(--text); }
-    .hour-peak i { color: var(--accent); font-size: 17px; }
-
-    /* Toast */
-    .toast {
-      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: rgba(10, 14, 22, 0.92); color: #fff; padding: 13px 22px; border-radius: var(--radius-md);
-      font-size: 14px; font-weight: 500; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;
-      pointer-events: none; z-index: 1000; border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); display: flex; align-items: center; gap: 8px;
-    }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-    /* Aviso de novedades (se muestra una sola vez por navegador) */
-    .update-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 2000;
-      display: flex; align-items: center; justify-content: center; padding: 20px;
-    }
-    .update-modal {
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-      max-width: 420px; width: 100%; padding: 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.4);
-    }
-    .update-modal-icon {
-      width: 44px; height: 44px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 15%, transparent);
-      display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
-    }
-    .update-modal-icon i { font-size: 22px; color: var(--accent); }
-    .update-modal h3 { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-    .update-modal p.update-modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
-    .update-modal ul { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 22px; }
-    .update-modal li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: var(--text); line-height: 1.5; }
-    .update-modal li i { color: var(--accent); font-size: 17px; margin-top: 1px; flex-shrink: 0; }
-
-    /* ── Configuración ── */
-    .accent-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-    .accent-presets { display: flex; gap: 10px; flex-wrap: wrap; }
-    .accent-dot {
-      width: 32px; height: 32px; border-radius: 9px; cursor: pointer;
-      border: 2px solid transparent; transition: transform 0.15s ease, border-color 0.2s ease;
-    }
-    .accent-dot:hover { transform: scale(1.1); }
-    .accent-dot.selected { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px currentColor; }
-    .accent-custom { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--muted); font-size: 14px; }
-    .accent-custom input[type="color"] { width: 32px; height: 32px; padding: 0; border: none; border-radius: 8px; background: transparent; cursor: pointer; }
-
-    /* ── Calendario de consistencia (heatmap) ── */
-    .heatmap-scroll { overflow-x: auto; padding-bottom: 6px; }
-    .heatmap { display: grid; grid-template-rows: repeat(7, 1fr); grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; min-width: 660px; }
-    .hm-cell { aspect-ratio: 1; border-radius: 3px; min-width: 11px; }
-    .hm-l0 { background: color-mix(in srgb, var(--accent) 7%, transparent); }
-    .hm-l1 { background: color-mix(in srgb, var(--accent) 28%, transparent); }
-    .hm-l2 { background: color-mix(in srgb, var(--accent) 50%, transparent); }
-    .hm-l3 { background: color-mix(in srgb, var(--accent) 75%, transparent); }
-    .hm-l4 { background: var(--accent); }
-    .heatmap-legend { display: flex; align-items: center; gap: 6px; justify-content: flex-end; margin-top: 14px; font-size: 12px; color: var(--muted); }
-    .heatmap-legend .hm-cell { width: 13px; height: 13px; aspect-ratio: auto; }
-
-    /* ══════════════════════════════════════════════════════════════════
-       ESCENAS DE FONDO
-       Una escena = un fondo a pantalla completa (degradado propio + una
-       foto opcional encima) con movimiento lento. Vive en una capa fija
-       detrás de #app, así que se ve en TODAS las pestañas.
-
-       Capas, de atrás hacia delante:
-         .scene-base   degradado de la escena (siempre presente)
-         .scene-photo  la foto de static/scenes/, si carga (fade-in)
-         .scene-veil   dos manchas de luz que derivan: da movimiento
-                       incluso a las escenas que no tienen foto
-         .scene-scrim  oscurecido + rejilla: es lo que hace legible la UI
-       ══════════════════════════════════════════════════════════════════ */
-
-    .scene {
-      position: fixed; inset: 0; z-index: -2; overflow: hidden;
-      pointer-events: none; background: var(--scene-bg, var(--bg));
-    }
-    /* Oculta por completo la escena en modo claro y cuando el usuario
-       elige "Sin escena": la app vuelve a su aspecto plano de siempre. */
-    html:not(.scene-on) .scene { display: none; }
-
-    /* El zoom/paneo se aplica al grupo, para que degradado y foto se
-       muevan juntos. El bleed negativo evita que asomen los bordes. */
-    .scene-motion {
-      position: absolute; inset: -8%;
-      animation: scene-drift 75s ease-in-out infinite;
-      will-change: transform;
-    }
-    .scene-base, .scene-photo { position: absolute; inset: 0; background-size: cover; background-position: center; }
-    .scene-base { background-image: var(--scene-image); }
-    .scene-photo {
-      background-image: var(--scene-photo, none);
-      opacity: 0; transition: opacity 900ms ease;
-    }
-    html.scene-photo-ready .scene-photo { opacity: 1; }
-
-    @keyframes scene-drift {
-      0%   { transform: scale(1.05) translate3d(0, 0, 0); }
-      33%  { transform: scale(1.11) translate3d(-1.6%, -1.1%, 0); }
-      66%  { transform: scale(1.09) translate3d(1.4%, 0.9%, 0); }
-      100% { transform: scale(1.05) translate3d(0, 0, 0); }
-    }
-
-    /* Velo: dos manchas de luz enormes y difusas que se cruzan muy despacio. */
-    .scene-veil { position: absolute; inset: -20%; opacity: 0.55; transition: opacity 900ms ease; }
-    html.scene-photo-ready .scene-veil { opacity: 0.2; }
-    .scene-veil::before, .scene-veil::after {
-      content: ""; position: absolute; width: 70%; height: 70%; border-radius: 50%;
-      filter: blur(90px); will-change: transform;
-    }
-    .scene-veil::before {
-      top: -10%; left: -5%; background: var(--scene-veil-1, rgba(80, 140, 255, 0.35));
-      animation: veil-a 48s ease-in-out infinite;
-    }
-    .scene-veil::after {
-      bottom: -15%; right: -5%; background: var(--scene-veil-2, rgba(140, 90, 255, 0.3));
-      animation: veil-b 62s ease-in-out infinite;
-    }
-    @keyframes veil-a {
-      0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-      50%      { transform: translate3d(18%, 12%, 0) scale(1.18); }
-    }
-    @keyframes veil-b {
-      0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); }
-      50%      { transform: translate3d(-16%, -14%, 0) scale(0.92); }
-    }
-
-    /* Scrim: sin él, el texto blanco sobre una foto clara es ilegible.
-       --scrim-strength lo sube en las pestañas densas en datos. */
-    .scene-scrim {
-      position: absolute; inset: 0;
-      background:
-        repeating-linear-gradient(0deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 64px),
-        repeating-linear-gradient(90deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 64px),
-        radial-gradient(ellipse 90% 70% at 50% 45%, transparent 0%, rgba(4, 7, 14, 0.55) 100%),
-        linear-gradient(180deg, rgba(4, 7, 14, 0.55) 0%, rgba(4, 7, 14, 0.35) 40%, rgba(4, 7, 14, 0.72) 100%);
-      opacity: var(--scrim-strength, 0.9);
-      transition: opacity 0.45s ease;
-    }
-    /* El Timer respira: casi todo es fondo. Estadísticas y Registro son
-       tablas y gráficos, y ahí la foto tiene que ceder el paso. */
-    body[data-view="timer"] { --scrim-strength: 0.62; }
-    body[data-view="stats"],
-    body[data-view="log"] { --scrim-strength: 1; }
-
-    @media (prefers-reduced-motion: reduce) {
-      .scene-motion, .scene-veil::before, .scene-veil::after { animation: none; }
-      .scene-motion { inset: 0; }
-    }
-
-    /* ── Paletas de escena ──
-       --scene-image es el degradado propio: se ve siempre, y es lo único
-       que se ve si la foto de static/scenes/ todavía no existe. */
-    [data-scene="aurora"] {
-      --scene-bg: #060a14;
-      --scene-image: linear-gradient(165deg, #0a1530 0%, #0d1b3d 35%, #071026 70%, #04070f 100%);
-      --scene-veil-1: rgba(56, 189, 248, 0.34);
-      --scene-veil-2: rgba(129, 92, 255, 0.30);
-    }
-    [data-scene="ocean"] {
-      --scene-bg: #04121f;
-      --scene-image: linear-gradient(170deg, #06263f 0%, #0a3a5c 40%, #05203a 75%, #030d18 100%);
-      --scene-veil-1: rgba(45, 212, 191, 0.30);
-      --scene-veil-2: rgba(56, 152, 248, 0.34);
-    }
-    [data-scene="forest"] {
-      --scene-bg: #061109;
-      --scene-image: linear-gradient(165deg, #0c2c1c 0%, #14472e 45%, #0a2418 78%, #040c07 100%);
-      --scene-veil-1: rgba(132, 204, 22, 0.26);
-      --scene-veil-2: rgba(16, 185, 129, 0.30);
-    }
-    [data-scene="arena"] {
-      --scene-bg: #12060a;
-      --scene-image: linear-gradient(170deg, #350d16 0%, #5c1220 40%, #2a0810 76%, #0d0407 100%);
-      --scene-veil-1: rgba(244, 63, 94, 0.30);
-      --scene-veil-2: rgba(249, 115, 22, 0.26);
-    }
-    [data-scene="nebula"] {
-      --scene-bg: #0a0616;
-      --scene-image: linear-gradient(160deg, #1e0f3d 0%, #3a1560 42%, #17092e 76%, #070313 100%);
-      --scene-veil-1: rgba(217, 70, 239, 0.30);
-      --scene-veil-2: rgba(99, 102, 241, 0.34);
-    }
-    [data-scene="dusk"] {
-      --scene-bg: #140a08;
-      --scene-image: linear-gradient(170deg, #46180f 0%, #7a2c17 38%, #331009 74%, #0e0503 100%);
-      --scene-veil-1: rgba(251, 146, 60, 0.32);
-      --scene-veil-2: rgba(236, 72, 153, 0.24);
-    }
-    [data-scene="summit"] {
-      --scene-bg: #080d14;
-      --scene-image: linear-gradient(170deg, #1a2b3d 0%, #2b4055 40%, #131f2c 76%, #060a10 100%);
-      --scene-veil-1: rgba(148, 197, 232, 0.28);
-      --scene-veil-2: rgba(100, 130, 175, 0.30);
-    }
-
-    /* ── Modo escena: las superficies pasan a ser cristal ──
-       Solo hace falta redefinir los tokens: el resto de la hoja de estilo
-       ya los usa en todas partes. */
-    html.scene-on {
-      --surface: rgba(9, 14, 24, 0.52);
-      --surface-2: rgba(255, 255, 255, 0.07);
-      --border: rgba(255, 255, 255, 0.12);
-      --text: #f3f6fb;
-      --muted: rgba(238, 243, 251, 0.68);
-      --faint: rgba(238, 243, 251, 0.44);
-      --chart-grid: rgba(255, 255, 255, 0.10);
-      --chart-tick: rgba(238, 243, 251, 0.68);
-    }
-    html.scene-on body { background: transparent; }
-
-    html.scene-on .card,
-    html.scene-on .sidebar,
-    html.scene-on .topbar,
-    html.scene-on .log-filters,
-    html.scene-on .table-responsive,
-    html.scene-on .update-modal {
-      -webkit-backdrop-filter: blur(18px) saturate(125%);
-      backdrop-filter: blur(18px) saturate(125%);
-    }
-    /* Un borde superior claro de 1px: es lo que hace que el cristal
-       parezca cristal y no un rectángulo translúcido. */
-    html.scene-on .card,
-    html.scene-on .table-responsive {
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 18px 40px rgba(0, 0, 0, 0.28);
-    }
-    /* Un desplegable o un modal se leen ENCIMA de otro contenido: con la
-       translucidez de una tarjeta, el texto de debajo se cuela y no hay
-       quien lea las opciones. */
-    html.scene-on .fp-panel,
-    html.scene-on .modal-card {
-      background: rgba(9, 14, 24, 0.94);
-      -webkit-backdrop-filter: blur(22px) saturate(125%);
-      backdrop-filter: blur(22px) saturate(125%);
-    }
-    html.scene-on .sidebar { border-right-color: rgba(255, 255, 255, 0.09); }
-    html.scene-on .topbar { border-bottom-color: rgba(255, 255, 255, 0.09); }
-    /* El centro del donut tapa el agujero del gráfico: ahí el cristal no
-       vale, tiene que ser opaco o se ven las porciones por debajo. */
-    html.scene-on .donut-center { background: rgba(9, 14, 24, 0.92); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-    html.scene-on thead th { background: rgba(255, 255, 255, 0.05); }
-    html.scene-on tbody tr:hover { background: rgba(255, 255, 255, 0.06); }
-    html.scene-on .hbar-track,
-    html.scene-on input[type=range] { background: rgba(255, 255, 255, 0.10); }
-    html.scene-on .manual-form { background: rgba(255, 255, 255, 0.03); }
-
-    /* Navegadores sin backdrop-filter: superficies más opacas, porque sin
-       desenfoque la foto atraviesa el texto. */
-    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-      html.scene-on { --surface: rgba(9, 14, 24, 0.88); --surface-2: rgba(255, 255, 255, 0.10); }
-      html.scene-on .scene-scrim { opacity: 1; }
-    }
-
-    /* ── Galería de escenas (pestaña Configuración) ── */
-    .scene-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 14px; }
-    .scene-swatch {
-      position: relative; padding: 0; border-radius: var(--radius-md); overflow: hidden;
-      border: 1px solid var(--border); background: var(--surface-2); cursor: pointer;
-      aspect-ratio: 16 / 10; font-family: var(--font-sans);
-      transition: border-color 0.2s ease, transform 0.15s ease;
-    }
-    .scene-swatch:hover { transform: translateY(-2px); border-color: var(--accent); }
-    .scene-swatch-bg { position: absolute; inset: 0; background-size: cover; background-position: center; background-image: var(--scene-image); }
-    .scene-swatch-name {
-      position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px; text-align: left;
-      font-size: 12.5px; font-weight: 600; color: #fff;
-      background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
-    }
-    .scene-swatch.selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
-    .scene-swatch.selected .scene-swatch-name::after { content: " ✓"; }
-    .scene-swatch[data-scene-id="none"] .scene-swatch-bg { background: repeating-linear-gradient(45deg, rgba(128,128,128,0.18) 0 8px, transparent 8px 16px); }
-  </style>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/tokens.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script type="module" src="/static/js/app.js"></script>
 </head>
-<body data-view="timer">
+<body>
 
-<!-- Capa de escena: fija, detrás de todo, común a todas las pestañas. -->
-<div class="scene" aria-hidden="true">
-  <div class="scene-motion">
-    <div class="scene-base"></div>
-    <div class="scene-photo"></div>
-  </div>
-  <div class="scene-veil"></div>
-  <div class="scene-scrim"></div>
-</div>
+<!-- Degradado del anillo: toma los colores de la escena activa -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" style="stop-color:var(--s1)"/>
+      <stop offset=".5" style="stop-color:var(--s2)"/>
+      <stop offset="1" style="stop-color:var(--s3)"/>
+    </linearGradient>
+  </defs>
+</svg>
 
-<h2 class="sr-only" style="display:none;">Tracker de tiempo de estudio con Pomodoro, estadísticas y registro de sesiones</h2>
-<div id="app">
+<div class="app">
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="sidebar-brand-icon"><i class="ti ti-clock-bolt" aria-hidden="true"></i></div>
-      <span class="sidebar-brand-name">FocusData</span>
+  <!-- ══ Barra lateral ══ -->
+  <aside class="side" aria-label="Navegación">
+    <div class="side-top">
+      <span class="brand"><span class="brand-logo"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-timer"/></svg></span>FocusData</span>
+      <button type="button" class="icon-btn" id="btn-side-close" aria-label="Ocultar barra lateral" title="Ocultar barra lateral"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-panel-close"/></svg></button>
     </div>
-    <div class="sidebar-label">Panel</div>
-    <button class="nav-item active" data-tab="timer" onclick="switchTab('timer')"><i class="ti ti-player-play" aria-hidden="true"></i><span class="nav-label">Timer</span></button>
-    <button class="nav-item" data-tab="stats" onclick="switchTab('stats')"><i class="ti ti-chart-bar" aria-hidden="true"></i><span class="nav-label">Estadísticas</span></button>
-    <button class="nav-item" data-tab="log" onclick="switchTab('log')"><i class="ti ti-calendar" aria-hidden="true"></i><span class="nav-label">Registro</span></button>
-    <button class="nav-item" data-tab="folders" onclick="switchTab('folders')"><i class="ti ti-folders" aria-hidden="true"></i><span class="nav-label">Carpetas</span></button>
-    <button class="nav-item" data-tab="settings" onclick="switchTab('settings')"><i class="ti ti-settings" aria-hidden="true"></i><span class="nav-label">Configuración</span></button>
-    <button class="nav-item" data-tab="help" onclick="switchTab('help')"><i class="ti ti-help" aria-hidden="true"></i><span class="nav-label">Ayuda</span></button>
-    <div class="sidebar-spacer"></div>
-    <div class="sidebar-user">
-      <div class="sidebar-user-avatar"><span id="sidebar-avatar-initial">?</span></div>
-      <div class="sidebar-user-info">
-        <div class="sidebar-user-name" id="user-display">...</div>
-        <a href="/logout" class="sidebar-user-logout">Cerrar sesión</a>
+    <button type="button" class="side-new" id="btn-new"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-add"/></svg>Nueva sesión</button>
+    <nav>
+      <button type="button" class="nav-item" data-go="timer" aria-current="page"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-timer"/></svg>Timer</button>
+      <button type="button" class="nav-item" data-go="stats"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-stats"/></svg>Estadísticas</button>
+      <button type="button" class="nav-item" data-go="log"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-calendar"/></svg>Registro</button>
+    </nav>
+    <div class="side-scroll">
+      <div class="side-sec">
+        <button type="button" class="sec-h" data-toggle="side-folders" aria-expanded="true">Carpetas<svg class="ic s12 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg></button>
+        <div class="tree-sub open" id="side-folders"><div>
+          <div id="side-tree"></div>
+          <button type="button" class="sec-link" data-go="folders"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-folder-add"/></svg>Gestionar carpetas</button>
+        </div></div>
       </div>
-    </div>
-  </aside>
-
-  <!-- MAIN -->
-  <main class="main-content">
-    <div class="topbar">
-      <span class="topbar-title" id="topbar-title">Timer</span>
-      <div class="topbar-actions">
-        <!-- Dos controles distintos y contiguos: "Activa" decide DÓNDE se guardan
-             las sesiones nuevas; "Filtro" decide QUÉ se muestra en Estadísticas
-             e Historial. La etiqueta de cada uno evita confundirlos. -->
-        <div class="header-cat" title="Carpeta donde se registran las sesiones nuevas">
-          <span class="header-cat-tag">Activa</span>
-          <span class="cat-dot" id="active-cat-dot"></span>
-          <button type="button" class="fp-trigger" id="active-category-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Carpeta activa" onclick="openActivePicker(this)">
-            <span class="fp-value" id="active-category-value">—</span>
-            <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
-          </button>
-          <button type="button" class="cat-add-btn" onclick="switchTab('folders')" aria-label="Gestionar carpetas" title="Gestionar carpetas"><i class="ti ti-folder-cog" aria-hidden="true"></i></button>
-        </div>
-        <div class="header-cat" title="Filtra lo que ves en Estadísticas e Historial">
-          <span class="header-cat-tag">Filtro</span>
-          <i class="ti ti-filter" aria-hidden="true"></i>
-          <button type="button" class="fp-trigger" id="global-filter-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Filtrar por carpeta" onclick="openFilterPicker(this)">
-            <span class="fp-value" id="global-filter-value">Todas las carpetas</span>
-            <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
-          </button>
-        </div>
-        <div class="header-cat" id="scene-header-cat" title="Fondo de la aplicación">
-          <span class="header-cat-tag">Escena</span>
-          <button type="button" class="fp-trigger" id="scene-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Escena de fondo" onclick="openScenePicker(this)">
-            <span class="fp-value" id="scene-value">—</span>
-            <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
-          </button>
-        </div>
-        <button type="button" class="theme-toggle-btn" onclick="toggleQuickTheme()" aria-label="Cambiar tema">
-          <i class="ti ti-moon" id="theme-toggle-icon" aria-hidden="true"></i>
-          <span id="theme-toggle-label">Modo oscuro</span>
-        </button>
+      <div class="side-sec">
+        <button type="button" class="sec-h" data-toggle="side-recents" aria-expanded="true">Recientes<svg class="ic s12 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg></button>
+        <div class="tree-sub open" id="side-recents"><div id="recents"></div></div>
       </div>
     </div>
-
-    <!-- TIMER TAB -->
-    <div id="tab-timer" class="tab-panel active">
-      <div class="stats-grid">
-        <div class="metric card"><div class="m-label"><i class="ti ti-flame" aria-hidden="true"></i> Racha</div><div class="m-val" id="t-stat-streak">0 días</div></div>
-        <div class="metric card"><div class="m-label"><i class="ti ti-clock" aria-hidden="true"></i> Hoy</div><div class="m-val" id="t-stat-today">0 min</div></div>
-        <div class="metric card"><div class="m-label"><i class="ti ti-calendar-week" aria-hidden="true"></i> Esta semana</div><div class="m-val" id="t-stat-week">0 min</div></div>
-        <div class="metric card"><div class="m-label"><i class="ti ti-checkbox" aria-hidden="true"></i> Sesiones</div><div class="m-val" id="t-stat-sessions">0</div></div>
-      </div>
-      <div class="timer-layout">
-        <div class="timer-card card">
-          <div class="timer-header-row">
-            <span class="timer-label" id="phase-label">Tiempo de trabajo</span>
-            <span class="timer-meta" id="timer-meta">Sesión 1 · Ciclo 1/4</span>
-          </div>
-          <div class="timer-ring-wrap">
-            <svg viewBox="0 0 216 216" aria-hidden="true">
-              <circle class="ring-bg" cx="108" cy="108" r="98"/>
-              <circle class="ring-fg" id="ring" cx="108" cy="108" r="98" stroke-dasharray="615.75" stroke-dashoffset="615.75"/>
-            </svg>
-            <div class="timer-time-wrap">
-              <div class="timer-time" id="timer-display">25:00</div>
-              <div class="timer-percent" id="timer-percent">0% completado</div>
-            </div>
-          </div>
-
-          <div class="timer-mode-switch" role="tablist" aria-label="Modo del temporizador">
-            <button class="mode-btn active" id="mode-btn-pomodoro" role="tab" aria-selected="true"
-                    onclick="setTimerMode('pomodoro')"><i class="ti ti-clock-play" aria-hidden="true"></i> Pomodoro</button>
-            <button class="mode-btn" id="mode-btn-cronometro" role="tab" aria-selected="false"
-                    onclick="setTimerMode('cronometro')"><i class="ti ti-clock-up" aria-hidden="true"></i> Cronómetro</button>
-          </div>
-
-          <div class="btn-row">
-            <button class="btn-primary" id="btn-toggle" onclick="toggleTimer()"><i class="ti ti-player-play" id="btn-toggle-icon" aria-hidden="true"></i> <span id="btn-toggle-label">Iniciar</span></button>
-            <button class="btn-secondary" onclick="resetTimer()"><i class="ti ti-refresh" aria-hidden="true"></i> Reiniciar</button>
-            <button class="btn-secondary" id="btn-crono-save" style="display:none;" onclick="saveCrono()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar sesión</button>
-          </div>
-
-          <div class="custom-type-wrap" id="custom-type-wrap">
-            <label class="custom-type-label" for="custom-type-input">¿Qué vas a estudiar?</label>
-            <div class="custom-type-field">
-              <i class="ti ti-pencil" aria-hidden="true"></i>
-              <input type="text" id="custom-type-input" class="custom-type-input" placeholder="General" maxlength="30" oninput="updateCustomType()">
-            </div>
-          </div>
-          <div class="type-recos-label" id="type-recos-label" style="display:none;">Recomendados</div>
-          <div class="session-type" id="type-recos"></div>
-        </div>
-
-        <div>
-          <div class="config-card card">
-            <h3>Configuración</h3>
-            <div class="config-row">
-              <label>Trabajo</label>
-              <input type="range" min="5" max="60" value="25" step="5" id="cfg-work" oninput="updateConfig('work')">
-              <input type="number" class="config-val" id="val-work" value="25" min="5" max="60" step="5" oninput="updateConfigFromInput('work')" onblur="clampConfigInput('work')">
-            </div>
-            <div class="config-row">
-              <label>Descanso corto</label>
-              <input type="range" min="1" max="15" value="5" step="1" id="cfg-short" oninput="updateConfig('short')">
-              <input type="number" class="config-val" id="val-short" value="5" min="1" max="15" step="1" oninput="updateConfigFromInput('short')" onblur="clampConfigInput('short')">
-            </div>
-            <div class="config-row">
-              <label>Descanso largo</label>
-              <input type="range" min="10" max="30" value="15" step="5" id="cfg-long" oninput="updateConfig('long')">
-              <input type="number" class="config-val" id="val-long" value="15" min="10" max="30" step="5" oninput="updateConfigFromInput('long')" onblur="clampConfigInput('long')">
-            </div>
-            <div class="config-row">
-              <label>Ciclos hasta descanso</label>
-              <input type="range" min="2" max="6" value="4" step="1" id="cfg-cycles" oninput="updateConfig('cycles')">
-              <input type="number" class="config-val" id="val-cycles" value="4" min="2" max="6" step="1" oninput="updateConfigFromInput('cycles')" onblur="clampConfigInput('cycles')">
-            </div>
-          </div>
-
-          <div class="folder-card card">
-            <!-- La carpeta activa vive ahora en la barra superior; aquí solo queda
-                 el registro manual, que es una acción de tiempo, no de carpetas. -->
-            <button class="btn-secondary dashed full-width" id="btn-manual-toggle" onclick="toggleManualForm()" style="margin-top:0;"><i class="ti ti-plus"></i> Registrar sesión manual</button>
-            <div class="manual-form" id="manual-form" style="display:none;">
-              <div class="manual-form-title"><i class="ti ti-pencil"></i> Nueva sesión manual</div>
-              <div class="manual-input-group">
-                <input type="number" id="manual-minutes" class="manual-input" placeholder="0" min="1" max="600" onkeydown="if(event.key==='Enter')confirmManual()">
-                <span class="manual-input-suffix">minutos</span>
-              </div>
-              <div class="manual-actions">
-                <button class="btn-confirm" onclick="confirmManual()"><i class="ti ti-check"></i> Registrar</button>
-                <button class="btn-cancel" onclick="toggleManualForm()">Cancelar</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STATS TAB -->
-    <div id="tab-stats" class="tab-panel">
-      <div class="stats-grid">
-        <div class="metric card"><div class="m-label">Total estudiado</div><div class="m-val" id="stat-total">0 h</div><div class="m-sub">de siempre</div></div>
-        <div class="metric card"><div class="m-label">Esta semana</div><div class="m-val" id="stat-week">0 h</div><div class="m-sub">últimos 7 días</div></div>
-        <div class="metric card"><div class="m-label">Hoy</div><div class="m-val" id="stat-today">0 min</div></div>
-        <div class="metric card"><div class="m-label">Sesiones totales</div><div class="m-val" id="stat-sessions">0</div></div>
-        <div class="metric card"><div class="m-label"><i class="ti ti-flame" aria-hidden="true"></i> Racha</div><div class="m-val" id="stat-streak">0 días</div><div class="m-sub">máx <span id="stat-streak-max">0</span> días</div></div>
-        <div class="metric card"><div class="m-label"><i class="ti ti-target" aria-hidden="true"></i> Regularidad</div><div class="m-val" id="stat-irs">0%</div><div class="m-sub">días activos (7d)</div></div>
-        <div class="metric card"><div class="m-label"><i class="ti ti-coffee" aria-hidden="true"></i> Descanso activo</div><div class="m-val" id="stat-rda">0%</div><div class="m-sub" id="stat-rda-hint">meta ~20%</div></div>
-        <div class="metric card"><div class="m-label"><i class="ti ti-focus-2" aria-hidden="true"></i> Enfoque Pomodoro</div><div class="m-val" id="stat-pomo">0%</div><div class="m-sub">del tiempo estudiado</div></div>
-      </div>
-      <div class="charts-row">
-        <div class="chart-card card">
-          <h3>Últimos 7 días <span style="color:var(--muted);font-weight:400;font-size:13px;">(minutos)</span></h3>
-          <div style="position:relative;height:220px;"><canvas id="weekChart" role="img" aria-label="Gráfico de minutos estudiados los últimos 7 días"></canvas></div>
-        </div>
-        <div class="chart-card card">
-          <h3>Distribución por tema</h3>
-          <div class="donut-wrap" id="donut-wrap"></div>
-        </div>
-      </div>
-      <div class="chart-card card">
-        <h3>Por tipo de estudio <span style="color:var(--muted);font-weight:400;font-size:13px;">(minutos)</span></h3>
-        <div class="hbars" id="hbars-wrap"></div>
-      </div>
-      <div class="chart-card card">
-        <h3>Densidad por hora (0–23)</h3>
-        <div class="bar-container" id="hour-bars">
-          <div style="position:relative;height:220px;"><canvas id="hourChart" role="img" aria-label="Gráfico de minutos estudiados por cada hora del día"></canvas></div>
-        </div>
-        <div id="hour-peak-info"></div>
-      </div>
-      <div class="chart-card card">
-        <h3>Calendario de consistencia</h3>
-        <div class="heatmap-scroll">
-          <div class="heatmap" id="heatmap"></div>
-        </div>
-        <div class="heatmap-legend">
-          <span>Menos</span>
-          <span class="hm-cell hm-l0"></span>
-          <span class="hm-cell hm-l1"></span>
-          <span class="hm-cell hm-l2"></span>
-          <span class="hm-cell hm-l3"></span>
-          <span class="hm-cell hm-l4"></span>
-          <span>Más</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- LOG TAB -->
-    <div id="tab-log" class="tab-panel">
-      <div class="log-filters">
-        <button type="button" class="fp-trigger" id="filter-type-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Filtrar por tipo" onclick="openLogTypePicker(this)">
-          <i class="ti ti-tag fp-lead" aria-hidden="true"></i>
-          <span class="fp-value" id="filter-type-value">Todos los tipos</span>
-          <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
-        </button>
-        <button type="button" class="fp-trigger" id="filter-days-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Filtrar por periodo" onclick="openLogDaysPicker(this)">
-          <i class="ti ti-calendar fp-lead" aria-hidden="true"></i>
-          <span class="fp-value" id="filter-days-value">Últimos 7 días</span>
-          <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
-        </button>
-        <div class="spacer"></div>
-        <button class="btn-secondary" style="padding: 9px 16px; font-size: 13.5px;" onclick="exportCSV()"><i class="ti ti-download" aria-hidden="true"></i> CSV</button>
-        <button class="btn-danger" onclick="clearLog()"><i class="ti ti-trash" aria-hidden="true"></i> Limpiar</button>
-      </div>
-      <div class="table-responsive" id="log-table-wrap"></div>
-    </div>
-
-    <!-- FOLDERS TAB -->
-    <div id="tab-folders" class="tab-panel" style="max-width:900px;">
-      <div class="chart-card card">
-        <h3><i class="ti ti-folders" aria-hidden="true"></i> Tus carpetas</h3>
-        <p class="folders-hint">
-          Organiza tus sesiones en carpetas y subcarpetas. La carpeta <strong>Activa</strong>
-          de la barra superior es donde se guardan las sesiones nuevas; el <strong>Filtro</strong>
-          solo cambia lo que ves en Estadísticas e Historial.
-        </p>
-        <div class="cat-list" id="category-list"></div>
-        <div class="cat-form">
-          <input type="text" id="new-cat-name" maxlength="30" placeholder="Nueva carpeta (ej. Semestre 2)" onkeydown="if(event.key==='Enter')createCategory()">
-          <input type="color" id="new-cat-color" value="#6366f1" aria-label="Color de la carpeta">
-          <button class="btn-secondary" style="padding: 9px 16px; font-size: 13.5px;" onclick="createCategory()"><i class="ti ti-plus" aria-hidden="true"></i> Crear</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SETTINGS TAB -->
-    <div id="tab-settings" class="tab-panel" style="max-width:760px;">
-      <div class="chart-card card" id="scene-settings-card">
-        <h3>Escena de fondo</h3>
-        <p class="folders-hint">
-          La escena se ve en toda la app, con un movimiento lento de fondo.
-          Cada escena tiene su propio degradado; si dejas la foto correspondiente
-          en <strong>static/scenes/</strong> se superpone automáticamente.
-          El <strong>modo claro</strong> desactiva la escena.
-        </p>
-        <div class="scene-grid" id="scene-gallery"></div>
-      </div>
-
-      <div class="chart-card card">
-        <h3>Color de acento</h3>
-        <div class="accent-row">
-          <div class="accent-presets" id="accent-presets">
-            <button type="button" class="accent-dot" style="background:#6366f1" onclick="selectAccent('#6366f1')" aria-label="Índigo"></button>
-            <button type="button" class="accent-dot" style="background:#0ea5e9" onclick="selectAccent('#0ea5e9')" aria-label="Azul"></button>
-            <button type="button" class="accent-dot" style="background:#10b981" onclick="selectAccent('#10b981')" aria-label="Verde"></button>
-            <button type="button" class="accent-dot" style="background:#f59e0b" onclick="selectAccent('#f59e0b')" aria-label="Ámbar"></button>
-            <button type="button" class="accent-dot" style="background:#ec4899" onclick="selectAccent('#ec4899')" aria-label="Rosa"></button>
-            <button type="button" class="accent-dot" style="background:#ef4444" onclick="selectAccent('#ef4444')" aria-label="Rojo"></button>
-          </div>
-          <label class="accent-custom">
-            <i class="ti ti-color-picker"></i> Personalizado
-            <input type="color" id="accent-input" value="#3b82f6" oninput="selectAccent(this.value)">
-          </label>
-        </div>
-      </div>
-
-      <button class="btn-primary full-width" id="btn-save-prefs" onclick="savePreferences()">
-        <i class="ti ti-device-floppy"></i> Guardar apariencia
+    <div class="side-foot">
+      <button type="button" class="me" id="btn-me" aria-haspopup="menu" aria-expanded="false">
+        <span class="avatar" id="me-avatar">·</span>
+        <span class="me-text"><b id="me-name">…</b><small id="me-sub">Cargando…</small></span>
+        <svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
       </button>
     </div>
+  </aside>
+  <button type="button" class="side-backdrop" id="side-backdrop" aria-label="Cerrar barra lateral"></button>
 
-    <!-- HELP TAB -->
-    <div id="tab-help" class="tab-panel" style="max-width:760px;">
-      <div class="chart-card card">
-        <h3><i class="ti ti-player-play" aria-hidden="true"></i> Timer</h3>
-        <p class="help-text">El temporizador tiene <strong>dos modos</strong>, que eliges con los botones bajo el reloj:</p>
-        <p class="help-text"><strong>Pomodoro</strong> — cuenta hacia atrás. Configura los minutos de <strong>trabajo</strong>, <strong>descanso corto</strong>, <strong>descanso largo</strong> y cuántos ciclos pasan antes del descanso largo. Al terminar cada fase suena una alarma y la sesión se guarda sola.</p>
-        <p class="help-text"><strong>Cronómetro</strong> — cuenta hacia adelante, sin límite. Útil cuando no sabes de antemano cuánto vas a trabajar: inícialo, y cuando termines pulsa <strong>"Guardar sesión"</strong> para registrar el tiempo acumulado. El anillo da una vuelta completa por cada hora. En este modo la tarjeta de Configuración se atenúa porque no aplica.</p>
-        <p class="help-text">Escribe en qué vas a trabajar (o elige uno de tus tipos más usados en "Recomendados") antes de empezar. Las sesiones de menos de un minuto no se registran.</p>
-        <p class="help-text">¿No usaste el temporizador? Con <strong>"Registrar sesión manual"</strong> puedes anotar los minutos directamente.</p>
-      </div>
-      <div class="chart-card card">
-        <h3><i class="ti ti-folders" aria-hidden="true"></i> Carpetas</h3>
-        <p class="help-text">Agrupan tus sesiones por contexto — "Semestre 1", "Trabajo", "Tesis" — y admiten <strong>subcarpetas anidadas</strong>, así que puedes bajar todo el detalle que quieras:</p>
-        <p class="help-text" style="font-family:var(--font-mono);font-size:12.5px;line-height:1.9;">
-          Universidad<br>
-          &nbsp;&nbsp;└ Semestre 1<br>
-          &nbsp;&nbsp;&nbsp;&nbsp;└ Cálculo<br>
-          &nbsp;&nbsp;└ Semestre 2
-        </p>
-        <p class="help-text">Desde la pestaña <strong>Carpetas</strong> puedes crear una carpeta, añadirle una <strong>subcarpeta</strong>, <strong>renombrarla</strong>, <strong>moverla</strong> a otra rama, <strong>archivarla</strong> o <strong>eliminarla</strong>. Dos carpetas pueden llamarse igual si están en ramas distintas (un "Cálculo" en Semestre 1 y otro en Semestre 2), pero no dentro de la misma.</p>
-        <p class="help-text"><strong>Eliminar</strong> es definitivo y se lleva también las subcarpetas: antes de hacerlo, la app te pregunta si prefieres <strong>mover</strong> las sesiones que hubiera dentro a otra carpeta o <strong>borrarlas</strong> con ella. Si solo quieres quitarla de en medio sin perder nada, archívala en vez de eliminarla.</p>
-        <p class="help-text"><strong>Archivar</strong> una carpeta archiva también todas sus subcarpetas; al restaurar una subcarpeta se restaura la cadena completa hacia arriba, para que nunca quede escondida. Los datos de una carpeta archivada siguen contando en tus estadísticas.</p>
-      </div>
-      <div class="chart-card card">
-        <h3><i class="ti ti-layout-navbar" aria-hidden="true"></i> Activa y Filtro</h3>
-        <p class="help-text">En la barra superior hay dos selectores de carpeta que hacen <strong>cosas distintas</strong>:</p>
-        <p class="help-text"><strong>Activa</strong> — la carpeta <em>donde se guardan</em> las sesiones nuevas. Cámbiala antes de empezar a trabajar para que el tiempo se registre en el sitio correcto.</p>
-        <p class="help-text"><strong>Filtro</strong> — <em>qué ves</em> en Estadísticas y en el Registro. No afecta a dónde se guardan las sesiones. Al filtrar por una carpeta se incluyen también las sesiones de todas sus subcarpetas, así que filtrar por "Universidad" te da el total de todos sus ramos.</p>
-      </div>
-      <div class="chart-card card">
-        <h3><i class="ti ti-chart-bar" aria-hidden="true"></i> Estadísticas</h3>
-        <p class="help-text"><strong>Racha</strong> (actual y máxima), <strong>regularidad semanal</strong>, <strong>descanso activo</strong> y <strong>enfoque Pomodoro</strong> resumen tus hábitos de un vistazo.</p>
-        <p class="help-text">Gráficos de los últimos 7 días, distribución y minutos por tipo de trabajo, densidad por hora del día, y un <strong>heatmap</strong> de consistencia (26 semanas).</p>
-        <p class="help-text">El <strong>enfoque Pomodoro</strong> es el porcentaje de tu tiempo medido con el temporizador Pomodoro. Las sesiones de cronómetro y las manuales cuentan como trabajo, pero no suben ese porcentaje.</p>
-      </div>
-      <div class="chart-card card">
-        <h3><i class="ti ti-calendar" aria-hidden="true"></i> Registro</h3>
-        <p class="help-text">Historial completo de tus sesiones, filtrable por tipo y por rango de días. Cada sesión lleva una insignia según cómo se midió: <strong>pomodoro</strong>, <strong>cronometro</strong> o <strong>manual</strong>.</p>
-        <p class="help-text">Puedes cambiar la <strong>carpeta</strong> de una sesión directamente desde la tabla, o exportar todo a <strong>CSV</strong> (se abre bien en Excel, con acentos incluidos).</p>
-        <p class="help-text">El botón <strong>Limpiar</strong> borra tu historial completo, también en el servidor. No se puede deshacer.</p>
-      </div>
-      <div class="chart-card card">
-        <h3><i class="ti ti-settings" aria-hidden="true"></i> Configuración</h3>
-        <p class="help-text">Elige un <strong>color de acento</strong> de la paleta, o uno propio con el selector de color. El botón de sol/luna de la barra superior alterna entre <strong>modo claro</strong> y <strong>oscuro</strong>.</p>
-        <p class="help-text">La gestión de carpetas ya no vive aquí: está en su propia pestaña <strong>Carpetas</strong>.</p>
-      </div>
-      <div class="chart-card card">
-        <h3><i class="ti ti-device-floppy" aria-hidden="true"></i> Tus datos</h3>
-        <p class="help-text">Cada sesión se guarda en el servidor y queda ligada a tu cuenta: puedes entrar desde otro dispositivo y tu historial estará ahí.</p>
-        <p class="help-text">El navegador conserva además una copia local, así que si registras algo sin conexión se sube cuando vuelvas a abrir la app.</p>
-      </div>
+  <!-- ══ Zona principal ══ -->
+  <main class="main" data-bg-drop>
+    <div class="scene" aria-hidden="true">
+      <div class="scene-photo"></div>
+      <div class="scene-amb"></div>
+    </div>
+
+    <header class="topbar">
+      <button type="button" class="icon-btn open-side" id="btn-side-open" aria-label="Mostrar barra lateral" title="Mostrar barra lateral"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-panel-open"/></svg></button>
+      <span class="crumb" id="crumb"></span>
+      <span class="sp"></span>
+      <button type="button" class="btn" id="btn-filter" aria-haspopup="menu" aria-expanded="false">
+        <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-filter"/></svg>
+        <span class="pill-label" id="btn-filter-label">Todas las carpetas</span>
+        <svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+      </button>
+      <button type="button" class="btn" id="btn-scene" aria-haspopup="menu" aria-expanded="false" title="Fondo de la aplicación">
+        <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-image"/></svg>
+        <span class="pill-label" id="btn-scene-label">Carretera</span>
+        <svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+      </button>
+      <button type="button" class="icon-btn" id="btn-theme" aria-label="Cambiar a modo claro" title="Cambiar a modo claro"><svg class="ic" aria-hidden="true"><use id="btn-theme-icon" href="/static/img/icons.svg#i-sun"/></svg></button>
+    </header>
+
+    <div class="scroll" id="scroll">
+
+      <!-- ── Timer ── -->
+      <section class="view home" data-view="timer">
+        <p class="hello" id="greeting">Hola</p>
+        <h1 class="home-title">¿En qué te concentras hoy?</h1>
+        <div class="ring" id="ring">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="ring-track" cx="60" cy="60" r="55" pathLength="100"/>
+            <circle class="ring-fg" id="ring-fg" cx="60" cy="60" r="55" pathLength="100"/>
+          </svg>
+          <div class="ring-c" role="timer" aria-live="off">
+            <div class="ring-time" id="t-time">25:00</div>
+            <div class="ring-sub" id="t-phase">Tiempo de trabajo</div>
+          </div>
+        </div>
+        <div class="home-meta">
+          <span id="t-meta">Sesión 1 · Ciclo 1 de 4</span><span aria-hidden="true">·</span>
+          <span class="dot" id="t-active-dot"></span><span id="t-active-path">—</span>
+        </div>
+
+        <div class="composer">
+          <div class="comp-field">
+            <svg class="ic comp-ic" aria-hidden="true"><use href="/static/img/icons.svg#i-edit"/></svg>
+            <input class="comp-input" id="type-input" type="text" maxlength="40" autocomplete="off" spellcheck="false" placeholder="¿Qué vas a estudiar?" aria-label="¿Qué vas a estudiar?">
+          </div>
+          <span class="comp-sep" aria-hidden="true"></span>
+          <div class="comp-tools">
+            <button type="button" class="btn" id="btn-mode" aria-haspopup="menu" aria-expanded="false" title="Modo del temporizador">
+              <span id="btn-mode-label">Pomodoro</span><svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+            </button>
+            <button type="button" class="btn" id="btn-active" aria-haspopup="menu" aria-expanded="false" title="Carpeta activa">
+              <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-folder"/></svg><span class="pill-label" id="btn-active-label">—</span><svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+            </button>
+            <button type="button" class="icon-btn gear" id="btn-gear" aria-haspopup="dialog" aria-expanded="false" aria-label="Tiempos del Pomodoro" title="Tiempos del Pomodoro"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-settings"/></svg></button>
+            <button type="button" class="icon-btn" id="btn-save" aria-label="Guardar sesión del cronómetro" title="Guardar sesión" hidden><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-save"/></svg></button>
+            <button type="button" class="icon-btn" id="btn-reset" aria-label="Reiniciar" title="Reiniciar"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-reset"/></svg></button>
+            <button type="button" class="go" id="btn-toggle" aria-label="Iniciar" title="Iniciar"><svg class="ic" aria-hidden="true"><use id="btn-toggle-icon" href="/static/img/icons.svg#i-play"/></svg></button>
+          </div>
+        </div>
+
+        <div class="chips" id="chips" hidden>
+          <span class="chips-lab"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-sparkle"/></svg>Recomendados</span>
+          <span id="chips-list" style="display:contents"></span>
+        </div>
+        <div class="home-stats">
+          <span><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-fire"/></svg>Racha <b id="hs-streak">0 días</b></span>
+          <span><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-clock"/></svg>Hoy <b id="hs-today">0 min</b></span>
+          <span><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-trend"/></svg>Semana <b id="hs-week">0 min</b></span>
+        </div>
+      </section>
+
+      <!-- ── Estadísticas ── -->
+      <section class="view" data-view="stats" hidden>
+        <div class="v-head"><h2>Estadísticas</h2><span class="sub" id="stats-sub">Todas las carpetas</span></div>
+        <div class="v-body">
+          <div class="kpis" id="kpis"></div>
+          <div class="grid2">
+            <div class="card heat-card">
+              <div class="card-h"><h3>Calendario de consistencia</h3><span>últimas 26 semanas</span></div>
+              <div class="heat-wrap"><div class="heat" id="heat"></div></div>
+              <div class="heat-legend">Menos
+                <span class="c" style="background:var(--track)"></span>
+                <span class="c" style="background:color-mix(in srgb, var(--accent) 30%, var(--track))"></span>
+                <span class="c" style="background:color-mix(in srgb, var(--accent) 55%, var(--track))"></span>
+                <span class="c" style="background:color-mix(in srgb, var(--accent) 78%, var(--track))"></span>
+                <span class="c" style="background:var(--accent)"></span> Más</div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>Distribución por tema</h3><span>todo el historial</span></div>
+              <div id="donut"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>Últimos 7 días</h3><span>minutos por día</span></div>
+            <div class="chart-box" data-chart="week"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>Densidad por hora</h3><span id="hour-peak">minutos por hora del día</span></div>
+            <div class="chart-box" data-chart="hour"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Registro ── -->
+      <section class="view" data-view="log" hidden>
+        <div class="v-head">
+          <h2>Registro</h2>
+          <div class="v-tools">
+            <button type="button" class="btn sm" id="log-type" aria-haspopup="menu" aria-expanded="false">
+              <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-book"/></svg><span class="pill-label" id="log-type-label">Todos los tipos</span><svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+            </button>
+            <button type="button" class="btn sm" id="log-days" aria-haspopup="menu" aria-expanded="false">
+              <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-calendar"/></svg><span id="log-days-label">Últimos 7 días</span><svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+            </button>
+            <button type="button" class="btn sm" id="log-export" aria-haspopup="menu" aria-expanded="false">
+              <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-download"/></svg>Exportar<svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+            </button>
+            <button type="button" class="btn sm danger" id="log-clear"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-delete"/></svg>Borrar historial</button>
+          </div>
+        </div>
+        <div class="v-body">
+          <div class="hint" id="log-count"></div>
+          <div class="card flush"><div class="tbl-wrap" id="log-table"></div></div>
+        </div>
+      </section>
+
+      <!-- ── Carpetas ── -->
+      <section class="view" data-view="folders" hidden>
+        <div class="v-head"><h2>Carpetas</h2></div>
+        <div class="v-body">
+          <p class="hint">Organiza tus sesiones en carpetas y subcarpetas. La <b>carpeta activa</b>, junto al botón de inicio, es donde se guardan las sesiones nuevas; el <b>filtro</b> solo cambia lo que ves en Estadísticas y Registro.</p>
+          <div class="card">
+            <div class="frows" id="folders-list"></div>
+            <form class="folder-form" id="folder-form" novalidate>
+              <input class="field" id="new-folder-name" maxlength="30" placeholder="Nueva carpeta (por ejemplo, Semestre 2)" aria-label="Nombre de la nueva carpeta">
+              <input type="color" class="color-in" id="new-folder-color" value="#2a78d6" aria-label="Color de la carpeta" title="Color de la carpeta">
+              <button type="button" class="btn sm" id="new-folder-parent" aria-haspopup="menu" aria-expanded="false" title="Dónde se crea">
+                <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-home"/></svg><span class="pill-label" id="new-folder-parent-label">En la raíz</span><svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <button type="submit" class="btn sm primary"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-add"/></svg>Crear carpeta</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Configuración ── -->
+      <section class="view" data-view="settings" hidden>
+        <div class="v-head"><h2>Configuración</h2></div>
+        <div class="v-body">
+          <div class="exps">
+            <div class="exp">
+              <div class="exp-h">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-moon"/></svg>
+                <span class="exp-t"><b>Tema</b><span>Claro u oscuro. También lo cambias con el botón de arriba a la derecha.</span></span>
+                <button type="button" class="btn sm" id="set-theme" aria-haspopup="menu" aria-expanded="false"><span id="set-theme-label">Oscuro</span><svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg></button>
+              </div>
+            </div>
+            <div class="exp">
+              <button type="button" class="exp-h" data-toggle="set-scene" aria-expanded="true">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-image"/></svg>
+                <span class="exp-t"><b>Escena de fondo</b><span>Elige una escena o sube tus propias imágenes</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body open" id="set-scene"><div><div class="exp-inner" id="bg-gallery"></div></div></div>
+            </div>
+            <div class="exp">
+              <button type="button" class="exp-h" data-toggle="set-accent" aria-expanded="false">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-color"/></svg>
+                <span class="exp-t"><b>Color de acento</b><span>Gráficos, calendario y selecciones</span></span>
+                <span class="dot" style="--c:var(--accent);width:14px;height:14px"></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body" id="set-accent"><div inert><div class="exp-inner"><div class="swatches" id="accent-swatches"></div></div></div></div>
+            </div>
+            <div class="exp">
+              <button type="button" class="exp-h" data-toggle="set-pomo-exp" aria-expanded="false">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-timer"/></svg>
+                <span class="exp-t"><b>Tiempos del Pomodoro</b><span data-cfg-summary>25 min de trabajo</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body" id="set-pomo-exp"><div inert><div class="exp-inner" id="set-pomo"></div></div></div>
+            </div>
+            <div class="exp">
+              <button type="button" class="exp-h" data-toggle="set-data" aria-expanded="false">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-download"/></svg>
+                <span class="exp-t"><b>Datos y exportación</b><span>Descarga o borra tu historial</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body" id="set-data"><div inert><div class="exp-inner">
+                <div class="exp-row">
+                  <span class="lbl">Exportar historial<small>CSV para Excel o Sheets; JSON como copia completa</small></span>
+                  <button type="button" class="btn sm" id="set-export-csv"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-table"/></svg>CSV</button>
+                  <button type="button" class="btn sm" id="set-export-json"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-download"/></svg>JSON</button>
+                </div>
+                <div class="exp-row">
+                  <span class="lbl">Borrar todas las sesiones<small>También en el servidor. No se puede deshacer.</small></span>
+                  <button type="button" class="btn sm danger" id="set-clear"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-delete"/></svg>Borrar historial…</button>
+                </div>
+              </div></div></div>
+            </div>
+            <div class="exp">
+              <div class="exp-h">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-person"/></svg>
+                <span class="exp-t"><b id="set-user">…</b><span>Sesión iniciada</span></span>
+                <a class="btn sm" href="/logout"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-signout"/></svg>Cerrar sesión</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Ayuda ── -->
+      <section class="view" data-view="help" hidden>
+        <div class="v-head"><h2>Ayuda</h2></div>
+        <div class="v-body">
+          <div class="exps">
+            <div class="exp">
+              <button type="button" class="exp-h" data-toggle="help-timer" aria-expanded="true">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-timer"/></svg>
+                <span class="exp-t"><b>Temporizador</b><span>Pomodoro, cronómetro y sesiones manuales</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body open" id="help-timer"><div><div class="exp-inner">
+                <p class="help-p">Escribe en qué vas a trabajar en la barra de actividad y pulsa el botón de inicio (o <b>Enter</b>). Las sesiones de menos de un minuto no se registran.</p>
+                <p class="help-p">En el menú de modo eliges <b>Pomodoro</b>, que cuenta hacia atrás y alterna trabajo y descansos con una alarma al terminar cada fase, o <b>Cronómetro</b>, que cuenta hacia adelante sin límite: cuando termines, guárdalo con el botón de disquete. En el cronómetro el anillo da una vuelta por hora.</p>
+                <p class="help-p">La <b>rueda</b> de la barra ajusta los minutos de trabajo, descanso corto, descanso largo y cuántos ciclos pasan antes del descanso largo. ¿No usaste el temporizador? En el menú de modo está <b>Registrar sesión manual</b>.</p>
+              </div></div></div>
+            </div>
+            <div class="exp">
+              <button type="button" class="exp-h" data-toggle="help-folders" aria-expanded="false">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-folder"/></svg>
+                <span class="exp-t"><b>Carpetas, activa y filtro</b><span>Cómo se organizan y se ven tus sesiones</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body" id="help-folders"><div inert><div class="exp-inner">
+                <p class="help-p">Las carpetas agrupan tus sesiones por contexto (Universidad › Semestre 1 › Cálculo) y admiten subcarpetas. Dos carpetas pueden llamarse igual si están en ramas distintas.</p>
+                <p class="help-p">La carpeta junto al botón de inicio es la <b>activa</b>: ahí se guardan las sesiones nuevas. El <b>filtro</b> (arriba a la derecha, o haciendo clic en una carpeta de la barra lateral) solo cambia lo que ves en Estadísticas y Registro, e incluye sus subcarpetas.</p>
+                <p class="help-p">El botón <b>⋯</b> de cada carpeta permite usarla como activa, crear una subcarpeta, renombrarla, moverla, archivarla o eliminarla. <b>Archivar</b> es reversible y sus datos siguen contando; <b>eliminar</b> es definitivo y te pregunta si mover o borrar las sesiones que contenga.</p>
+              </div></div></div>
+            </div>
+            <div class="exp">
+              <button type="button" class="exp-h" data-toggle="help-stats" aria-expanded="false">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-stats"/></svg>
+                <span class="exp-t"><b>Estadísticas y Registro</b><span>Qué mide cada indicador</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body" id="help-stats"><div inert><div class="exp-inner">
+                <p class="help-p"><b>Racha</b>: días seguidos con estudio. <b>Regularidad</b>: días de la última semana con 20 minutos o más. <b>Descanso activo</b>: minutos de descanso frente a minutos de estudio (lo ideal ronda el 20%). <b>Enfoque Pomodoro</b>: parte de tu tiempo medida con el Pomodoro.</p>
+                <p class="help-p">Pasa el mouse sobre el calendario, la distribución por tema o los gráficos para ver el detalle de cada día u hora.</p>
+                <p class="help-p">El <b>Registro</b> se filtra por tipo y periodo. Desde la tabla puedes cambiar la carpeta de una sesión, exportar a CSV o JSON, o borrar todo el historial (no se puede deshacer).</p>
+              </div></div></div>
+            </div>
+            <div class="exp">
+              <button type="button" class="exp-h" data-toggle="help-look" aria-expanded="false">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-image"/></svg>
+                <span class="exp-t"><b>Fondos y apariencia</b><span>Escenas, imágenes propias, tema y color</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body" id="help-look"><div inert><div class="exp-inner">
+                <p class="help-p">Elige una escena desde el menú de fondo, arriba a la derecha, o sube tus propias imágenes (JPG, PNG o WebP, hasta 6). También puedes arrastrar una imagen sobre la app. Se guardan en tu cuenta y el anillo toma sus colores.</p>
+                <p class="help-p">El botón de sol y luna alterna el modo claro y oscuro. El color de acento de los gráficos se cambia en Configuración.</p>
+              </div></div></div>
+            </div>
+            <div class="exp">
+              <button type="button" class="exp-h" data-toggle="help-data" aria-expanded="false">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-save"/></svg>
+                <span class="exp-t"><b>Tus datos</b><span>Dónde se guardan tus sesiones</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body" id="help-data"><div inert><div class="exp-inner">
+                <p class="help-p">Cada sesión se guarda en el servidor ligada a tu cuenta: entra desde otro dispositivo y tu historial estará ahí.</p>
+                <p class="help-p">El navegador conserva además una copia local, así que si registras algo sin conexión se sube la próxima vez que abras la app.</p>
+              </div></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   </main>
 </div>
 
-<div class="toast" id="toast"><i class="ti ti-check"></i> <span id="toast-msg"></span></div>
+<input type="file" id="bg-file" accept="image/jpeg,image/png,image/webp" hidden>
+<div class="toast" id="toast" role="status" aria-live="polite"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-check-circle"/></svg><span></span></div>
 
-<div class="update-overlay" id="update-overlay" style="display:none;">
-  <div class="update-modal">
-    <div class="update-modal-icon"><i class="ti ti-sparkles" aria-hidden="true"></i></div>
-    <h3>Novedades en FocusData</h3>
-    <p class="update-modal-sub">Un Pomodoro más fiable y carpetas más fáciles de gestionar.</p>
-    <ul>
-      <!-- El texto va dentro de un <span>: el <li> es flex, así que cada hijo
-           suelto se convertiría en una columna y partiría la frase. -->
-      <li><i class="ti ti-bug-off" aria-hidden="true"></i> <span>Arreglado un <strong>bug del Pomodoro</strong>: cambiar los minutos de descanso antes de iniciarlo ya no dejaba el reloj en negativo.</span></li>
-      <li><i class="ti ti-list-search" aria-hidden="true"></i> <span>Los selectores de <strong>carpeta, filtro y escena</strong> estrenan buscador y árbol propio — y ya no se ven claros por error en modo oscuro.</span></li>
-      <li><i class="ti ti-arrows-move" aria-hidden="true"></i> <span><strong>Mover una carpeta</strong> ahora es un diálogo visual, no un cuadro de texto con números.</span></li>
-      <li><i class="ti ti-trash" aria-hidden="true"></i> <span><strong>Eliminar una carpeta</strong> de forma definitiva, eligiendo si sus sesiones se mueven a otra carpeta o se borran con ella.</span></li>
-    </ul>
-    <button class="btn-primary full-width" onclick="dismissUpdateNotice()"><i class="ti ti-check" aria-hidden="true"></i> Entendido, ¡vamos!</button>
-  </div>
-</div>
-
-<!-- Servido localmente (static/vendor/): la app funciona sin conexión a internet
-     y no depende de la disponibilidad de un CDN externo. -->
-<script src="/static/vendor/chart.umd.js"></script>
-<script>
-// El historial en caché se guarda bajo una clave propia de cada usuario: compartir
-// una clave global filtraba las sesiones de una cuenta a otra en el mismo navegador
-// (y syncSessions() acababa subiéndolas a la cuenta equivocada).
-const LEGACY_STORAGE_KEY = 'studylog_v1';
-let storageKey = null;          // se resuelve al conocer el id del usuario
-let db = [];
-const save = () => {
-  if (storageKey) localStorage.setItem(storageKey, JSON.stringify(db));
-};
-
-function initStorage(uid) {
-  storageKey = `studylog_v1_u${uid}`;
-  const own = localStorage.getItem(storageKey);
-  if (own !== null) {
-    try { db = JSON.parse(own) || []; } catch { db = []; }
-    return;
-  }
-  // Primera carga con clave por usuario. El blob antiguo era de propiedad
-  // ambigua, así que no se importa: se archiva por si hiciera falta rescatarlo
-  // a mano y se deja que syncSessions() repueble desde el backend.
-  const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-  if (legacy !== null) {
-    localStorage.setItem('studylog_v1_backup', legacy);
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
-  }
-  db = [];
-}
-
-// Escapa texto de usuario antes de interpolarlo en plantillas innerHTML.
-const esc = s => String(s ?? '').replace(/[&<>"']/g,
-  c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-
-// ── Carpetas (categorías) ──
-let categories = [];          // [{id, name, color, archived}]
-let activeCategoryId = null;  // carpeta donde se registran las nuevas sesiones
-let filterCategoryId = '';    // filtro global de análisis ('' = todas)
-
-const categoryById = id => categories.find(c => c.id === +id);
-
-// El backend ya devuelve las carpetas en preorden y con `depth`/`path`, así que
-// estos helpers solo navegan el array plano, sin recalcular el árbol.
-const childrenOf = pid => categories.filter(c => +c.parent_id === +pid);
-
-// IDs de una carpeta y todos sus descendientes. Con tope de iteraciones por si
-// los datos llegaran corruptos: nunca debe colgar la UI.
-function descendantIds(id) {
-  const out = new Set([+id]);
-  let cambio = true, vueltas = 0;
-  while (cambio && vueltas++ < 100) {
-    cambio = false;
-    categories.forEach(c => {
-      if (out.has(+c.parent_id) && !out.has(+c.id)) { out.add(+c.id); cambio = true; }
-    });
-  }
-  return out;
-}
-
-// Filtrar por una carpeta incluye las sesiones de todas sus subcarpetas.
-const filteredDb = () => {
-  if (!filterCategoryId) return db;
-  const ids = descendantIds(filterCategoryId);
-  return db.filter(r => ids.has(+r.category_id));
-};
-
-// Helper: local date string YYYY-MM-DD (avoids toISOString() which uses UTC)
-function localDateStr(d) {
-  if (!d) d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-// Helper: local ISO-like timestamp (avoids UTC shift)
-function localISOString(d) {
-  if (!d) d = new Date();
-  const pad = (n, len=2) => String(n).padStart(len, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-let cfg = { work: 25, short: 5, long: 15, cycles: 4 };
-let state = {
-  running: false, paused: false, phase: 'work', session: 1,
-  remaining: cfg.work * 60, endTime: null, // endTime = timestamp when timer hits 0
-  phaseTotal: cfg.work * 60, // duración con la que arrancó la fase actual (segundos)
-  type: 'General', cycleCount: 0,
-  timerMode: 'pomodoro',   // 'pomodoro' | 'cronometro'
-  elapsed: 0,              // segundos acumulados (solo cronómetro)
-  startedAt: null          // timestamp del arranque del tramo actual
-};
-const CRONO_CICLO = 60 * 60;   // el anillo da una vuelta completa por hora
-let interval = null;
-const CIRC = 615.75;
-
-// Pinta el track del slider con el % recorrido en color de acento (como el mockup)
-function paintSlider(slider) {
-  const p = (slider.value - slider.min) / (slider.max - slider.min) * 100;
-  slider.style.background = `linear-gradient(to right, var(--accent) ${p}%, var(--surface-2) ${p}%)`;
-}
-function paintAllSliders() {
-  ['work','short','long','cycles'].forEach(k => paintSlider(document.getElementById('cfg-' + k)));
-}
-
-// El reloj ocioso tiene que seguir a la duración de LA FASE QUE ESTÁ EN PANTALLA.
-// Antes se reseteaba siempre a cfg.work: al terminar un pomodoro el estado queda
-// "ocioso en fase de descanso", así que mover cualquier slider dejaba remaining con
-// los minutos de trabajo sobre un total de descanso → porcentaje negativo, anillo
-// desbordado y un descanso que corría los minutos equivocados al pulsar Iniciar.
-// `key` es la duración que el usuario acaba de tocar; coincide con state.phase
-// ('work' | 'short' | 'long'), y 'cycles' no afecta a ninguna fase.
-function syncIdleRemaining(key) {
-  if (state.timerMode !== 'pomodoro' || state.running || state.paused) return;
-  if (key && key !== state.phase) return;
-  state.phaseTotal = phaseDuration();
-  state.remaining = state.phaseTotal;
-  renderClock();
-}
-
-function updateConfig(key) {
-  cfg.work = +document.getElementById('cfg-work').value;
-  cfg.short = +document.getElementById('cfg-short').value;
-  cfg.long = +document.getElementById('cfg-long').value;
-  cfg.cycles = +document.getElementById('cfg-cycles').value;
-  document.getElementById('val-work').value = cfg.work;
-  document.getElementById('val-short').value = cfg.short;
-  document.getElementById('val-long').value = cfg.long;
-  document.getElementById('val-cycles').value = cfg.cycles;
-  paintAllSliders();
-  syncIdleRemaining(key);
-}
-
-function updateConfigFromInput(key) {
-  const input = document.getElementById('val-' + key);
-  const slider = document.getElementById('cfg-' + key);
-  let val = parseInt(input.value);
-  if (isNaN(val)) return;
-  const min = +slider.min;
-  const max = +slider.max;
-  val = Math.max(min, Math.min(max, val));
-  slider.value = val;
-  cfg[key] = val;
-  paintSlider(slider);
-  syncIdleRemaining(key);
-}
-
-function clampConfigInput(key) {
-  const input = document.getElementById('val-' + key);
-  const slider = document.getElementById('cfg-' + key);
-  let val = parseInt(input.value);
-  const min = +slider.min;
-  const max = +slider.max;
-  if (isNaN(val) || val < min) val = min;
-  if (val > max) val = max;
-  input.value = val;
-  slider.value = val;
-  cfg[key] = val;
-  paintSlider(slider);
-  syncIdleRemaining(key);
-}
-
-function phaseDuration() {
-  if (state.phase === 'work') return cfg.work * 60;
-  if (state.phase === 'short') return cfg.short * 60;
-  return cfg.long * 60;
-}
-
-function setTimerMode(m) {
-  if (m === state.timerMode) return;
-  if (state.running || state.paused) {
-    if (!confirm('Cambiar de modo reiniciará el temporizador actual. ¿Continuar?')) return;
-  }
-  state.timerMode = m;
-  resetTimer();
-  document.getElementById('mode-btn-pomodoro').classList.toggle('active', m === 'pomodoro');
-  document.getElementById('mode-btn-cronometro').classList.toggle('active', m === 'cronometro');
-  document.getElementById('mode-btn-pomodoro').setAttribute('aria-selected', m === 'pomodoro');
-  document.getElementById('mode-btn-cronometro').setAttribute('aria-selected', m === 'cronometro');
-  document.getElementById('btn-crono-save').style.display = (m === 'cronometro') ? '' : 'none';
-  // La tarjeta de configuración solo aplica al Pomodoro.
-  document.querySelector('.config-card').style.opacity = m === 'cronometro' ? '0.45' : '';
-  document.querySelector('.config-card').inert = (m === 'cronometro');
-}
-
-function renderCrono() {
-  const t = state.elapsed;
-  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
-  const pad = n => String(n).padStart(2, '0');
-  const txt = h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
-  document.getElementById('timer-display').textContent = txt;
-
-  // El anillo se llena progresivamente y da una vuelta por hora.
-  const frac = (t % CRONO_CICLO) / CRONO_CICLO;
-  const ring = document.getElementById('ring');
-  ring.style.strokeDashoffset = CIRC * (1 - frac);
-  ring.className.baseVal = 'ring-fg';
-
-  const mins = Math.floor(t / 60);
-  document.getElementById('timer-percent').textContent =
-    mins < 1 ? 'menos de 1 minuto' : `${mins} min acumulados`;
-  document.getElementById('phase-label').textContent = 'Cronómetro';
-  document.getElementById('timer-meta').textContent =
-    state.running ? 'Contando…' : (state.paused ? 'En pausa' : 'Listo para empezar');
-  document.title = state.running ? `${txt} — FocusData` : 'FocusData';
-}
-
-function renderClock() {
-  if (state.timerMode === 'cronometro') { renderCrono(); return; }
-  const rem = Math.max(0, state.remaining);
-  const m = Math.floor(rem / 60), s = rem % 60;
-  document.getElementById('timer-display').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-  // El total es el de la fase EN CURSO, no el que dicta cfg ahora mismo: si la
-  // duración cambia a mitad de fase, el anillo sigue midiendo lo que se arrancó.
-  const total = state.phaseTotal || phaseDuration();
-  // frac va de 1 (fase entera por delante) a 0 (fase agotada); el clamp evita que
-  // un estado inconsistente saque el anillo del círculo o dé un % negativo.
-  const frac = Math.min(1, Math.max(0, rem / total));
-  const ring = document.getElementById('ring');
-  ring.style.strokeDashoffset = CIRC * frac;
-  ring.className.baseVal = 'ring-fg' + (state.phase !== 'work' ? ' break' : '');
-  document.getElementById('timer-percent').textContent = Math.round((1 - frac) * 100) + '% completado';
-
-  document.getElementById('phase-label').textContent = state.phase === 'work' ? 'Tiempo de trabajo' : (state.phase === 'short' ? 'Descanso corto' : 'Descanso largo');
-  const currentCycle = Math.min(cfg.cycles, (state.cycleCount % cfg.cycles) + 1);
-  document.getElementById('timer-meta').textContent = `Sesión ${state.session} · Ciclo ${currentCycle}/${cfg.cycles}`;
-
-  // Update page title with time remaining when running
-  if (state.running) {
-    document.title = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + ' — FocusData';
-  } else {
-    document.title = 'FocusData';
-  }
-}
-
-// Botón único Iniciar/Pausar: su icono y texto reflejan el estado actual del timer.
-function updateToggleButton() {
-  const icon = document.getElementById('btn-toggle-icon');
-  const label = document.getElementById('btn-toggle-label');
-  if (state.running) { icon.className = 'ti ti-player-pause'; label.textContent = 'Pausar'; }
-  else { icon.className = 'ti ti-player-play'; label.textContent = state.paused ? 'Reanudar' : 'Iniciar'; }
-}
-
-function toggleTimer() {
-  if (state.running) pauseTimer(); else startTimer();
-}
-
-function startTimer() {
-  if (state.timerMode === 'cronometro') {
-    state.startedAt = Date.now() - state.elapsed * 1000;
-    state.paused = false; state.running = true;
-    updateToggleButton();
-    interval = setInterval(tick, 250);
-    return;
-  }
-  if (state.paused) {
-    // Resuming: set endTime based on remaining seconds from now
-    state.endTime = Date.now() + state.remaining * 1000;
-    state.paused = false;
-  } else {
-    // Fresh start: calculate endTime from current phase duration
-    state.phaseTotal = state.remaining;
-    state.endTime = Date.now() + state.remaining * 1000;
-  }
-  state.running = true;
-  updateToggleButton();
-  interval = setInterval(tick, 250); // tick faster to stay accurate even when throttled
-}
-
-function pauseTimer() {
-  if (state.timerMode === 'cronometro') {
-    clearInterval(interval);
-    state.elapsed = Math.max(0, Math.round((Date.now() - state.startedAt) / 1000));
-    state.running = false; state.paused = true;
-    updateToggleButton(); renderClock();
-    return;
-  }
-  clearInterval(interval);
-  // Snapshot remaining time from the real clock
-  state.remaining = Math.max(0, Math.round((state.endTime - Date.now()) / 1000));
-  state.running = false;
-  state.paused = true;
-  updateToggleButton();
-  renderClock();
-}
-
-function resetTimer() {
-  clearInterval(interval);
-  state.running = false;
-  state.paused = false;
-  state.phase = 'work';
-  state.session = 1;
-  state.cycleCount = 0;
-  state.remaining = cfg.work * 60;
-  state.phaseTotal = cfg.work * 60;
-  state.endTime = null;
-  state.elapsed = 0;
-  state.startedAt = null;
-  updateToggleButton();
-  renderClock();
-  updateSideInfo();
-}
-
-function tick() {
-  if (state.timerMode === 'cronometro') {
-    state.elapsed = Math.max(0, Math.round((Date.now() - state.startedAt) / 1000));
-    renderClock();
-    return;   // el cronómetro no termina solo: nunca llama a phaseComplete()
-  }
-  // Calculate remaining from wall clock — immune to tab throttling
-  state.remaining = Math.max(0, Math.round((state.endTime - Date.now()) / 1000));
-  renderClock();
-  if (state.remaining <= 0) { phaseComplete(); }
-}
-
-function saveCrono() {
-  // Congela el conteo antes de leer, para no registrar un valor desfasado.
-  if (state.running) pauseTimer();
-  const mins = Math.round(state.elapsed / 60);
-
-  // Los dos guardas que evitan un 400 del backend (MINUTES_MIN=1, MINUTES_MAX=600).
-  if (mins < 1) { toast('Muy corto para registrar (mínimo 1 minuto)'); return; }
-  const registrados = Math.min(mins, 600);
-  if (registrados < mins) toast('Sesión muy larga: se registran 600 min (10 h)');
-
-  logSession(registrados, state.type, 'cronometro');
-  toast(`Sesión de ${registrados} min registrada ✓`);
-  resetTimer();
-}
-
-// ── Alarm sound (Web Audio API — no external files needed) ──
-function playAlarm() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 — pleasant ascending chord
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.25);
-      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + i * 0.25 + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.25 + 0.6);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + i * 0.25);
-      osc.stop(ctx.currentTime + i * 0.25 + 0.6);
-    });
-    // Second ring after a short pause for emphasis
-    setTimeout(() => {
-      try {
-        const ctx2 = new (window.AudioContext || window.webkitAudioContext)();
-        notes.forEach((freq, i) => {
-          const osc = ctx2.createOscillator();
-          const gain = ctx2.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0, ctx2.currentTime + i * 0.25);
-          gain.gain.linearRampToValueAtTime(0.25, ctx2.currentTime + i * 0.25 + 0.05);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + i * 0.25 + 0.8);
-          osc.connect(gain);
-          gain.connect(ctx2.destination);
-          osc.start(ctx2.currentTime + i * 0.25);
-          osc.stop(ctx2.currentTime + i * 0.25 + 0.8);
-        });
-      } catch(e) {}
-    }, 1000);
-  } catch(e) { console.warn('Audio not available:', e); }
-}
-
-function sendNotification(title, body) {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(title, { body, icon: '🎓' });
-  }
-}
-
-function phaseComplete() {
-  clearInterval(interval);
-  playAlarm();
-  // Se registra lo que la fase REALMENTE duró, no lo que cfg diga ahora: si el
-  // usuario movió el slider a mitad de camino, cfg ya no describe esta sesión.
-  const minutosReales = Math.max(1, Math.round((state.phaseTotal || phaseDuration()) / 60));
-  if (state.phase === 'work') {
-    logSession(minutosReales, state.type, 'pomodoro');
-    state.cycleCount++;
-    state.phase = state.cycleCount % cfg.cycles === 0 ? 'long' : 'short';
-    const msg = state.phase === 'long' ? '🎉 ¡Gran descanso! Sesión guardada.' : '☕ Descanso corto. Sesión guardada.';
-    toast(msg);
-    sendNotification('⏰ Sesión completada', state.phase === 'long' ? '¡Tómate un gran descanso!' : '¡Hora de un descanso corto!');
-  } else {
-    // El descanso terminó: registrarlo para poder calcular el Ratio de Descanso Activo
-    logSession(minutosReales, 'Descanso', 'break');
-    state.session++;
-    state.phase = 'work';
-    toast('💪 ¡A estudiar!');
-    sendNotification('⏰ Descanso terminado', '¡Es hora de volver a estudiar!');
-  }
-  state.phaseTotal = phaseDuration();
-  state.remaining = state.phaseTotal;
-  state.running = false;
-  updateToggleButton();
-  renderClock(); updateSideInfo();
-}
-
-function logSession(minutes, type, mode) {
-  const now = new Date();
-  const ts = localISOString(now);
-  const cat = categoryById(activeCategoryId);
-  const session = {
-    id: Date.now(), date: localDateStr(now), hour: now.getHours(),
-    time: now.toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'}),
-    minutes, type, mode, ts,
-    category_id: activeCategoryId, category_name: cat ? cat.name : ''
-  };
-  db.push(session);
-  save(); updateSideInfo(); renderTypeRecos();
-
-  // Persist to backend (SQLite)
-  fetch('/api/sessions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ minutes, type, mode, date: session.date, hour: session.hour, time: session.time, ts, category_id: activeCategoryId })
-  }).catch(err => console.error('Error guardando en backend:', err));
-}
-
-function toggleManualForm() {
-  const form = document.getElementById('manual-form');
-  const btn = document.getElementById('btn-manual-toggle');
-  const isHidden = form.style.display === 'none';
-  form.style.display = isHidden ? 'block' : 'none';
-  btn.style.display = isHidden ? 'none' : '';
-  if (isHidden) {
-    document.getElementById('manual-minutes').value = '';
-    document.getElementById('manual-minutes').focus();
-  }
-}
-
-function confirmManual() {
-  const input = document.getElementById('manual-minutes');
-  const min = +input.value;
-  if (!min || isNaN(min) || min <= 0) {
-    input.style.borderColor = 'var(--danger)';
-    setTimeout(() => { input.style.borderColor = ''; }, 1000);
-    return;
-  }
-  logSession(Math.round(min), state.type, 'manual');
-  toast('Sesión manual registrada ✓');
-  toggleManualForm();
-}
-
-// Renderiza hasta 3 recomendaciones = los tipos más usados del historial.
-// Usuario nuevo (sin historial) → no muestra ninguna.
-function renderTypeRecos() {
-  const counts = {};
-  db.filter(r => r.mode !== 'break' && r.type).forEach(r => {
-    counts[r.type] = (counts[r.type] || 0) + 1;
-  });
-  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
-
-  const wrap = document.getElementById('type-recos');
-  const label = document.getElementById('type-recos-label');
-  wrap.innerHTML = '';
-  if (!top.length) { wrap.style.display = 'none'; label.style.display = 'none'; return; }
-
-  wrap.style.display = 'flex';
-  label.style.display = 'block';
-  const current = document.getElementById('custom-type-input').value.trim();
-  top.forEach(([t]) => {
-    const chip = document.createElement('span');
-    chip.className = 'type-chip' + (t === current && current ? ' selected' : '');
-    chip.textContent = t;
-    chip.onclick = () => pickReco(t);
-    wrap.appendChild(chip);
-  });
-}
-
-// Al pulsar una recomendación, rellena el campo manual.
-function pickReco(t) {
-  document.getElementById('custom-type-input').value = t;
-  updateCustomType();
-}
-
-function updateCustomType() {
-  const val = document.getElementById('custom-type-input').value.trim();
-  state.type = val || 'General';
-  // Resalta la recomendación que coincide con lo escrito (si alguna)
-  document.querySelectorAll('#type-recos .type-chip').forEach(c =>
-    c.classList.toggle('selected', c.textContent === val && val !== ''));
-}
-
-// Formatea un valor numérico grande + una unidad chica (ej. "108" + "min"), como en las stat cards.
-function setStatVal(id, num, unit) {
-  document.getElementById(id).innerHTML = num + (unit ? `<span class="m-unit">${unit}</span>` : '');
-}
-
-// Fila de stats del Timer (Racha/Hoy/Semana/Sesiones). Respeta el filtro global de carpeta, igual que Estadísticas.
-function updateSideInfo() {
-  const today = localDateStr();
-  const studyRecs = filteredDb().filter(r => r.mode !== 'break');
-  const todayMins = studyRecs.filter(r => r.date === today).reduce((a,r) => a + r.minutes, 0);
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekMins = studyRecs.filter(r => new Date(r.date) >= weekAgo).reduce((a,r) => a + r.minutes, 0);
-  const todaySessions = studyRecs.filter(r => r.date === today).length;
-  const streaks = computeStreaks();
-
-  setStatVal('t-stat-streak', streaks.current, streaks.current === 1 ? 'día' : 'días');
-  todayMins >= 60 ? setStatVal('t-stat-today', (todayMins/60).toFixed(1), 'h') : setStatVal('t-stat-today', todayMins, 'min');
-  weekMins >= 60 ? setStatVal('t-stat-week', (weekMins/60).toFixed(1), 'h') : setStatVal('t-stat-week', weekMins, 'min');
-  setStatVal('t-stat-sessions', todaySessions, 'hoy');
-}
-
-const NAV_LABELS = { timer: 'Timer', stats: 'Estadísticas', log: 'Registro', folders: 'Carpetas', settings: 'Configuración', help: 'Ayuda' };
-
-function switchTab(t) {
-  // Se resuelve por data-tab y no por posición: añadir o reordenar pestañas en el
-  // HTML ya no descuadra el resaltado del menú.
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('tab-' + t).classList.add('active');
-  const title = document.getElementById('topbar-title');
-  if (title) title.textContent = NAV_LABELS[t] || '';
-  // El CSS sube el oscurecido de la escena en las pestañas densas en datos.
-  document.body.dataset.view = t;
-  if (t === 'stats') renderStats();
-  if (t === 'log') renderLog();
-}
-
-let weekChartInst = null;
-let hourChartInst = null;
-
-// ── Umbrales de métricas (una sola definición reutilizada) ──
-const STREAK_MIN_MIN = 1;   // un día cuenta para la racha con >= 1 min estudiado
-const IRS_MIN_MIN = 20;     // un día es "regular" con >= 20 min estudiados
-
-// Minutos de estudio (sin descansos) agrupados por fecha, respetando el filtro global
-function studyMinutesByDate() {
-  const map = {};
-  filteredDb().filter(r => r.mode !== 'break').forEach(r => {
-    map[r.date] = (map[r.date] || 0) + r.minutes;
-  });
-  return map;
-}
-
-// Diferencia en días entre dos fechas 'YYYY-MM-DD'
-function dayDiff(a, b) {
-  return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
-}
-
-// Racha actual (desde hoy o ayer hacia atrás) y racha máxima histórica
-function computeStreaks() {
-  const byDate = studyMinutesByDate();
-  const days = Object.keys(byDate).filter(d => byDate[d] >= STREAK_MIN_MIN).sort();
-  if (!days.length) return { current: 0, max: 0 };
-
-  const daySet = new Set(days);
-  let max = 0, run = 0, prev = null;
-  days.forEach(d => {
-    run = (prev && dayDiff(prev, d) === 1) ? run + 1 : 1;
-    max = Math.max(max, run);
-    prev = d;
-  });
-
-  let current = 0;
-  let cursor = localDateStr(new Date());
-  if (!daySet.has(cursor)) {
-    const y = new Date(); y.setDate(y.getDate() - 1);
-    cursor = localDateStr(y);
-    if (!daySet.has(cursor)) return { current: 0, max };
-  }
-  while (daySet.has(cursor)) {
-    current++;
-    const d = new Date(cursor + 'T00:00:00'); d.setDate(d.getDate() - 1);
-    cursor = localDateStr(d);
-  }
-  return { current, max };
-}
-
-// Índice de Regularidad Semanal: % de los últimos 7 días con >= IRS_MIN_MIN
-function computeIRS() {
-  const byDate = studyMinutesByDate();
-  let active = 0;
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    if ((byDate[localDateStr(d)] || 0) >= IRS_MIN_MIN) active++;
-  }
-  return Math.round(active / 7 * 100);
-}
-
-// Ratio de Descanso Activo: minutos de descanso / minutos de estudio
-function computeRDA() {
-  let study = 0, brk = 0;
-  filteredDb().forEach(r => { if (r.mode === 'break') brk += r.minutes; else study += r.minutes; });
-  return { ratio: study > 0 ? Math.round(brk / study * 100) : 0, study, brk };
-}
-
-// Heatmap estilo GitHub: últimas 26 semanas, intensidad por minutos/día
-function renderHeatmap() {
-  const el = document.getElementById('heatmap');
-  if (!el) return;
-  const byDate = studyMinutesByDate();
-  const WEEKS = 26;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const start = new Date(today);
-  start.setDate(start.getDate() - (WEEKS * 7 - 1));
-  start.setDate(start.getDate() - start.getDay()); // alinear al domingo
-  const level = m => m <= 0 ? 0 : m < 25 ? 1 : m < 60 ? 2 : m < 120 ? 3 : 4;
-
-  let html = '';
-  const cur = new Date(start);
-  while (cur <= today) {
-    const ds = localDateStr(cur);
-    const mins = byDate[ds] || 0;
-    html += `<div class="hm-cell hm-l${level(mins)}" title="${ds}: ${mins} min"></div>`;
-    cur.setDate(cur.getDate() + 1);
-  }
-  el.innerHTML = html;
-}
-
-// Escala difuminada del color de acento: el tipo con más minutos recibe el acento
-// pleno y los siguientes tonos cada vez más tenues. Misma escala en donut,
-// leyenda y barras para que cada tipo tenga un color consistente entre gráficos.
-function typeShade(index, count) {
-  const MAX = 100, MIN = 18;
-  const pct = count <= 1 ? MAX : Math.round(MAX - (index / (count - 1)) * (MAX - MIN));
-  return `color-mix(in srgb, var(--accent) ${pct}%, transparent)`;
-}
-
-// Distribución por tema: donut (conic-gradient) + barras horizontales, a partir de los mismos totales por tipo.
-function renderTypeBreakdown(typeTotals) {
-  const donutWrap = document.getElementById('donut-wrap');
-  const hbarsWrap = document.getElementById('hbars-wrap');
-  const entries = Object.entries(typeTotals).sort((a, b) => b[1] - a[1]);
-  const total = entries.reduce((a, [, m]) => a + m, 0);
-
-  if (!entries.length) {
-    donutWrap.innerHTML = '<div class="empty-state"><i class="ti ti-chart-donut"></i>Aún no hay registros</div>';
-    hbarsWrap.innerHTML = '<div class="empty-state"><i class="ti ti-chart-bar"></i>Aún no hay registros</div>';
-    return;
-  }
-
-  const n = entries.length;
-  let acc = 0;
-  const stops = entries.map(([t, m], i) => {
-    const start = acc;
-    acc += m / total * 100;
-    return `${typeShade(i, n)} ${start}% ${acc}%`;
-  }).join(', ');
-  const totalLabel = total >= 60 ? (total / 60).toFixed(1) + 'h' : total + 'min';
-
-  donutWrap.innerHTML = `
-    <div class="donut" style="background:conic-gradient(${stops});">
-      <div class="donut-center"><span class="val">${totalLabel}</span><span class="lbl">total</span></div>
-    </div>
-    <div class="donut-legend">${entries.map(([t, m], i) => `
-      <div class="row"><span class="dot" style="background:${typeShade(i, n)}"></span>${esc(t)}<span class="pct">${Math.round(m / total * 100)}%</span></div>
-    `).join('')}</div>`;
-
-  const max = entries[0][1];
-  hbarsWrap.innerHTML = entries.map(([t, m], i) => `
-    <div class="hbar-row">
-      <span class="hbar-label">${esc(t)}</span>
-      <div class="hbar-track"><div class="hbar-fill" style="width:${max ? Math.round(m / max * 100) : 0}%;background:${typeShade(i, n)}"></div></div>
-      <span class="hbar-val">${m}</span>
-    </div>`).join('');
-}
-
-// Lee una variable CSS del tema actual (para que los gráficos se adapten)
-function cssVar(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
-
-// Opciones de ejes generadas al vuelo, según el tema activo
-function makeBarAxisOptions() {
-  const tick = cssVar('--chart-tick') || '#8892a6';
-  const grid = cssVar('--chart-grid') || 'rgba(255,255,255,0.05)';
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#fff', bodyColor: '#cbd5e1', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 }
-    },
-    scales: {
-      x: { grid: { display: false }, border: { display: false }, ticks: { color: tick, font: { family: "'Inter', sans-serif" } } },
-      y: { grid: { color: grid }, border: { display: false }, ticks: { color: tick, font: { family: "'Inter', sans-serif" }, stepSize: 30 } }
-    }
-  };
-}
-function renderStats() {
-  const today = new Date();
-  const studyRecs = filteredDb().filter(r => r.mode !== 'break');
-  const totalMins = studyRecs.reduce((a,r) => a + r.minutes, 0);
-  const weekAgo = new Date(today); weekAgo.setDate(today.getDate()-7);
-  const weekMins = studyRecs.filter(r => new Date(r.date) >= weekAgo).reduce((a,r) => a+r.minutes, 0);
-  const todayMins = studyRecs.filter(r => r.date === localDateStr(today)).reduce((a,r) => a+r.minutes, 0);
-
-  totalMins >= 60 ? setStatVal('stat-total', (totalMins/60).toFixed(1), 'h') : setStatVal('stat-total', totalMins, 'min');
-  weekMins >= 60 ? setStatVal('stat-week', (weekMins/60).toFixed(1), 'h') : setStatVal('stat-week', weekMins, 'min');
-  setStatVal('stat-today', todayMins, 'min');
-  document.getElementById('stat-sessions').textContent = studyRecs.length;
-
-  // Métricas avanzadas: racha, regularidad, descanso activo, enfoque pomodoro
-  const streaks = computeStreaks();
-  setStatVal('stat-streak', streaks.current, streaks.current === 1 ? 'día' : 'días');
-  document.getElementById('stat-streak-max').textContent = streaks.max;
-  setStatVal('stat-irs', computeIRS(), '%');
-
-  const rda = computeRDA();
-  setStatVal('stat-rda', rda.ratio, '%');
-  document.getElementById('stat-rda-hint').textContent =
-    rda.brk === 0 ? 'sin descansos aún'
-    : rda.ratio < 15 ? 'bajo (meta ~20%)'
-    : rda.ratio <= 30 ? 'ideal ✓'
-    : 'alto (meta ~20%)';
-
-  const pomoMins = studyRecs.filter(r => r.mode === 'pomodoro').reduce((a, r) => a + r.minutes, 0);
-  setStatVal('stat-pomo', totalMins > 0 ? Math.round(pomoMins / totalMins * 100) : 0, '%');
-
-  const days = [], labels = [], data = [];
-  for (let i=6; i>=0; i--) { const d = new Date(today); d.setDate(today.getDate()-i); days.push(localDateStr(d)); labels.push(['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()]); }
-  days.forEach(d => data.push(studyRecs.filter(r => r.date === d).reduce((a,r) => a+r.minutes, 0)));
-
-  const accentColor = cssVar('--accent') || '#3b82f6';
-  const accentRgb = hexToRgb(accentColor);
-  const barColors = data.map((_,i) => i === 6 ? accentColor : `rgba(${accentRgb}, 0.55)`);
-
-  if (weekChartInst) { weekChartInst.destroy(); }
-  weekChartInst = new Chart(document.getElementById('weekChart'), {
-    type: 'bar',
-    data: { labels, datasets: [{
-      label: 'Minutos',
-      data,
-      backgroundColor: barColors,
-      borderRadius: 5, borderSkipped: false
-    }] },
-    options: makeBarAxisOptions()
-  });
-
-  const typeTotals = {};
-  studyRecs.forEach(r => typeTotals[r.type] = (typeTotals[r.type] || 0) + r.minutes);
-  renderTypeBreakdown(typeTotals);
-
-  // Densidad por hora del día (0–23)
-  const hourData = new Array(24).fill(0);
-  studyRecs.forEach(r => { const h = Math.max(0, Math.min(23, r.hour | 0)); hourData[h] += r.minutes; });
-
-  const hourBars = document.getElementById('hour-bars');
-  const peakInfo = document.getElementById('hour-peak-info');
-  if (hourChartInst) { hourChartInst.destroy(); hourChartInst = null; }
-
-  if (!studyRecs.length) {
-    hourBars.innerHTML = '<div class="empty-state"><i class="ti ti-clock"></i>Aún no hay registros</div>';
-    peakInfo.innerHTML = '';
-  } else {
-    hourBars.innerHTML = '<div style="position:relative;height:220px;"><canvas id="hourChart" role="img" aria-label="Minutos estudiados por cada hora del día"></canvas></div>';
-    const hAccent = cssVar('--accent') || '#3b82f6';
-    const hRgb = hexToRgb(hAccent);
-    const peakH = hourData.indexOf(Math.max(...hourData));
-    const hourOptions = makeBarAxisOptions();
-    hourOptions.scales.x.ticks.callback = function(value, index) { return index % 3 === 0 ? this.getLabelForValue(value) : ''; };
-    hourChartInst = new Chart(document.getElementById('hourChart'), {
-      type: 'bar',
-      data: {
-        labels: hourData.map((_, h) => String(h)),
-        datasets: [{
-          label: 'Minutos',
-          data: hourData,
-          backgroundColor: hourData.map((_, h) => h === peakH ? hAccent : `rgba(${hRgb}, 0.45)`),
-          borderRadius: 4, borderSkipped: false
-        }]
-      },
-      options: hourOptions
-    });
-    peakInfo.innerHTML = `<div class="hour-peak"><i class="ti ti-bulb"></i> Tu hora más productiva es alrededor de las <strong>${peakH}:00</strong></div>`;
-  }
-
-  renderHeatmap();
-}
-
-// Selector de carpeta por fila para reasignar; las filas aún no sincronizadas
-// (sin id de servidor) muestran solo el nombre hasta el próximo sync.
-// El disparador no lleva su propia lista: el panel es único y se abre bajo
-// demanda, así que una tabla de mil filas no crea mil menús.
-function catSelectHtml(r) {
-  if (r.remote_id == null) return esc(r.category_name || '—');
-  const cat = categoryById(r.category_id);
-  const nombre = cat ? cat.name + (cat.archived ? ' (archivada)' : '') : (r.category_name || '—');
-  const color = cat ? cat.color : 'transparent';
-  return `<button type="button" class="fp-trigger fp-inline" aria-haspopup="listbox" aria-expanded="false"
-            aria-label="Carpeta de la sesión" data-session-ts="${esc(r.ts)}" onclick="openRowCategoryPicker(this)">
-            <span class="fp-dot" style="background:${esc(color)}"></span>
-            <span class="fp-value">${esc(nombre)}</span>
-            <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
-          </button>`;
-}
-
-// Filtros del Registro: antes vivían en el value de dos <select>; ahora que el
-// desplegable es propio, el estado lo guarda el módulo.
-let logFilters = { type: '', days: 7 };
-const LOG_TYPES = ['General', 'Matemáticas', 'Programación', 'Idiomas', 'Lectura', 'Otro'];
-const LOG_RANGES = [
-  { value: 7,  label: 'Últimos 7 días' },
-  { value: 30, label: 'Últimos 30 días' },
-  { value: 0,  label: 'Todo' },
-];
-
-function renderLog() {
-  const filterType = logFilters.type;
-  const filterDays = logFilters.days;
-  const today = new Date();
-  let recs = [...filteredDb()].filter(r => r.mode !== 'break').reverse();
-  if (filterType) recs = recs.filter(r => r.type === filterType);
-  if (filterDays > 0) {
-    // Comparación como cadena YYYY-MM-DD: evita el desfase de new Date(), que
-    // interpreta ese formato como UTC en vez de hora local.
-    const cutoff = new Date(today);
-    cutoff.setDate(today.getDate() - filterDays);
-    const cutoffStr = localDateStr(cutoff);
-    recs = recs.filter(r => r.date >= cutoffStr);
-  }
-
-  const wrap = document.getElementById('log-table-wrap');
-  if (!recs.length) { wrap.innerHTML = '<div class="empty-state"><i class="ti ti-calendar-off" aria-hidden="true"></i>No hay sesiones registradas</div>'; return; }
-
-  wrap.innerHTML = `<table><thead><tr><th>Fecha</th><th>Hora</th><th>Duración</th><th>Tipo</th><th>Carpeta</th><th>Modo</th></tr></thead><tbody>` +
-    recs.map(r => `<tr><td class="mono-cell">${r.date}</td><td class="mono-cell">${r.time}</td><td><strong class="mono-strong">${r.minutes} min</strong></td><td>${esc(r.type)}</td><td>${catSelectHtml(r)}</td><td><span class="badge badge-${r.mode}">${esc(r.mode)}</span></td></tr>`).join('') +
-    `</tbody></table>`;
-}
-
-function clearLog() {
-  if (!confirm('¿Borrar todos los registros? Esto no se puede deshacer.')) return;
-  fetch('/api/sessions/all', { method: 'DELETE' })
-    .then(r => r.json())
-    .then(d => {
-      if (!d.ok) { toast('No se pudieron borrar los registros'); return; }
-      db = []; save();
-      renderLog(); updateSideInfo(); renderTypeRecos();
-      if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
-      toast('Registros eliminados');
-    })
-    .catch(() => toast('Error de conexión'));
-}
-
-function exportCSV() {
-  // El backend genera el CSV con escapado correcto y BOM para Excel.
-  window.location.href = '/api/export/csv';
-  toast('CSV exportado ✓');
-}
-
-function toast(msg) {
-  const el = document.getElementById('toast');
-  document.getElementById('toast-msg').textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3000);
-}
-
-// Aviso de novedades: se muestra una vez por navegador tras esta actualización.
-// Cambiar UPDATE_NOTICE_VERSION en el próximo rediseño relevante para volver a mostrarlo.
-const UPDATE_NOTICE_VERSION = 'pomodoro-menus-v3';
-function showUpdateNoticeIfNeeded() {
-  if (localStorage.getItem('fd_update_seen') === UPDATE_NOTICE_VERSION) return;
-  document.getElementById('update-overlay').style.display = 'flex';
-}
-function dismissUpdateNotice() {
-  localStorage.setItem('fd_update_seen', UPDATE_NOTICE_VERSION);
-  document.getElementById('update-overlay').style.display = 'none';
-}
-
-renderClock(); updateSideInfo(); renderTypeRecos(); paintAllSliders();
-
-// Request notification permission on first interaction
-if ('Notification' in window && Notification.permission === 'default') {
-  document.getElementById('btn-toggle').addEventListener('click', function reqPerm() {
-    Notification.requestPermission();
-    document.getElementById('btn-toggle').removeEventListener('click', reqPerm);
-  }, { once: true });
-}
-
-// ── Apariencia (tema + acento) ──
-const VALID_THEMES = ['dark', 'light', 'ocean', 'forest'];
-let prefs = { theme: 'dark', accent: '#3b82f6', scene: 'aurora' };
-
-// Convierte #rrggbb a "r, g, b"
-function hexToRgb(hex) {
-  let h = hex.replace('#', '');
-  if (h.length === 3) h = h.split('').map(c => c + c).join('');
-  const n = parseInt(h, 16);
-  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
-}
-
-function applyTheme(theme) {
-  if (!VALID_THEMES.includes(theme)) theme = 'dark';
-  prefs.theme = theme;
-  if (theme === 'dark') document.documentElement.removeAttribute('data-theme');
-  else document.documentElement.setAttribute('data-theme', theme);
-
-  // Botón de toggle rápido del topbar: icono/label describen el modo ACTUAL (no el destino)
-  const isLight = theme === 'light';
-  const icon = document.getElementById('theme-toggle-icon');
-  const label = document.getElementById('theme-toggle-label');
-  if (icon) icon.className = 'ti ' + (isLight ? 'ti-sun' : 'ti-moon');
-  if (label) label.textContent = isLight ? 'Modo claro' : 'Modo oscuro';
-  updateSceneMode();
-  cacheAppearance();
-}
-
-function applyAccent(accent) {
-  prefs.accent = accent;
-  const root = document.documentElement.style;
-  root.setProperty('--accent', accent);
-  root.setProperty('--accent-hover', accent);
-  const input = document.getElementById('accent-input');
-  if (input) input.value = accent;
-  document.querySelectorAll('.accent-dot').forEach(d => {
-    const dotColor = d.style.background.startsWith('rgb')
-      ? d.style.background
-      : d.getAttribute('style').split(':')[1].trim();
-    d.classList.toggle('selected', dotColor.toLowerCase() === accent.toLowerCase());
-  });
-}
-
-function selectAccent(accent) {
-  applyAccent(accent);
-  if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
-}
-
-// Toggle rápido del topbar: única forma de cambiar de tema (claro/oscuro).
-// Cualquier tema activo que no sea 'light' se considera "modo oscuro" a efectos de este atajo.
-function toggleQuickTheme() {
-  const next = prefs.theme === 'light' ? 'dark' : 'light';
-  applyTheme(next);
-  if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
-  fetch('/api/preferences', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ theme: next })
-  }).catch(() => {});
-}
-
-function savePreferences() {
-  const btn = document.getElementById('btn-save-prefs');
-  btn.disabled = true;
-  fetch('/api/preferences', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ theme: prefs.theme, accent: prefs.accent, scene: prefs.scene })
-  }).then(r => r.json()).then(d => {
-    if (d.ok) toast('Apariencia guardada ✓');
-    else toast(d.error || 'No se pudo guardar');
-  }).catch(() => toast('Error de conexión'))
-    .finally(() => { btn.disabled = false; });
-}
-
-// ── Escenas de fondo ──
-// Catálogo fijo: los ids tienen que coincidir con VALID_SCENES en app.py
-// y con los bloques [data-scene="..."] del CSS.
-// photo:true busca /static/scenes/<id>.webp y, si no existe, .jpg. Si no hay
-// ninguna, la escena se queda con su degradado — nunca se ve rota.
-const SCENES = [
-  { id: 'aurora', label: 'Aurora',     photo: false },
-  { id: 'ocean',  label: 'Océano',     photo: true  },
-  { id: 'forest', label: 'Bosque',     photo: true  },
-  { id: 'summit', label: 'Cumbre',     photo: true  },
-  { id: 'dusk',   label: 'Atardecer',  photo: true  },
-  { id: 'arena',  label: 'Arena',      photo: true  },
-  { id: 'nebula', label: 'Nebulosa',   photo: false },
-  { id: 'none',   label: 'Sin escena', photo: false },
-];
-const DEFAULT_SCENE = 'aurora';
-
-// Interruptor del apartado de escenas. En false la app esconde el selector de
-// la barra superior y la galería de Configuración, y se comporta como si
-// estuviera en "Sin escena". La preferencia guardada NO se toca: basta volver a
-// ponerlo en true para que todo reaparezca tal y como estaba.
-const SCENES_ENABLED = false;
-const SCENE_EXTS = ['webp', 'jpg'];
-
-// Contador para descartar la carga de una foto cuyo cambio de escena ya
-// quedó obsoleto (el usuario pasó a otra antes de que terminara de bajar).
-let scenePhotoToken = 0;
-
-function applyScene(id) {
-  if (!SCENES.some(sc => sc.id === id)) id = DEFAULT_SCENE;
-  prefs.scene = id;
-  const root = document.documentElement;
-  root.setAttribute('data-scene', SCENES_ENABLED ? id : 'none');
-  root.classList.remove('scene-photo-ready');
-  root.style.removeProperty('--scene-photo');
-  scenePhotoToken++;
-  updateSceneMode();
-  syncSceneUI();
-  cacheAppearance();
-  const def = SCENES.find(sc => sc.id === id);
-  if (SCENES_ENABLED && def && def.photo) loadScenePhoto(id, 0, scenePhotoToken);
-}
-
-function loadScenePhoto(id, extIndex, token) {
-  if (extIndex >= SCENE_EXTS.length) return;
-  const url = '/static/scenes/' + id + '.' + SCENE_EXTS[extIndex];
-  const img = new Image();
-  img.onload = () => {
-    if (token !== scenePhotoToken) return;
-    document.documentElement.style.setProperty('--scene-photo', 'url("' + url + '")');
-    document.documentElement.classList.add('scene-photo-ready');
-  };
-  img.onerror = () => { if (token === scenePhotoToken) loadScenePhoto(id, extIndex + 1, token); };
-  img.src = url;
-}
-
-// El cristal (superficies translúcidas + desenfoque) solo tiene sentido si hay
-// algo detrás: con "Sin escena" o en modo claro se vuelve a superficies opacas.
-function updateSceneMode() {
-  const on = SCENES_ENABLED && prefs.scene !== 'none' && prefs.theme !== 'light';
-  document.documentElement.classList.toggle('scene-on', on);
-}
-
-function selectScene(id) {
-  applyScene(id);
-  if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
-  fetch('/api/preferences', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scene: prefs.scene })
-  }).catch(() => {});
-}
-
-// Rellena la galería de Configuración. El desplegable de la barra superior
-// construye su lista al abrirse (openScenePicker), así que aquí no hace falta.
-function buildSceneUI() {
-  if (!SCENES_ENABLED) {
-    ['scene-header-cat', 'scene-settings-card'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.hidden = true;
-    });
-    return;
-  }
-  const gal = document.getElementById('scene-gallery');
-  if (gal && !gal.children.length) {
-    SCENES.forEach(sc => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'scene-swatch';
-      // data-scene hace que el propio swatch herede el degradado de esa escena.
-      b.setAttribute('data-scene', sc.id);
-      b.dataset.sceneId = sc.id;
-      b.setAttribute('aria-label', 'Escena ' + sc.label);
-      b.innerHTML = '<span class="scene-swatch-bg"></span><span class="scene-swatch-name"></span>';
-      b.querySelector('.scene-swatch-name').textContent = sc.label;
-      b.onclick = () => selectScene(sc.id);
-      gal.appendChild(b);
-    });
-  }
-  syncSceneUI();
-}
-
-function syncSceneUI() {
-  const def = SCENES.find(sc => sc.id === prefs.scene);
-  setTriggerText('scene-trigger', 'scene-value', def ? def.label : '—');
-  document.querySelectorAll('.scene-swatch').forEach(b => {
-    b.classList.toggle('selected', b.dataset.sceneId === prefs.scene);
-  });
-}
-
-// Copia local de la apariencia: se aplica antes de que responda /api/me para
-// que no haya un parpadeo de fondo plano al abrir la app.
-const APPEARANCE_KEY = 'focusdata.appearance';
-
-function cacheAppearance() {
-  try {
-    localStorage.setItem(APPEARANCE_KEY, JSON.stringify({
-      theme: prefs.theme, accent: prefs.accent, scene: prefs.scene
-    }));
-  } catch (e) { /* almacenamiento no disponible: no es crítico */ }
-}
-
-function applyCachedAppearance() {
-  let cached = null;
-  try { cached = JSON.parse(localStorage.getItem(APPEARANCE_KEY) || 'null'); } catch (e) { cached = null; }
-  applyTheme(cached && cached.theme ? cached.theme : 'dark');
-  applyAccent(cached && cached.accent ? cached.accent : '#3b82f6');
-  applyScene(cached && cached.scene ? cached.scene : DEFAULT_SCENE);
-  buildSceneUI();
-}
-
-// ── Desplegable propio (Picker) ─────────────────────────
-// Un solo panel, reutilizado por todos los disparadores. Un <select> nativo
-// delega su lista al sistema operativo: no acepta árbol ni buscador, y se
-// pintaba con la paleta clara aunque la app estuviera en modo oscuro.
-// Cada item: { value, label, depth?, color?, note?, disabled?, search? }
-const Picker = (() => {
-  let panel, listEl, searchEl, ctx = null, items = [], vista = [], activo = -1;
-
-  // Comparación tolerante a mayúsculas y acentos ("logistica" encuentra "Logística").
-  const norm = s => (s == null ? '' : String(s)).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-  function build() {
-    panel = document.createElement('div');
-    panel.className = 'fp-panel';
-    panel.innerHTML = `
-      <div class="fp-search">
-        <i class="ti ti-search" aria-hidden="true"></i>
-        <input type="text" placeholder="Buscar…" aria-label="Buscar" autocomplete="off" spellcheck="false">
-      </div>
-      <div class="fp-list" role="listbox" tabindex="-1"></div>`;
-    document.body.appendChild(panel);
-    listEl = panel.querySelector('.fp-list');
-    searchEl = panel.querySelector('.fp-search input');
-
-    searchEl.addEventListener('input', () => { renderList(); position(); });
-    panel.addEventListener('keydown', onKeyDown);
-    listEl.addEventListener('click', e => {
-      const btn = e.target.closest('.fp-opt');
-      if (btn && !btn.disabled) elegir(+btn.dataset.i);
-    });
-    // pointerdown y no click: cierra antes de que el navegador mueva el foco.
-    document.addEventListener('pointerdown', e => {
-      if (!ctx) return;
-      if (panel.contains(e.target) || ctx.anchor.contains(e.target)) return;
-      close();
-    }, true);
-    // Un scroll de la PÁGINA dejaría el panel flotando lejos de su disparador,
-    // así que lo cierra. El scroll dentro de la propia lista es otra cosa —
-    // es cómo se llega a las últimas carpetas — y hay que dejarlo pasar.
-    window.addEventListener('scroll', e => {
-      if (!ctx || panel.contains(e.target)) return;
-      close();
-    }, true);
-    window.addEventListener('resize', () => { if (ctx) close(); });
-  }
-
-  function renderList() {
-    const q = norm(searchEl.value.trim());
-    vista = q ? items.filter(it => norm(it.search || it.label).includes(q)) : items.slice();
-    if (!vista.length) {
-      listEl.innerHTML = '<div class="fp-empty">Sin resultados</div>';
-      activo = -1;
-      return;
-    }
-    // Al buscar la sangría estorba (el padre puede no estar en la lista), así
-    // que se muestra la ruta completa en plano.
-    const plano = !!q;
-    listEl.innerHTML = vista.map((it, i) => {
-      const depth = plano ? 0 : (it.depth || 0);
-      const label = plano && it.search ? it.search : it.label;
-      const sel = String(it.value) === String(ctx.value);
-      return `<button type="button" class="fp-opt" role="option" data-i="${i}"
-                aria-selected="${sel}" ${it.disabled ? 'disabled' : ''}
-                style="padding-left:${10 + depth * 16}px" title="${esc(it.search || it.label)}">
-                ${depth ? '<span class="fp-branch" aria-hidden="true">└</span>' : ''}
-                ${it.color ? `<span class="fp-dot" style="background:${esc(it.color)}"></span>` : ''}
-                ${it.icon ? `<i class="ti ${esc(it.icon)}" aria-hidden="true"></i>` : ''}
-                <span class="fp-opt-label">${esc(label)}</span>
-                ${it.note ? `<span class="fp-opt-note">${esc(it.note)}</span>` : ''}
-                <i class="ti ti-check fp-check" aria-hidden="true"></i>
-              </button>`;
-    }).join('');
-    // Arranca sobre la opción ya seleccionada, para que ↑/↓ partan de ahí.
-    activo = vista.findIndex(it => String(it.value) === String(ctx.value));
-    marcarActivo(false);
-  }
-
-  function marcarActivo(scroll = true) {
-    const opts = listEl.querySelectorAll('.fp-opt');
-    opts.forEach((o, i) => o.classList.toggle('fp-active', i === activo));
-    if (scroll && activo >= 0 && opts[activo]) opts[activo].scrollIntoView({ block: 'nearest' });
-  }
-
-  function mover(paso) {
-    if (!vista.length) return;
-    let i = activo;
-    for (let n = 0; n < vista.length; n++) {
-      i = (i + paso + vista.length) % vista.length;
-      if (!vista[i].disabled) { activo = i; marcarActivo(); return; }
-    }
-  }
-
-  function onKeyDown(e) {
-    if (e.key === 'ArrowDown') { e.preventDefault(); mover(1); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); mover(-1); }
-    else if (e.key === 'Home') { e.preventDefault(); activo = -1; mover(1); }
-    else if (e.key === 'End') { e.preventDefault(); activo = vista.length; mover(-1); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (activo >= 0) elegir(activo); }
-    else if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); close(); }
-  }
-
-  function elegir(i) {
-    const it = vista[i];
-    if (!it || it.disabled) return;
-    const cb = ctx.onSelect;
-    close();
-    if (cb) cb(it.value, it);
-  }
-
-  function position() {
-    const r = ctx.anchor.getBoundingClientRect();
-    const ancho = Math.min(Math.max(r.width, ctx.minWidth || 260), window.innerWidth - 16);
-    panel.style.width = ancho + 'px';
-    panel.style.left = Math.round(Math.min(Math.max(8, r.left), window.innerWidth - ancho - 8)) + 'px';
-
-    // La lista se recorta al hueco que de verdad hay en pantalla. Con un alto
-    // fijo, en una ventana baja las últimas carpetas quedaban por debajo del
-    // borde y no había forma de llegar a ellas.
-    const abajo = window.innerHeight - r.bottom - 14;
-    const arriba = r.top - 14;
-    listEl.style.maxHeight = '';
-    const marco = panel.offsetHeight - listEl.offsetHeight;   // buscador + bordes
-    listEl.style.maxHeight = Math.max(160, Math.min(320, Math.max(abajo, arriba) - marco)) + 'px';
-
-    // Si abajo no cabe pero arriba sí, el panel se voltea sobre el disparador.
-    const alto = panel.offsetHeight;
-    panel.style.top = (abajo >= alto || abajo >= arriba ? r.bottom + 6 : Math.max(8, r.top - alto - 6)) + 'px';
-  }
-
-  function open(opts) {
-    if (!panel) build();
-    if (ctx && ctx.anchor === opts.anchor) { close(); return; }  // segundo clic = cerrar
-    if (ctx) close();
-    ctx = opts;
-    items = opts.items || [];
-    searchEl.value = '';
-    // Con pocas opciones el buscador sobra y roba el foco a las flechas.
-    const conBuscador = opts.searchable !== false && items.length > 5;
-    panel.querySelector('.fp-search').hidden = !conBuscador;
-    panel.classList.add('open');
-    renderList();
-    position();
-    opts.anchor.setAttribute('aria-expanded', 'true');
-    (conBuscador ? searchEl : listEl).focus({ preventScroll: true });
-  }
-
-  function close() {
-    if (!ctx) return;
-    const anchor = ctx.anchor;
-    ctx = null;
-    panel.classList.remove('open');
-    anchor.setAttribute('aria-expanded', 'false');
-    // Solo devolvemos el foco si seguía dentro del panel: si el usuario hizo
-    // clic en otro sitio, robárselo sería peor que no hacer nada.
-    if (panel.contains(document.activeElement) && document.contains(anchor)) anchor.focus({ preventScroll: true });
-  }
-
-  return { open, close, isOpen: () => !!ctx };
-})();
-
-// Convierte las carpetas en items del Picker.
-//   archived : 'hide' oculta las archivadas | 'show' las lista con nota
-//   keepId   : id que se muestra aunque esté archivado (la carpeta actual de una fila)
-//   exclude  : Set de ids no seleccionables (una carpeta no puede ir dentro de sí misma)
-//   lead     : item fijo al principio ("Todas las carpetas", "Raíz"…)
-function folderItems({ archived = 'hide', keepId = null, exclude = null, lead = null } = {}) {
-  const items = lead ? [lead] : [];
-  categories.forEach(c => {
-    const esArchivada = !!c.archived;
-    if (esArchivada && archived === 'hide' && +c.id !== +keepId) return;
-    items.push({
-      value: c.id,
-      label: c.name,
-      search: c.path || c.name,
-      depth: c.depth || 0,
-      color: c.color,
-      note: esArchivada ? 'archivada' : '',
-      disabled: exclude ? exclude.has(+c.id) : false,
-    });
-  });
-  return items;
-}
-
-// Pinta el texto (y el punto de color) de un disparador ya montado.
-function setTriggerText(triggerId, valueId, text, color) {
-  const val = document.getElementById(valueId);
-  if (val) val.textContent = text;
-  const trigger = document.getElementById(triggerId);
-  if (trigger && color !== undefined) {
-    const dot = trigger.querySelector('.fp-dot');
-    if (dot) dot.style.background = color || 'transparent';
-  }
-}
-
-// ── Disparadores concretos ──
-
-function openActivePicker(anchor) {
-  Picker.open({
-    anchor, value: activeCategoryId,
-    items: folderItems({ archived: 'hide' }),
-    onSelect: v => setActiveCategory(v),
-  });
-}
-
-function openFilterPicker(anchor) {
-  Picker.open({
-    anchor, value: filterCategoryId,
-    items: folderItems({
-      archived: 'show',
-      lead: { value: '', label: 'Todas las carpetas', icon: 'ti-stack-2' },
-    }),
-    onSelect: v => setGlobalFilter(v),
-  });
-}
-
-function openScenePicker(anchor) {
-  Picker.open({
-    anchor, value: prefs.scene, searchable: false,
-    items: SCENES.map(sc => ({ value: sc.id, label: sc.label, icon: 'ti-photo' })),
-    onSelect: v => selectScene(v),
-  });
-}
-
-function openLogTypePicker(anchor) {
-  Picker.open({
-    anchor, value: logFilters.type, searchable: false,
-    items: [{ value: '', label: 'Todos los tipos' }].concat(LOG_TYPES.map(t => ({ value: t, label: t }))),
-    onSelect: v => {
-      logFilters.type = v;
-      document.getElementById('filter-type-value').textContent = v || 'Todos los tipos';
-      renderLog();
-    },
-  });
-}
-
-function openLogDaysPicker(anchor) {
-  Picker.open({
-    anchor, value: logFilters.days, searchable: false,
-    items: LOG_RANGES.map(r => ({ value: r.value, label: r.label })),
-    onSelect: v => {
-      logFilters.days = +v;
-      const r = LOG_RANGES.find(x => x.value === +v);
-      document.getElementById('filter-days-value').textContent = r ? r.label : 'Todo';
-      renderLog();
-    },
-  });
-}
-
-// Fila del Registro: el disparador guarda el ts de la sesión en un data-*.
-function openRowCategoryPicker(anchor) {
-  const ts = anchor.dataset.sessionTs;
-  const rec = db.find(r => r.ts === ts);
-  if (!rec) return;
-  Picker.open({
-    anchor, value: rec.category_id,
-    items: folderItems({ archived: 'hide', keepId: rec.category_id }),
-    onSelect: v => reassignSession(ts, v),
-  });
-}
-
-// ── Modales ─────────────────────────────────────────────
-// Un overlay a la vez, creado y destruido al vuelo. Devuelve el <div> de la
-// tarjeta para que quien lo abre enganche sus propios controles.
-let modalActual = null;
-
-function closeModal() {
-  if (!modalActual) return;
-  Picker.close();
-  modalActual.remove();
-  modalActual = null;
-  document.removeEventListener('keydown', modalEscHandler, true);
-}
-
-function modalEscHandler(e) {
-  // Escape dentro del Picker lo cierra a él primero; el modal aguanta.
-  if (e.key === 'Escape' && !Picker.isOpen()) { e.preventDefault(); closeModal(); }
-}
-
-function openModal(html) {
-  closeModal();
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true">${html}</div>`;
-  overlay.addEventListener('mousedown', e => { if (e.target === overlay) closeModal(); });
-  document.body.appendChild(overlay);
-  modalActual = overlay;
-  document.addEventListener('keydown', modalEscHandler, true);
-  const card = overlay.querySelector('.modal-card');
-  const primer = card.querySelector('button, input, [tabindex]');
-  if (primer) primer.focus();
-  return card;
-}
-
-// ── Carpetas: carga, selectores y CRUD ──
-
-function loadCategories() {
-  return fetch('/api/categories')
-    .then(r => r.ok ? r.json() : [])
-    .then(data => {
-      if (!Array.isArray(data)) return;
-      categories = data;
-      renderCategoryUI();
-    })
-    .catch(err => console.error('Error cargando carpetas:', err));
-}
-
-function renderCategoryUI() {
-  // Filtro global: si la carpeta filtrada desapareció, se vuelve a "Todas".
-  if (filterCategoryId && !categoryById(filterCategoryId)) filterCategoryId = '';
-  const filtroCat = categoryById(filterCategoryId);
-  setTriggerText('global-filter-trigger', 'global-filter-value',
-    filtroCat ? filtroCat.name + (filtroCat.archived ? ' (archivada)' : '') : 'Todas las carpetas');
-
-  // Carpeta activa de la barra superior (solo no archivadas)
-  const active = categories.filter(c => !c.archived);
-  if (!categoryById(activeCategoryId) || categoryById(activeCategoryId).archived) {
-    activeCategoryId = active.length ? active[0].id : null;
-  }
-  const activeCat = categoryById(activeCategoryId);
-  setTriggerText('active-category-trigger', 'active-category-value', activeCat ? activeCat.name : '—');
-  const dot = document.getElementById('active-cat-dot');
-  if (dot) {
-    dot.style.background = activeCat ? activeCat.color : 'transparent';
-    if (activeCat) dot.title = activeCat.path;
-  }
-  const activeTrigger = document.getElementById('active-category-trigger');
-  if (activeTrigger && activeCat) activeTrigger.title = activeCat.path;
-
-  // Lista de gestión (pestaña Carpetas)
-  const list = document.getElementById('category-list');
-  if (!categories.length) {
-    list.innerHTML = '<div class="empty-state"><i class="ti ti-folder-off"></i>Sin carpetas aún</div>';
-  } else {
-    list.innerHTML = categories.map(c => `
-      <div class="cat-row${c.archived ? ' archived' : ''}" style="padding-left:${8 + c.depth * 22}px">
-        ${c.depth > 0 ? '<span class="cat-branch" aria-hidden="true">└</span>' : ''}
-        <span class="cat-dot" style="background:${esc(c.color)}"></span>
-        <span class="cat-name" title="${esc(c.path)}">${esc(c.name)}</span>
-        <span class="spacer"></span>
-        <button class="cat-action" onclick="addSubcategory(${c.id})"><i class="ti ti-folder-plus" aria-hidden="true"></i> Subcarpeta</button>
-        <button class="cat-action" onclick="renameCategory(${c.id})"><i class="ti ti-pencil" aria-hidden="true"></i> Renombrar</button>
-        <button class="cat-action" onclick="moveCategory(${c.id})"><i class="ti ti-arrows-move" aria-hidden="true"></i> Mover</button>
-        <button class="cat-action" onclick="toggleArchive(${c.id})">
-          <i class="ti ti-${c.archived ? 'archive-off' : 'archive'}" aria-hidden="true"></i> ${c.archived ? 'Restaurar' : 'Archivar'}
-        </button>
-        <button class="cat-action cat-action-danger" onclick="deleteCategory(${c.id})"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>
-      </div>`).join('');
-  }
-
-  // Refrescar los selectores de reasignación si el Registro está visible
-  if (document.getElementById('tab-log').classList.contains('active')) renderLog();
-}
-
-function setActiveCategory(id) {
-  activeCategoryId = +id;
-  const dot = document.getElementById('active-cat-dot');
-  const cat = categoryById(activeCategoryId);
-  if (dot) {
-    dot.style.background = cat ? cat.color : 'transparent';
-    if (cat) dot.title = cat.path;
-  }
-  setTriggerText('active-category-trigger', 'active-category-value', cat ? cat.name : '—');
-  const activeTrigger = document.getElementById('active-category-trigger');
-  if (activeTrigger && cat) activeTrigger.title = cat.path;
-  fetch('/api/preferences', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ active_category_id: activeCategoryId })
-  }).then(r => r.json()).then(d => {
-    if (!d.ok) toast(d.error || 'No se pudo guardar la carpeta activa');
-  }).catch(() => toast('Error de conexión'));
-}
-
-function setGlobalFilter(id) {
-  filterCategoryId = id === '' ? '' : +id;
-  const cat = categoryById(filterCategoryId);
-  setTriggerText('global-filter-trigger', 'global-filter-value',
-    cat ? cat.name + (cat.archived ? ' (archivada)' : '') : 'Todas las carpetas');
-  const trigger = document.getElementById('global-filter-trigger');
-  if (trigger) trigger.title = cat ? cat.path : 'Filtra lo que ves en Estadísticas e Historial';
-  updateSideInfo();
-  if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
-  if (document.getElementById('tab-log').classList.contains('active')) renderLog();
-}
-
-function reassignSession(ts, catId) {
-  const rec = db.find(r => r.ts === ts);
-  if (!rec || rec.remote_id == null) return;
-  fetch(`/api/sessions/${rec.remote_id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category_id: +catId })
-  }).then(r => r.json()).then(d => {
-    if (d.ok) {
-      rec.category_id = d.category_id;
-      rec.category_name = d.category_name;
-      save();
-      toast('Sesión movida a ' + d.category_name + ' ✓');
-      renderLog();
-    } else {
-      toast(d.error || 'No se pudo mover la sesión');
-      renderLog();
-    }
-  }).catch(() => { toast('Error de conexión'); renderLog(); });
-}
-
-
-// Crea una carpeta desde el Timer y la deja activa de inmediato.
-
-function createCategory() {
-  const nameInput = document.getElementById('new-cat-name');
-  const name = nameInput.value.trim();
-  const color = document.getElementById('new-cat-color').value;
-  if (!name) { nameInput.focus(); return; }
-  fetch('/api/categories', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, color })
-  }).then(r => r.json()).then(d => {
-    if (d.ok) {
-      nameInput.value = '';
-      toast('Carpeta "' + d.name + '" creada ✓');
-      loadCategories();
-    } else {
-      toast(d.error || 'No se pudo crear la carpeta');
-    }
-  }).catch(() => toast('Error de conexión'));
-}
-
-function renameCategory(id) {
-  const cat = categoryById(id);
-  if (!cat) return;
-  const name = prompt('Nuevo nombre de la carpeta:', cat.name);
-  if (name === null) return;
-  const trimmed = name.trim();
-  if (!trimmed || trimmed === cat.name) return;
-  fetch(`/api/categories/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: trimmed })
-  }).then(r => r.json()).then(d => {
-    if (d.ok) {
-      // Actualizar el nombre cacheado en las sesiones locales
-      db.forEach(r => { if (+r.category_id === id) r.category_name = d.name; });
-      save();
-      toast('Carpeta renombrada ✓');
-      loadCategories();
-      if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
-    } else {
-      toast(d.error || 'No se pudo renombrar');
-    }
-  }).catch(() => toast('Error de conexión'));
-}
-
-function toggleArchive(id) {
-  const cat = categoryById(id);
-  if (!cat) return;
-  fetch(`/api/categories/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ archived: !cat.archived })
-  }).then(r => r.json()).then(d => {
-    if (d.ok) {
-      toast(d.archived ? 'Carpeta archivada' : 'Carpeta restaurada ✓');
-      loadCategories();
-    } else {
-      toast(d.error || 'No se pudo archivar');
-    }
-  }).catch(() => toast('Error de conexión'));
-}
-
-function addSubcategory(parentId) {
-  const padre = categoryById(parentId);
-  if (!padre) return;
-  const name = prompt(`Nombre de la nueva subcarpeta dentro de "${padre.name}":`, '');
-  if (name === null) return;
-  const limpio = name.trim();
-  if (!limpio) return;
-  fetch('/api/categories', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: limpio, parent_id: parentId })
-  }).then(r => r.json()).then(d => {
-    if (!d.ok) { toast(d.error || 'No se pudo crear la subcarpeta'); return; }
-    loadCategories().then(() => toast('Subcarpeta creada ✓'));
-  }).catch(() => toast('Error de conexión'));
-}
-
-// Item "Raíz" que encabeza los selectores de destino. parent_id 0 es la raíz
-// en el backend (y no NULL: en SQLite dos NULL no chocan, así que el UNIQUE
-// dejaría pasar carpetas raíz duplicadas).
-const ITEM_RAIZ = { value: 0, label: 'Raíz (sin carpeta padre)', icon: 'ti-home' };
-
-// Destinos válidos para mover/reubicar: nunca la propia carpeta ni su
-// descendencia (sería un ciclo), y nunca una archivada.
-function destinoItems(id, { conRaiz = true } = {}) {
-  const prohibidos = descendantIds(id);
-  const items = folderItems({
-    archived: 'hide',
-    lead: conRaiz ? ITEM_RAIZ : null,
-  });
-  return items.map(it => it.value === 0 ? it
-    : { ...it, disabled: prohibidos.has(+it.value) });
-}
-
-function moveCategory(id) {
-  const cat = categoryById(id);
-  if (!cat) return;
-  let destino = 0;
-  const card = openModal(`
-    <h3><i class="ti ti-arrows-move" aria-hidden="true"></i> Mover carpeta</h3>
-    <p class="modal-sub">Elige dónde debe colgar <strong>${esc(cat.name)}</strong>. Sus subcarpetas se mueven con ella.</p>
-    <div class="modal-field">
-      <span class="modal-label">Nueva ubicación</span>
-      <button type="button" class="fp-trigger" id="move-target" aria-haspopup="listbox" aria-expanded="false">
-        <span class="fp-dot" style="background:transparent"></span>
-        <span class="fp-value">Raíz (sin carpeta padre)</span>
-        <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
-      </button>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn-secondary" id="move-cancel">Cancelar</button>
-      <button type="button" class="btn-primary" id="move-ok"><i class="ti ti-check" aria-hidden="true"></i> Mover</button>
-    </div>`);
-
-  const trigger = card.querySelector('#move-target');
-  trigger.onclick = () => Picker.open({
-    anchor: trigger, value: destino, items: destinoItems(id),
-    onSelect: (v, it) => {
-      destino = +v;
-      trigger.querySelector('.fp-value').textContent = it.search || it.label;
-      trigger.querySelector('.fp-dot').style.background = it.color || 'transparent';
-    },
-  });
-  card.querySelector('#move-cancel').onclick = closeModal;
-  card.querySelector('#move-ok').onclick = () => {
-    closeModal();
-    fetch(`/api/categories/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ parent_id: destino })
-    }).then(r => r.json()).then(d => {
-      if (!d.ok) { toast(d.error || 'No se pudo mover la carpeta'); return; }
-      loadCategories().then(() => toast('Carpeta movida ✓'));
-    }).catch(() => toast('Error de conexión'));
-  };
-}
-
-// Lo que se llevaría por delante un borrado. Se calcula sobre la copia local
-// del historial, así que el modal puede mostrar el impacto sin pedir nada al
-// servidor (el backend vuelve a contarlo antes de tocar la base de datos).
-function impactoBorrado(id) {
-  const ids = descendantIds(id);
-  return {
-    ids,
-    carpetas: ids.size,
-    sesiones: db.filter(r => ids.has(+r.category_id)).length,
-  };
-}
-
-function deleteCategory(id) {
-  const cat = categoryById(id);
-  if (!cat) return;
-  const imp = impactoBorrado(id);
-  const subcarpetas = imp.carpetas - 1;
-
-  // Destinos posibles: todo lo que no vaya a desaparecer con esta carpeta.
-  const destinos = destinoItems(id, { conRaiz: false }).filter(it => !it.disabled);
-  // Sin sitio donde moverlas, la única salida es borrarlas.
-  const puedeMover = imp.sesiones > 0 && destinos.length > 0;
-
-  let modo = puedeMover ? 'move' : 'delete';
-  let destino = null;
-  if (puedeMover) {
-    const porDefecto = destinos.find(it => +it.value === +cat.parent_id) || destinos[0];
-    destino = +porDefecto.value;
-  }
-
-  const resumen = subcarpetas === 0
-    ? `<strong>${esc(cat.name)}</strong>`
-    : (subcarpetas === 1
-        ? `<strong>${esc(cat.name)}</strong> y su subcarpeta`
-        : `<strong>${esc(cat.name)}</strong> y sus <strong>${subcarpetas}</strong> subcarpetas`);
-  const conteo = imp.sesiones === 1 ? '1 sesión' : `${imp.sesiones} sesiones`;
-  const plural = imp.sesiones === 1 ? '' : 's';
-
-  const card = openModal(`
-    <h3><i class="ti ti-trash" aria-hidden="true"></i> Eliminar carpeta</h3>
-    <p class="modal-sub">Vas a eliminar ${resumen}. Contiene <strong>${conteo}</strong>.</p>
-    <div class="modal-warn">
-      <i class="ti ti-alert-triangle" aria-hidden="true"></i>
-      <span>Esto no se puede deshacer. Si solo quieres quitarla de en medio sin perder nada, <strong>archívala</strong>.</span>
-    </div>
-    ${imp.sesiones > 0 ? `
-    <div class="modal-field">
-      <span class="modal-label">¿Qué hago con ${imp.sesiones === 1 ? 'esa sesión' : 'esas sesiones'}?</span>
-      <div class="choice-list">
-        ${destinos.length ? `
-        <label class="choice">
-          <input type="radio" name="del-content" value="move" ${modo === 'move' ? 'checked' : ''}>
-          <span class="choice-text">Moverla${plural} a otra carpeta
-            <small>El tiempo registrado se conserva en tus estadísticas.</small></span>
-        </label>` : ''}
-        <label class="choice">
-          <input type="radio" name="del-content" value="delete" ${modo === 'delete' ? 'checked' : ''}>
-          <span class="choice-text">Eliminarla${plural} también
-            <small>${imp.sesiones === 1 ? 'Desaparece' : 'Desaparecen'} del historial y de las estadísticas para siempre.</small></span>
-        </label>
-      </div>
-    </div>` : ''}
-    ${puedeMover ? `
-    <div class="modal-field" id="del-target-field">
-      <span class="modal-label">Mover a</span>
-      <button type="button" class="fp-trigger" id="del-target" aria-haspopup="listbox" aria-expanded="false">
-        <span class="fp-dot" style="background:transparent"></span>
-        <span class="fp-value">—</span>
-        <i class="ti ti-chevron-down fp-caret" aria-hidden="true"></i>
-      </button>
-    </div>` : ''}
-    <div class="modal-field" id="del-confirm-field" hidden>
-      <span class="modal-label">Escribe ELIMINAR para confirmar</span>
-      <input type="text" class="modal-confirm-input" id="del-confirm" autocomplete="off" spellcheck="false" placeholder="ELIMINAR">
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn-secondary" id="del-cancel">Cancelar</button>
-      <button type="button" class="btn-danger" id="del-ok"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>
-    </div>`);
-
-  const targetField = card.querySelector('#del-target-field');
-  const targetBtn = card.querySelector('#del-target');
-  const confirmField = card.querySelector('#del-confirm-field');
-  const confirmInput = card.querySelector('#del-confirm');
-  const okBtn = card.querySelector('#del-ok');
-
-  function pintarDestino() {
-    if (!targetBtn) return;
-    const it = destinos.find(d => +d.value === destino);
-    targetBtn.querySelector('.fp-value').textContent = it ? (it.search || it.label) : '—';
-    targetBtn.querySelector('.fp-dot').style.background = it && it.color ? it.color : 'transparent';
-  }
-
-  // Solo se exige teclear ELIMINAR cuando de verdad se pierden sesiones.
-  function sincronizar() {
-    const borraSesiones = modo === 'delete' && imp.sesiones > 0;
-    if (targetField) targetField.hidden = modo !== 'move';
-    confirmField.hidden = !borraSesiones;
-    okBtn.disabled = borraSesiones
-      ? confirmInput.value.trim().toUpperCase() !== 'ELIMINAR'
-      : (modo === 'move' && destino == null);
-    okBtn.style.opacity = okBtn.disabled ? '0.5' : '';
-    okBtn.style.cursor = okBtn.disabled ? 'not-allowed' : '';
-  }
-
-  card.querySelectorAll('input[name="del-content"]').forEach(r => {
-    r.addEventListener('change', () => { modo = r.value; sincronizar(); });
-  });
-  confirmInput.addEventListener('input', sincronizar);
-  if (targetBtn) {
-    targetBtn.onclick = () => Picker.open({
-      anchor: targetBtn, value: destino, items: destinos,
-      onSelect: v => { destino = +v; pintarDestino(); sincronizar(); },
-    });
-  }
-  card.querySelector('#del-cancel').onclick = closeModal;
-  okBtn.onclick = () => confirmarBorrado(id, modo, destino);
-
-  pintarDestino();
-  sincronizar();
-}
-
-function confirmarBorrado(id, modo, destino) {
-  // El nombre del destino se lee ANTES de recargar las carpetas: después de
-  // borrar, la lista cambia y el caché local necesita ya el nombre nuevo.
-  const destinoCat = modo === 'move' ? categoryById(destino) : null;
-  closeModal();
-  fetch(`/api/categories/${id}`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(modo === 'move' ? { content: 'move', target_id: destino } : { content: 'delete' })
-  }).then(r => r.json()).then(d => {
-    if (!d.ok) { toast(d.error || 'No se pudo eliminar la carpeta'); return; }
-    const borradas = new Set((d.deleted_ids || []).map(Number));
-
-    // Espejo local del cambio: el historial en caché tiene que reflejar lo
-    // mismo que la base de datos, o el próximo sync resucitaría lo borrado.
-    if (modo === 'move' && destinoCat) {
-      db.forEach(r => {
-        if (borradas.has(+r.category_id)) { r.category_id = destinoCat.id; r.category_name = destinoCat.name; }
-      });
-    } else {
-      db = db.filter(r => !borradas.has(+r.category_id));
-    }
-    save();
-
-    if (borradas.has(+filterCategoryId)) setGlobalFilter('');
-    if (d.active_category_id != null) activeCategoryId = +d.active_category_id;
-
-    loadCategories().then(() => {
-      updateSideInfo(); renderTypeRecos();
-      if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
-      if (document.getElementById('tab-log').classList.contains('active')) renderLog();
-      const detalle = d.moved_sessions ? ` · ${d.moved_sessions} sesiones movidas`
-        : (d.deleted_sessions ? ` · ${d.deleted_sessions} sesiones eliminadas` : '');
-      toast(`Carpeta eliminada${detalle} ✓`);
-    });
-  }).catch(() => toast('Error de conexión'));
-}
-
-// Clave estable para deduplicar sesiones (backend ↔ localStorage)
-function sessionKey(r) {
-  return r.ts || `${r.date}|${r.time}|${r.minutes}|${r.type}|${r.mode}`;
-}
-function sessionTime(r) {
-  return new Date(r.ts || `${r.date}T${r.time || '00:00'}`).getTime() || 0;
-}
-
-// Sincroniza el historial real del backend con la variable local `db`.
-// Backend = fuente de verdad; se conservan registros locales aún no subidos
-// (offline / carrera). Merge idempotente por `ts`, sin duplicar.
-function syncSessions() {
-  return fetch('/api/sessions?include_breaks=1')
-    .then(r => r.ok ? r.json() : [])
-    .then(remote => {
-      if (!Array.isArray(remote)) return;
-      // El id de servidor habilita la reasignación de carpeta vía PATCH
-      remote.forEach(r => { r.remote_id = r.id; });
-      const seen = new Set(remote.map(sessionKey));
-      const localOnly = db.filter(r => !seen.has(sessionKey(r)));
-
-      // Backfill idempotente: subir al backend los registros que solo existen
-      // localmente (datos previos al arreglo de persistencia / creados offline).
-      // Se les asigna un ts estable para que no se re-suban en la próxima carga.
-      // Los que no tienen carpeta (datos antiguos) reciben la de fallback en el backend.
-      localOnly.forEach(r => {
-        if (!r.ts) r.ts = `${r.date}T${r.time || '00:00'}:00`;
-        fetch('/api/sessions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ minutes: r.minutes, type: r.type, mode: r.mode, date: r.date, hour: r.hour, time: r.time, ts: r.ts, category_id: r.category_id })
-        }).catch(() => {});
-      });
-
-      db = [...remote, ...localOnly].sort((a, b) => sessionTime(a) - sessionTime(b));
-      save();
-      // Re-render con los datos ya sincronizados
-      updateSideInfo(); renderTypeRecos();
-      if (document.getElementById('tab-stats').classList.contains('active')) renderStats();
-      if (document.getElementById('tab-log').classList.contains('active')) renderLog();
-    })
-    .catch(err => console.error('Error sincronizando historial:', err));
-}
-
-// Load current user + preferencias
-applyCachedAppearance();
-fetch('/api/me').then(r => {
-  if (r.status === 401) { window.location.href = '/login'; return; }
-  return r.json();
-}).then(data => {
-  if (data && data.username) {
-    initStorage(data.id);
-    document.getElementById('user-display').textContent = data.username;
-    const avatarInitial = document.getElementById('sidebar-avatar-initial');
-    if (avatarInitial) avatarInitial.textContent = data.username.charAt(0).toUpperCase();
-    showUpdateNoticeIfNeeded();
-    // 'ocean' y 'forest' eran temas antes de que existieran las escenas:
-    // se reinterpretan como escena sobre el tema oscuro y se reguardan.
-    let theme = data.theme || 'dark';
-    let scene = data.scene || DEFAULT_SCENE;
-    const legacyTheme = (theme === 'ocean' || theme === 'forest');
-    if (legacyTheme) { scene = theme; theme = 'dark'; }
-    applyTheme(theme);
-    applyAccent(data.accent || '#3b82f6');
-    applyScene(scene);
-    buildSceneUI();
-    if (legacyTheme) {
-      fetch('/api/preferences', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme: theme, scene: scene })
-      }).catch(() => {});
-    }
-    activeCategoryId = data.active_category_id != null ? +data.active_category_id : null;
-    loadCategories();
-    syncSessions();
-  }
-}).catch(() => {});
-</script>
 </body>
 </html>

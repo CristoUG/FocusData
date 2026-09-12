@@ -1,0 +1,208 @@
+/* ══════════════════════════════════════════════════════════════════
+   FocusData — tokens de diseño (lenguaje Copilot / Fluent)
+   Compartido por la app (index.html) y el login (login.html).
+
+   Tipografía: Segoe UI Variable en Windows; Open Sans (del mismo
+   diseñador, Steve Matteson) como respaldo en el resto de sistemas.
+   Tema oscuro por defecto; [data-theme="light"] redefine SOLO tokens.
+   --accent lo fija el JS con el color elegido por el usuario.
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+  --f-text: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", "Open Sans", system-ui, sans-serif;
+  --f-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", "Open Sans", system-ui, sans-serif;
+  --f-small: "Segoe UI Variable Small", "Segoe UI Variable", "Segoe UI", "Open Sans", system-ui, sans-serif;
+  --ease: cubic-bezier(.1, .9, .2, 1);
+
+  color-scheme: dark;
+  --bg: #151413;
+  --side: #1C1B19;
+  --surface: rgba(44, 41, 38, .55);
+  --surface-solid: #262422;
+  --text: #F2F0EC;
+  --muted: #A8A39B;
+  --line: rgba(242, 240, 236, .11);
+  --hover: rgba(242, 240, 236, .07);
+  --sel-bg: rgba(242, 240, 236, .1);
+  --track: rgba(242, 240, 236, .09);
+  --accent: #3b82f6;
+  --ink: #F2F0EC;
+  --ink-fg: #151413;
+  --focus: #7FB0FF;
+  --good: #6CCB5F;
+  --danger: #FF99A4;
+  --danger-solid: #D13438;
+  --break: #5CC8B8;
+  --menu-bg: #2A2826;
+  --menu-line: rgba(242, 240, 236, .1);
+  --menu-shadow: 0 16px 40px -8px rgba(0, 0, 0, .65);
+  --overlay: rgba(0, 0, 0, .55);
+  --toast-bg: #F2F0EC;
+  --toast-fg: #151413;
+  --tip-bg: #2B2D31;
+  --tip-fg: #F1F2F4;
+  --tip-muted: #A9AEB7;
+  --tip-line: #3A3D44;
+  /* Escena: tres colores (ambiente y anillo), intensidad del ambiente y velo sobre fotos */
+  --s1: #E8875F;
+  --s2: #B77AA8;
+  --s3: #F2B36F;
+  --amb: 22%;
+  --scrim: linear-gradient(180deg, rgba(21, 20, 19, .4) 0%, rgba(21, 20, 19, .66) 55%, rgba(21, 20, 19, .82) 100%);
+  --photo-shadow: 0 1px 14px rgba(0, 0, 0, .6);
+  /* Paleta categórica validada (orden fijo; el color sigue al tipo, nunca al puesto) */
+  --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+  --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+  --cat-other: #6f6b66;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F7F6F4;
+  --side: #EDEBE7;
+  --surface: rgba(255, 255, 255, .6);
+  --surface-solid: #FFFFFF;
+  --text: #1C1B19;
+  --muted: #69655E;
+  --line: rgba(28, 27, 25, .10);
+  --hover: rgba(28, 27, 25, .06);
+  --sel-bg: rgba(28, 27, 25, .085);
+  --track: rgba(28, 27, 25, .08);
+  --ink: #1C1B19;
+  --ink-fg: #FFFFFF;
+  --focus: #2F6FEB;
+  --good: #107C10;
+  --danger: #C42B1C;
+  --danger-solid: #C42B1C;
+  --break: #0E8A7A;
+  --menu-bg: #FFFFFF;
+  --menu-line: rgba(28, 27, 25, .08);
+  --menu-shadow: 0 14px 38px -10px rgba(40, 30, 20, .26), 0 2px 6px rgba(40, 30, 20, .06);
+  --overlay: rgba(20, 18, 16, .35);
+  --toast-bg: #1C1B19;
+  --toast-fg: #FFFFFF;
+  --tip-bg: #FFFFFF;
+  --tip-fg: #1B1D21;
+  --tip-muted: #5B616B;
+  --tip-line: #D3D8DF;
+  --amb: 44%;
+  /* Modo claro: halo suave solo detrás del contenido; la foto conserva su color */
+  --scrim: radial-gradient(ellipse 56% 60% at 50% 45%, rgba(247, 246, 244, .6) 0%, rgba(247, 246, 244, .32) 55%, rgba(247, 246, 244, .06) 100%),
+           linear-gradient(180deg, rgba(247, 246, 244, .12), rgba(247, 246, 244, .24));
+  --photo-shadow: 0 1px 14px rgba(255, 255, 255, .8);
+  --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100;
+  --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #4a3aa7; --cat-8: #e34948;
+  --cat-other: #a8a29e;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--f-text);
+  font-size: 14px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.muted { color: var(--muted); }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Iconos Fluent (sprite en /static/img/icons.svg) */
+.ic { width: 20px; height: 20px; fill: currentColor; flex: none; display: block; }
+.ic.s16 { width: 16px; height: 16px; }
+.ic.s12 { width: 12px; height: 12px; }
+
+/* Barras de desplazamiento: finas, sin flechas, visibles al pasar el mouse */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-thumb {
+  border-radius: 10px; border: 3px solid transparent; background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--text) 14%, transparent);
+}
+:hover::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--text) 30%, transparent); }
+::-webkit-scrollbar-thumb:hover { border-width: 2px; background-color: color-mix(in srgb, var(--text) 45%, transparent); }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text) 30%, transparent) transparent; }
+}
+
+/* ── Escena: ambiente de colores + foto opcional con velo ── */
+.scene { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.scene-amb {
+  position: absolute; inset: -4%;
+  background:
+    radial-gradient(38% 46% at 16% 10%, color-mix(in srgb, var(--s1) var(--amb), transparent), transparent 72%),
+    radial-gradient(42% 52% at 90% 20%, color-mix(in srgb, var(--s2) var(--amb), transparent), transparent 72%),
+    radial-gradient(60% 46% at 52% 104%, color-mix(in srgb, var(--s3) var(--amb), transparent), transparent 72%);
+  transition: opacity .7s ease;
+  animation: amb-drift 26s ease-in-out infinite alternate;
+}
+.scene-photo {
+  position: absolute; inset: -3%;
+  background: var(--photo, none) center / cover no-repeat;
+  opacity: 0; transition: opacity .7s ease;
+}
+.scene-photo::after { content: ""; position: absolute; inset: 0; background: var(--scrim); }
+html.has-photo .scene-photo { opacity: 1; animation: ken-burns 48s ease-in-out infinite alternate; }
+html.has-photo .scene-amb { opacity: .3; }
+html.no-scene .scene-amb { opacity: 0; }
+@keyframes amb-drift { to { transform: scale(1.07) translate(-1.5%, 1.2%); } }
+@keyframes ken-burns { from { transform: scale(1.02); } to { transform: scale(1.09) translate(-1%, -.8%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* ── Botones y campos ── */
+.btn {
+  height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 14px; border-radius: 18px; border: 1px solid var(--line);
+  background: var(--surface); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  color: var(--text); white-space: nowrap; transition: background .15s, border-color .15s;
+}
+.btn:hover { background: var(--surface-solid); }
+a.btn { text-decoration: none; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn .lead { color: var(--muted); }
+.btn.primary { background: var(--ink); color: var(--ink-fg); border-color: transparent; font-weight: 600; }
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 88%, var(--bg)); }
+.btn.primary .lead { color: inherit; }
+.btn.danger { color: var(--danger); }
+.btn.danger-solid { background: var(--danger-solid); color: #fff; border-color: transparent; font-weight: 600; }
+.btn.danger-solid:hover:not(:disabled) { background: color-mix(in srgb, var(--danger-solid) 88%, #000); }
+.btn.ghost { background: transparent; border-color: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.btn.ghost:hover { background: var(--hover); }
+.btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 10px; border: 0; background: none;
+  display: grid; place-items: center; color: var(--muted); flex: none;
+}
+.icon-btn:hover, .icon-btn[aria-expanded="true"] { background: var(--hover); color: var(--text); }
+
+.field {
+  height: 36px; width: 100%; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface-solid); padding: 0 12px; color: var(--text); outline: none;
+  transition: border-color .15s;
+}
+.field:focus { border-color: color-mix(in srgb, var(--text) 35%, transparent); }
+.field::placeholder { color: var(--muted); }
+
+/* ── Aviso flotante ── */
+.toast {
+  position: fixed; left: 50%; bottom: 24px; z-index: 3000;
+  transform: translate(-50%, 12px); display: flex; gap: 10px; align-items: center;
+  max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: 12px;
+  background: var(--toast-bg); color: var(--toast-fg); font-size: 13.5px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25); opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .25s var(--ease);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast .ic { color: #6CCB5F; }
+.toast.error .ic { color: #FF7A85; }

@@ -12,6 +12,7 @@ que nunca tocan study.db. Ejecutar con:
     pytest
 """
 import importlib
+import io
 import sys
 from pathlib import Path
 
@@ -564,3 +565,118 @@ def test_cannot_delete_another_users_category(client):
     client.get("/logout")
     login(client, "alice3")
     assert alice_cat in [c["id"] for c in client.get("/api/categories").get_json()]
+
+
+# ── Escenas del rediseño ─────────────────────────────────
+
+def test_new_user_gets_the_new_default_scene(client):
+    register(client)
+    assert client.get("/api/me").get_json()["scene"] == "road"
+
+
+def test_new_scenes_accepted_and_removed_ones_rejected(client):
+    register(client)
+    for scene in ("road", "blossom", "ocean", "forest", "dusk", "nebula", "none"):
+        assert client.post("/api/preferences", json={"scene": scene}).status_code == 200
+    for scene in ("aurora", "summit", "arena", "bg:999", "bg:abc", 7):
+        assert client.post("/api/preferences", json={"scene": scene}).status_code == 400
+
+
+def test_removed_scenes_migrate_to_the_default(client):
+    register(client)
+    with app_module.closing(app_module.get_db()) as conn, conn:
+        conn.execute("UPDATE users SET scene = 'summit'")
+        conn.commit()
+    app_module.init_db()
+    assert client.get("/api/me").get_json()["scene"] == "road"
+
+
+# ── Fondos propios ───────────────────────────────────────
+
+JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 256
+
+
+@pytest.fixture
+def uploads(tmp_path, monkeypatch):
+    folder = tmp_path / "uploads"
+    monkeypatch.setattr(app_module, "UPLOAD_DIR", str(folder))
+    return folder
+
+
+def upload_bg(client, data=JPEG, name="Mi foto", colors='["#ff8800"]', thumb=None):
+    form = {"file": (io.BytesIO(data), "foto.jpg"), "name": name, "colors": colors}
+    if thumb is not None:
+        form["thumb"] = (io.BytesIO(thumb), "mini.jpg")
+    return client.post("/api/backgrounds", data=form, content_type="multipart/form-data")
+
+
+def test_upload_list_serve_and_select_background(client, uploads):
+    register(client)
+    r = upload_bg(client, thumb=JPEG)
+    assert r.status_code == 200
+    bg = r.get_json()["background"]
+    assert bg["name"] == "Mi foto"
+    assert bg["colors"] == ["#ff8800"]
+
+    assert [b["id"] for b in client.get("/api/backgrounds").get_json()] == [bg["id"]]
+    img = client.get(bg["url"])
+    assert img.status_code == 200
+    assert img.data == JPEG
+    assert img.mimetype == "image/jpeg"
+    assert client.get(bg["thumb_url"]).status_code == 200
+
+    assert client.post("/api/preferences", json={"scene": f"bg:{bg['id']}"}).status_code == 200
+    assert client.get("/api/me").get_json()["scene"] == f"bg:{bg['id']}"
+
+
+def test_background_rejects_files_that_are_not_images(client, uploads):
+    register(client)
+    r = upload_bg(client, data=b"<svg onload=alert(1)></svg>")
+    assert r.status_code == 400
+    assert client.get("/api/backgrounds").get_json() == []
+
+
+def test_background_drops_colors_that_could_inject_css(client, uploads):
+    register(client)
+    bg = upload_bg(client, colors='["url(javascript:1)", "#12ab34", 5, "hsl(20 60% 55%)"]').get_json()["background"]
+    assert bg["colors"] == ["#12ab34", "hsl(20 60% 55%)"]
+
+
+def test_background_limit_per_user(client, uploads):
+    register(client)
+    for _ in range(app_module.BG_MAX_PER_USER):
+        assert upload_bg(client).status_code == 200
+    r = upload_bg(client)
+    assert r.status_code == 400
+    assert "hasta" in r.get_json()["error"]
+
+
+def test_background_too_large_rejected(client, uploads, monkeypatch):
+    monkeypatch.setattr(app_module, "BG_MAX_BYTES", 100)
+    register(client)
+    assert upload_bg(client).status_code == 413
+
+
+def test_backgrounds_isolated_between_users(client, uploads):
+    register(client, "alice4")
+    bg = upload_bg(client).get_json()["background"]
+    client.get("/logout")
+
+    register(client, "bob4")
+    assert client.get("/api/backgrounds").get_json() == []
+    assert client.get(bg["url"]).status_code == 404
+    assert client.delete(f"/api/backgrounds/{bg['id']}").status_code == 404
+    assert client.post("/api/preferences", json={"scene": f"bg:{bg['id']}"}).status_code == 400
+
+
+def test_deleting_the_active_background_resets_scene_and_removes_files(client, uploads):
+    register(client)
+    bg = upload_bg(client, thumb=JPEG).get_json()["background"]
+    client.post("/api/preferences", json={"scene": f"bg:{bg['id']}"})
+    assert len([p for p in uploads.rglob("*") if p.is_file()]) == 2
+
+    r = client.delete(f"/api/backgrounds/{bg['id']}")
+    assert r.status_code == 200
+    assert r.get_json()["scene"] == "road"
+    assert client.get("/api/me").get_json()["scene"] == "road"
+    assert [p for p in uploads.rglob("*") if p.is_file()] == []

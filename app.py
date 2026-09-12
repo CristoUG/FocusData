@@ -44,11 +44,21 @@ app.config.update(
 )
 DB = os.path.join(BASE_DIR, "study.db")
 
+# Fondos que sube cada usuario. Viven fuera de /static para que solo su dueño
+# pueda verlos: se sirven desde /api/backgrounds/<id>/image, con login.
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads", "backgrounds")
+BG_MAX_PER_USER = 6
+BG_MAX_BYTES = 4 * 1024 * 1024        # el navegador ya la reduce a 2560 px antes de subirla
+BG_THUMB_MAX_BYTES = 400 * 1024
+BG_NAME_MAX = 40
+# Tope global del cuerpo de una petición (imagen + miniatura + campos del formulario).
+app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024
+
 # Preferencias por defecto (fuente única de verdad; el DEFAULT de SQL puede quedar
 # obsoleto en tablas ya creadas, así que se aplican explícitamente al registrar).
 DEFAULT_THEME = "dark"
 DEFAULT_ACCENT = "#3b82f6"
-DEFAULT_SCENE = "aurora"
+DEFAULT_SCENE = "road"
 
 # Carpetas (categorías) de sesiones
 DEFAULT_CATEGORY_NAME = "General"
@@ -102,7 +112,7 @@ def init_db():
                 password TEXT    NOT NULL,
                 theme    TEXT    NOT NULL DEFAULT 'dark',
                 accent   TEXT    NOT NULL DEFAULT '#3b82f6',
-                scene    TEXT    NOT NULL DEFAULT 'aurora'
+                scene    TEXT    NOT NULL DEFAULT 'road'
             )
         """)
         # Migración: añadir columnas de preferencias si la tabla ya existía sin ellas
@@ -112,7 +122,7 @@ def init_db():
         if "accent" not in existing_cols:
             conn.execute("ALTER TABLE users ADD COLUMN accent TEXT NOT NULL DEFAULT '#3b82f6'")
         if "scene" not in existing_cols:
-            conn.execute("ALTER TABLE users ADD COLUMN scene TEXT NOT NULL DEFAULT 'aurora'")
+            conn.execute("ALTER TABLE users ADD COLUMN scene TEXT NOT NULL DEFAULT 'road'")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -190,6 +200,22 @@ def init_db():
             """)
             conn.execute("DROP TABLE categories")
             conn.execute("ALTER TABLE categories_new RENAME TO categories")
+        # Fondos subidos por cada usuario (el archivo vive en UPLOAD_DIR/<user_id>/).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS backgrounds (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL REFERENCES users(id),
+                name       TEXT    NOT NULL,
+                file       TEXT    NOT NULL,
+                thumb      TEXT    NOT NULL DEFAULT '',
+                colors     TEXT    NOT NULL DEFAULT '[]',
+                created_at TEXT    NOT NULL
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_backgrounds_user ON backgrounds(user_id)")
+        # Migración del rediseño: las escenas retiradas pasan a la escena por defecto.
+        marcas = ",".join("?" * len(REMOVED_SCENES))
+        conn.execute(f"UPDATE users SET scene = ? WHERE scene IN ({marcas})", [DEFAULT_SCENE, *REMOVED_SCENES])
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_date ON sessions(user_id, date)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_ts   ON sessions(user_id, ts)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_user    ON categories(user_id)")
@@ -410,10 +436,28 @@ def me():
 # Temas válidos y validación del color de acento (#rgb o #rrggbb)
 VALID_THEMES = {"dark", "light", "ocean", "forest"}
 
-# Catálogo fijo de escenas de fondo. Debe coincidir con SCENES en static/index.html:
-# el servidor rechaza cualquier valor fuera de esta lista.
-VALID_SCENES = {"none", "aurora", "ocean", "forest", "arena", "nebula", "dusk", "summit"}
+# Catálogo fijo de escenas de fondo. Debe coincidir con SCENES en static/js/scenes.js.
+# Además se admite "bg:<id>" para un fondo subido por el propio usuario.
+VALID_SCENES = {"none", "road", "blossom", "ocean", "forest", "dusk", "nebula"}
+REMOVED_SCENES = ("aurora", "summit", "arena")
+BG_SCENE_RE = re.compile(r"^bg:(\d+)$")
 HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+# Colores que el navegador extrae de un fondo subido (se interpolan en CSS: formato estricto).
+BG_COLOR_RE = re.compile(r"^(?:#[0-9a-fA-F]{6}|hsl\(\d{1,3} \d{1,3}% \d{1,3}%\))$")
+
+
+def scene_is_valid(conn, uid, scene):
+    """Una escena del catálogo o un fondo que pertenezca a este usuario."""
+    if not isinstance(scene, str):
+        return False
+    if scene in VALID_SCENES:
+        return True
+    m = BG_SCENE_RE.match(scene)
+    if not m:
+        return False
+    return conn.execute(
+        "SELECT 1 FROM backgrounds WHERE id = ? AND user_id = ?", (int(m.group(1)), uid)
+    ).fetchone() is not None
 
 # Validación de entrada de sesiones
 VALID_MODES  = {"pomodoro", "break", "manual", "cronometro"}
@@ -441,13 +485,12 @@ def save_preferences():
             return jsonify({"error": "Color de acento no válido"}), 400
         updates.append("accent = ?")
         params.append(data["accent"])
-    if "scene" in data:
-        if data["scene"] not in VALID_SCENES:
-            return jsonify({"error": "Escena no válida"}), 400
-        updates.append("scene = ?")
-        params.append(data["scene"])
-
     with closing(get_db()) as conn, conn:
+        if "scene" in data:
+            if not scene_is_valid(conn, current_user.id, data["scene"]):
+                return jsonify({"error": "Escena no válida"}), 400
+            updates.append("scene = ?")
+            params.append(data["scene"])
         if "active_category_id" in data:
             row = conn.execute(
                 "SELECT id FROM categories WHERE id = ? AND user_id = ? AND archived = 0",
@@ -729,6 +772,161 @@ def update_session(sid):
         conn.execute("UPDATE sessions SET category_id = ? WHERE id = ? AND user_id = ?", (cat["id"], sid, uid))
         conn.commit()
     return jsonify({"ok": True, "category_id": cat["id"], "category_name": cat["name"]})
+
+# ── Fondos propios ──────────────────────────────────────
+
+IMAGE_MIMETYPES = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+
+
+def _sniff_image(data):
+    """Tipo real por los primeros bytes; nunca se confía en el nombre ni en el Content-Type."""
+    if data[:3] == b"\xff\xd8\xff":
+        return "jpg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def _user_upload_dir(uid):
+    return os.path.join(UPLOAD_DIR, str(int(uid)))
+
+
+def _background_json(row):
+    try:
+        colors = json.loads(row["colors"] or "[]")
+    except ValueError:
+        colors = []
+    url = f"/api/backgrounds/{row['id']}/image"
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "colors": colors if isinstance(colors, list) else [],
+        "url": url,
+        "thumb_url": f"{url}?size=thumb" if row["thumb"] else url,
+    }
+
+
+@app.errorhandler(413)
+def request_too_large(_err):
+    return jsonify({"error": "El archivo es demasiado grande"}), 413
+
+
+@app.route("/api/backgrounds", methods=["GET"])
+@login_required
+def list_backgrounds():
+    with closing(get_db()) as conn, conn:
+        rows = conn.execute(
+            "SELECT * FROM backgrounds WHERE user_id = ? ORDER BY id", (current_user.id,)
+        ).fetchall()
+    return jsonify([_background_json(r) for r in rows])
+
+
+@app.route("/api/backgrounds", methods=["POST"])
+@login_required
+def upload_background():
+    uid = current_user.id
+    upload = request.files.get("file")
+    if not upload:
+        return jsonify({"error": "Falta la imagen"}), 400
+    data = upload.read(BG_MAX_BYTES + 1)
+    if not data:
+        return jsonify({"error": "La imagen está vacía"}), 400
+    if len(data) > BG_MAX_BYTES:
+        return jsonify({"error": f"La imagen supera los {BG_MAX_BYTES // (1024 * 1024)} MB"}), 413
+    ext = _sniff_image(data)
+    if not ext:
+        return jsonify({"error": "Formato no admitido: usa JPG, PNG o WebP"}), 400
+
+    # La miniatura es opcional: si no llega o no es válida, se usa la imagen completa.
+    thumb_data, thumb_ext = b"", None
+    thumb = request.files.get("thumb")
+    if thumb:
+        thumb_data = thumb.read(BG_THUMB_MAX_BYTES + 1)
+        thumb_ext = _sniff_image(thumb_data) if 0 < len(thumb_data) <= BG_THUMB_MAX_BYTES else None
+        if not thumb_ext:
+            thumb_data = b""
+
+    name = (request.form.get("name") or "").strip()[:BG_NAME_MAX] or "Mi fondo"
+    try:
+        colors = json.loads(request.form.get("colors") or "[]")
+    except ValueError:
+        colors = []
+    if not isinstance(colors, list):
+        colors = []
+    colors = [c for c in colors if isinstance(c, str) and BG_COLOR_RE.match(c)][:3]
+
+    with closing(get_db()) as conn, conn:
+        count = conn.execute("SELECT COUNT(*) FROM backgrounds WHERE user_id = ?", (uid,)).fetchone()[0]
+        if count >= BG_MAX_PER_USER:
+            return jsonify({"error": f"Puedes guardar hasta {BG_MAX_PER_USER} fondos. Elimina uno para subir otro."}), 400
+
+        folder = _user_upload_dir(uid)
+        os.makedirs(folder, exist_ok=True)
+        token = secrets.token_hex(12)
+        file_name = f"{token}.{ext}"
+        with open(os.path.join(folder, file_name), "wb") as fh:
+            fh.write(data)
+        thumb_name = ""
+        if thumb_data:
+            thumb_name = f"{token}-thumb.{thumb_ext}"
+            with open(os.path.join(folder, thumb_name), "wb") as fh:
+                fh.write(thumb_data)
+
+        cur = conn.execute(
+            "INSERT INTO backgrounds (user_id, name, file, thumb, colors, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (uid, name, file_name, thumb_name, json.dumps(colors), datetime.now().isoformat(timespec="seconds"))
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM backgrounds WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return jsonify({"ok": True, "background": _background_json(row)})
+
+
+@app.route("/api/backgrounds/<int:bid>/image")
+@login_required
+def background_image(bid):
+    with closing(get_db()) as conn, conn:
+        row = conn.execute(
+            "SELECT file, thumb FROM backgrounds WHERE id = ? AND user_id = ?", (bid, current_user.id)
+        ).fetchone()
+    if not row:
+        return jsonify({"error": "Fondo no encontrado"}), 404
+    name = row["thumb"] if request.args.get("size") == "thumb" and row["thumb"] else row["file"]
+    path = os.path.join(_user_upload_dir(current_user.id), name)
+    if not os.path.isfile(path):
+        return jsonify({"error": "Fondo no encontrado"}), 404
+    mimetype = IMAGE_MIMETYPES.get(name.rsplit(".", 1)[-1], "application/octet-stream")
+    resp = send_file(path, mimetype=mimetype, max_age=31536000)
+    # Los ids nunca se reutilizan (AUTOINCREMENT), así que la imagen de una URL no cambia jamás.
+    resp.headers["Cache-Control"] = "private, max-age=31536000, immutable"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp
+
+
+@app.route("/api/backgrounds/<int:bid>", methods=["DELETE"])
+@login_required
+def delete_background(bid):
+    uid = current_user.id
+    with closing(get_db()) as conn, conn:
+        row = conn.execute(
+            "SELECT file, thumb FROM backgrounds WHERE id = ? AND user_id = ?", (bid, uid)
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Fondo no encontrado"}), 404
+        conn.execute("DELETE FROM backgrounds WHERE id = ? AND user_id = ?", (bid, uid))
+        # Si era el fondo en uso, se vuelve a la escena por defecto.
+        conn.execute("UPDATE users SET scene = ? WHERE id = ? AND scene = ?", (DEFAULT_SCENE, uid, f"bg:{bid}"))
+        conn.commit()
+        scene = conn.execute("SELECT scene FROM users WHERE id = ?", (uid,)).fetchone()["scene"]
+    folder = _user_upload_dir(uid)
+    for name in (row["file"], row["thumb"]):
+        if name:
+            try:
+                os.remove(os.path.join(folder, name))
+            except OSError:
+                pass
+    return jsonify({"ok": True, "scene": scene})
 
 # ── App Routes ──────────────────────────────────────────
 

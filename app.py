@@ -216,6 +216,23 @@ def init_db():
         # Migración del rediseño: las escenas retiradas pasan a la escena por defecto.
         marcas = ",".join("?" * len(REMOVED_SCENES))
         conn.execute(f"UPDATE users SET scene = ? WHERE scene IN ({marcas})", [DEFAULT_SCENE, *REMOVED_SCENES])
+        # Migraciones de datos que deben aplicarse UNA sola vez: a diferencia de las de esquema,
+        # repetirlas en cada arranque pisaría lo que el usuario eligió después.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS migrations (
+                name       TEXT PRIMARY KEY,
+                applied_at TEXT NOT NULL
+            )
+        """)
+        aplicadas = {r["name"] for r in conn.execute("SELECT name FROM migrations").fetchall()}
+        if "tema-oscuro-para-todos" not in aplicadas:
+            # El modo oscuro pasa a ser el de todas las cuentas; quien prefiera el claro puede
+            # volver a elegirlo. 'ocean' y 'forest' no se tocan: el frontend los convierte en escenas.
+            conn.execute("UPDATE users SET theme = 'dark' WHERE theme = 'light'")
+            conn.execute(
+                "INSERT INTO migrations (name, applied_at) VALUES (?, ?)",
+                ("tema-oscuro-para-todos", datetime.now().isoformat(timespec="seconds"))
+            )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_date ON sessions(user_id, date)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_ts   ON sessions(user_id, ts)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_user    ON categories(user_id)")

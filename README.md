@@ -137,4 +137,4 @@ study_tracker/
 | ts | TEXT | Timestamp ISO completo (clave de deduplicación en la sincronización) |
 | category_id | INTEGER | Carpeta de la sesión (FK → `categories.id`) |
 
-> **Migraciones automáticas:** al arrancar, `init_db()` añade las columnas que falten en bases de datos antiguas (`users.theme`, `users.accent`, `sessions.user_id`, `sessions.category_id`, `users.active_category_id`). Los usuarios existentes sin carpetas reciben una llamada **"Semestre 1"** con todas sus sesiones asignadas. No requiere intervención manual.
+> **Migraciones automáticas:** al arrancar, `init_db()` añade las columnas que falten en bases de datos antiguas (`users.theme`, `users.accent`, `sessions.user_id`, `sessions.category_id`, `users.active_category_id`). Los usuarios existentes sin carpetas reciben una llamada **"Semestre 1"** con todas sus sesiones asignadas. No requiere intervención manual. Las migraciones de datos que solo deben aplicarse una vez (por ejemplo, pasar a modo oscuro las cuentas que tenían el claro) quedan registradas en la tabla `migrations` para no repetirse.

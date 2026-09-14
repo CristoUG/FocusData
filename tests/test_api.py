@@ -591,6 +591,38 @@ def test_removed_scenes_migrate_to_the_default(client):
     assert client.get("/api/me").get_json()["scene"] == "road"
 
 
+# ── Tema oscuro para todos (migración única) ─────────────
+
+def _as_db_before_dark_migration(theme):
+    """Deja la DB como estaba antes de la migración, con la cuenta en el tema indicado."""
+    with app_module.closing(app_module.get_db()) as conn, conn:
+        conn.execute("UPDATE users SET theme = ?", (theme,))
+        conn.execute("DELETE FROM migrations WHERE name = 'tema-oscuro-para-todos'")
+        conn.commit()
+
+
+def test_light_accounts_switch_to_dark(client):
+    register(client)
+    _as_db_before_dark_migration("light")
+    app_module.init_db()
+    assert client.get("/api/me").get_json()["theme"] == "dark"
+
+
+def test_dark_migration_does_not_override_a_later_choice(client):
+    register(client)
+    assert client.post("/api/preferences", json={"theme": "light"}).status_code == 200
+    app_module.init_db()          # reinicio del servidor con la migración ya aplicada
+    assert client.get("/api/me").get_json()["theme"] == "light"
+
+
+def test_dark_migration_keeps_legacy_themes(client):
+    # 'ocean' y 'forest' los reinterpreta el frontend como escenas: no deben perderse.
+    register(client)
+    _as_db_before_dark_migration("ocean")
+    app_module.init_db()
+    assert client.get("/api/me").get_json()["theme"] == "ocean"
+
+
 # ── Fondos propios ───────────────────────────────────────
 
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 256

@@ -18,10 +18,12 @@ const T = {
   elapsed: 0, startedAt: null, // solo cronómetro
   type: 'General',
   iv: null,
+  due: null,                   // setTimeout del final de la fase (ver start)
 };
 
 const pad = n => String(n).padStart(2, '0');
-const phaseDuration = () => (T.phase === 'work' ? S.cfg.work : T.phase === 'short' ? S.cfg.short : S.cfg.long) * 60;
+const phaseMinutes = () => (T.phase === 'work' ? S.cfg.work : T.phase === 'short' ? S.cfg.short : S.cfg.long);
+const phaseDuration = () => phaseMinutes() * 60;
 const phaseLabel = () => (T.phase === 'work' ? 'Tiempo de trabajo' : T.phase === 'short' ? 'Descanso corto' : 'Descanso largo');
 
 export function renderClock() {
@@ -67,6 +69,7 @@ function updateToggle() {
 }
 
 function tick() {
+  if (!T.running) return;
   if (T.mode === 'cronometro') {
     T.elapsed = Math.max(0, Math.round((Date.now() - T.startedAt) / 1000));
     renderClock();
@@ -90,12 +93,17 @@ function start() {
   T.running = true;
   clearInterval(T.iv);
   T.iv = setInterval(tick, 250);
+  // Chrome puede espaciar hasta un minuto los setInterval de una pestaña oculta; un setTimeout
+  // creado aquí (desde el clic) no sufre ese recorte, así que la fase termina y avisa a su hora.
+  clearTimeout(T.due);
+  if (T.mode === 'pomodoro') T.due = setTimeout(tick, T.remaining * 1000 + 50);
   updateToggle();
   renderClock();
 }
 
 function pause() {
   clearInterval(T.iv);
+  clearTimeout(T.due);
   if (T.mode === 'cronometro') T.elapsed = Math.max(0, Math.round((Date.now() - T.startedAt) / 1000));
   else T.remaining = Math.max(0, Math.round((T.endTime - Date.now()) / 1000));
   T.running = false;
@@ -106,6 +114,7 @@ function pause() {
 
 export function resetTimer() {
   clearInterval(T.iv);
+  clearTimeout(T.due);
   Object.assign(T, {
     running: false, paused: false, phase: 'work', session: 1, cycleCount: 0,
     remaining: S.cfg.work * 60, phaseTotal: S.cfg.work * 60, endTime: null, elapsed: 0, startedAt: null,
@@ -116,22 +125,22 @@ export function resetTimer() {
 
 function phaseComplete() {
   clearInterval(T.iv);
+  clearTimeout(T.due);
   playAlarm();
   // Se registra lo que la fase REALMENTE duró, no lo que digan ahora los ajustes.
   const minutes = Math.max(1, Math.round((T.phaseTotal || phaseDuration()) / 60));
+  const finished = T.phase;
   if (T.phase === 'work') {
     logSession(minutes, T.type, 'pomodoro');
     T.cycleCount++;
     T.phase = T.cycleCount % S.cfg.cycles === 0 ? 'long' : 'short';
     toast(T.phase === 'long' ? 'Sesión guardada. Toca un descanso largo.' : 'Sesión guardada. Toca un descanso corto.');
-    notify('Sesión completada', T.phase === 'long' ? 'Tómate un descanso largo.' : 'Hora de un descanso corto.');
   } else {
     // El descanso también se registra: lo necesita el ratio de descanso activo.
     logSession(minutes, 'Descanso', 'break');
     T.session++;
     T.phase = 'work';
     toast('Descanso terminado. ¡A concentrarse!');
-    notify('Descanso terminado', 'Es hora de volver a concentrarte.');
   }
   T.phaseTotal = phaseDuration();
   T.remaining = T.phaseTotal;
@@ -139,6 +148,8 @@ function phaseComplete() {
   T.paused = false;
   updateToggle();
   renderClock();
+  // Las notificaciones del sistema viven en notifications.js.
+  emit('phase-end', { finished, minutes, type: T.type, next: T.phase, nextMinutes: phaseMinutes() });
 }
 
 function saveCrono() {
@@ -176,7 +187,7 @@ function syncIdleRemaining(key) {
   renderClock();
 }
 
-// ── Alarma (Web Audio, sin archivos) y notificaciones ──
+// ── Alarma (Web Audio, sin archivos) ──
 function playAlarm() {
   emit('alarm');
   const ring = (volume, length) => {
@@ -198,14 +209,6 @@ function playAlarm() {
   };
   ring(0.3, 0.6);
   setTimeout(() => ring(0.25, 0.8), 1000);
-}
-function notify(title, body) {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try { new Notification(title, { body, icon: '/static/favicon.png' }); } catch { /* sin soporte */ }
-  }
-}
-function requestNotificationPermission() {
-  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 }
 
 // ── Tiempos del Pomodoro (rueda y Configuración comparten estos controles) ──
@@ -353,10 +356,7 @@ export function focusTypeInput() {
 export function initTimer() {
   T.remaining = T.phaseTotal = S.cfg.work * 60;
 
-  $('#btn-toggle').addEventListener('click', () => {
-    requestNotificationPermission();
-    if (T.running) pause(); else start();
-  });
+  $('#btn-toggle').addEventListener('click', () => { if (T.running) pause(); else start(); });
   $('#btn-reset').addEventListener('click', resetTimer);
   $('#btn-save').addEventListener('click', saveCrono);
   $('#btn-mode').addEventListener('click', e => openModeMenu(e.currentTarget));
@@ -364,7 +364,7 @@ export function initTimer() {
   $('#btn-gear').addEventListener('click', e => openGear(e.currentTarget));
   $('#type-input').addEventListener('input', onTypeInput);
   $('#type-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); if (!T.running) { requestNotificationPermission(); start(); } }
+    if (e.key === 'Enter') { e.preventDefault(); if (!T.running) start(); }
   });
   $('#chips').addEventListener('click', e => {
     const chip = e.target.closest('[data-type]');
@@ -390,6 +390,10 @@ export function initTimer() {
   });
 
   on('cfg', key => { syncCfgControls(); syncIdleRemaining(key); });
+  // Botón «Empezar…» de una notificación: solo si el reloj sigue esperando esa misma fase.
+  on('timer-command', ({ command, phase }) => {
+    if (command === 'start' && T.mode === 'pomodoro' && !T.running && !T.paused && T.phase === phase) start();
+  });
   on('active', renderActive);
   on('categories', renderActive);
   on('sessions', () => { renderRecos(); renderHomeStats(); });

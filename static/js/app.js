@@ -9,6 +9,7 @@ import { initLog, setLogVisible } from './log.js';
 import { initScenes, applyScene, loadBackgrounds, readAppearance, cacheAppearance, DEFAULT_SCENE } from './scenes.js';
 import { initSettings, applyTheme, applyAccent, setTheme } from './settings.js';
 import { initMusic } from './music.js';
+import { initNotifications } from './notifications.js';
 
 const VIEWS = { timer: 'Timer', stats: 'Estadísticas', log: 'Registro', folders: 'Carpetas', settings: 'Configuración', help: 'Ayuda' };
 const SIDE_KEY = 'focusdata.side.collapsed';
@@ -147,6 +148,7 @@ async function boot() {
   initScenes();
   initSettings();
   initMusic();
+  initNotifications();
   initShell();
   go(location.hash.slice(1) || 'timer');
 

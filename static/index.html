@@ -251,6 +251,14 @@
               <div class="exp-body" id="set-pomo-exp"><div inert><div class="exp-inner" id="set-pomo"></div></div></div>
             </div>
             <div class="exp">
+              <button type="button" class="exp-h" data-toggle="set-notify" aria-expanded="false">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-alert"/></svg>
+                <span class="exp-t"><b>Notificaciones</b><span data-notify-summary>Avisos al terminar un pomodoro o un descanso</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body" id="set-notify"><div inert><div class="exp-inner" id="set-notify-body"></div></div></div>
+            </div>
+            <div class="exp">
               <button type="button" class="exp-h" data-toggle="set-music" aria-expanded="false">
                 <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-music"/></svg>
                 <span class="exp-t"><b>Música de concentración</b><span data-music-status>Lo-fi, lluvia, olas y más</span></span>
@@ -295,13 +303,14 @@
             <div class="exp">
               <button type="button" class="exp-h" data-toggle="help-timer" aria-expanded="true">
                 <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-timer"/></svg>
-                <span class="exp-t"><b>Temporizador</b><span>Pomodoro, cronómetro y sesiones manuales</span></span>
+                <span class="exp-t"><b>Temporizador</b><span>Pomodoro, cronómetro, sesiones manuales y avisos</span></span>
                 <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
               </button>
               <div class="exp-body open" id="help-timer"><div><div class="exp-inner">
                 <p class="help-p">Escribe en qué vas a trabajar en la barra de actividad y pulsa el botón de inicio (o <b>Enter</b>). Las sesiones de menos de un minuto no se registran.</p>
                 <p class="help-p">En el menú de modo eliges <b>Pomodoro</b>, que cuenta hacia atrás y alterna trabajo y descansos con una alarma al terminar cada fase, o <b>Cronómetro</b>, que cuenta hacia adelante sin límite: cuando termines, guárdalo con el botón de disquete. En el cronómetro el anillo da una vuelta por hora.</p>
                 <p class="help-p">La <b>rueda</b> de la barra ajusta los minutos de trabajo, descanso corto, descanso largo y cuántos ciclos pasan antes del descanso largo. ¿No usaste el temporizador? En el menú de modo está <b>Registrar sesión manual</b>.</p>
+                <p class="help-p">Al terminar un pomodoro o un descanso suena una alarma y, si no estás mirando la app, recibes una <b>notificación</b>. En Chrome y Edge trae un botón para empezar la siguiente fase sin volver a la pestaña. Da el permiso y elige qué avisos quieres en <b>Configuración › Notificaciones</b>.</p>
               </div></div></div>
             </div>
             <div class="exp">

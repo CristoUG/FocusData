@@ -10,6 +10,7 @@ Incluye **autenticación de usuarios** (registro / login) con Flask-Login, de mo
 - Diseño inspirado en Copilot / Fluent: barra lateral plegable con carpetas y sesiones recientes, menús desplegables, modo claro y oscuro, y color de acento.
 - **Escenas de fondo** (Carretera, Cerezos, Atardecer, Océano, Bosque, Nebulosa o ninguna) y **fondos propios**: cada usuario puede subir hasta 6 imágenes, que se guardan en su cuenta.
 - **Música de concentración**: Lo-fi y Ambiente (música generativa), Lluvia, Bosque, Olas, Chimenea y Ruido marrón, generados en el navegador con Web Audio, más pistas propias opcionales. Se puede sincronizar con el temporizador para que suene solo mientras trabajas.
+- **Notificaciones** al terminar cada pomodoro y cada descanso (se eligen por separado en Configuración). En Chrome y Edge incluyen un botón para empezar la siguiente fase sin volver a la app.
 - Estadísticas avanzadas: racha actual/máxima, índice de regularidad semanal (IRS), ratio de descanso activo (RDA), enfoque Pomodoro, calendario de consistencia, distribución por tema, últimos 7 días y densidad por hora (0–23).
 
 ## Instalación
@@ -46,8 +47,9 @@ study_tracker/
 └── static/
     ├── index.html      ← Interfaz principal (requiere login)
     ├── login.html      ← Pantalla de registro / inicio de sesión
+    ├── sw.js           ← Service worker mínimo de las notificaciones (no guarda caché)
     ├── css/            ← tokens.css (tema) y app.css (interfaz)
-    ├── js/             ← Módulos ES: app, store, ui, timer, folders, stats, log, scenes, settings, music…
+    ├── js/             ← Módulos ES: app, store, ui, timer, folders, stats, log, scenes, settings, music, notifications…
     ├── img/icons.svg   ← Iconos Fluent UI System Icons (MIT)
     ├── scenes/         ← Fotos de las escenas del catálogo (ver su README)
     └── music/          ← Pistas de música opcionales y tracks.json (ver su README)

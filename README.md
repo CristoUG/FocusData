@@ -9,6 +9,7 @@ Incluye **autenticación de usuarios** (registro / login) con Flask-Login, de mo
 - Sincronización del historial con el backend (SQLite) para no perder datos entre dispositivos.
 - Diseño inspirado en Copilot / Fluent: barra lateral plegable con carpetas y sesiones recientes, menús desplegables, modo claro y oscuro, y color de acento.
 - **Escenas de fondo** (Carretera, Cerezos, Atardecer, Océano, Bosque, Nebulosa o ninguna) y **fondos propios**: cada usuario puede subir hasta 6 imágenes, que se guardan en su cuenta.
+- **Música de concentración**: Lo-fi y Ambiente (música generativa), Lluvia, Bosque, Olas, Chimenea y Ruido marrón, generados en el navegador con Web Audio, más pistas propias opcionales. Se puede sincronizar con el temporizador para que suene solo mientras trabajas.
 - Estadísticas avanzadas: racha actual/máxima, índice de regularidad semanal (IRS), ratio de descanso activo (RDA), enfoque Pomodoro, calendario de consistencia, distribución por tema, últimos 7 días y densidad por hora (0–23).
 
 ## Instalación
@@ -46,9 +47,10 @@ study_tracker/
     ├── index.html      ← Interfaz principal (requiere login)
     ├── login.html      ← Pantalla de registro / inicio de sesión
     ├── css/            ← tokens.css (tema) y app.css (interfaz)
-    ├── js/             ← Módulos ES: app, store, ui, timer, folders, stats, log, scenes, settings…
+    ├── js/             ← Módulos ES: app, store, ui, timer, folders, stats, log, scenes, settings, music…
     ├── img/icons.svg   ← Iconos Fluent UI System Icons (MIT)
-    └── scenes/         ← Fotos de las escenas del catálogo (ver su README)
+    ├── scenes/         ← Fotos de las escenas del catálogo (ver su README)
+    └── music/          ← Pistas de música opcionales y tracks.json (ver su README)
 ```
 
 > Los HTML se sirven directamente desde `static/` con `send_from_directory` (no se usa la carpeta `templates/`).

@@ -83,6 +83,7 @@
         <span class="pill-label" id="btn-scene-label">Carretera</span>
         <svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
       </button>
+      <button type="button" class="icon-btn" id="btn-music" aria-haspopup="dialog" aria-expanded="false" aria-label="Música de concentración" title="Música de concentración"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-music"/></svg><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span></button>
       <button type="button" class="icon-btn" id="btn-theme" aria-label="Cambiar a modo claro" title="Cambiar a modo claro"><svg class="ic" aria-hidden="true"><use id="btn-theme-icon" href="/static/img/icons.svg#i-sun"/></svg></button>
     </header>
 
@@ -250,6 +251,14 @@
               <div class="exp-body" id="set-pomo-exp"><div inert><div class="exp-inner" id="set-pomo"></div></div></div>
             </div>
             <div class="exp">
+              <button type="button" class="exp-h" data-toggle="set-music" aria-expanded="false">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-music"/></svg>
+                <span class="exp-t"><b>Música de concentración</b><span data-music-status>Lo-fi, lluvia, olas y más</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body" id="set-music"><div inert><div class="exp-inner" id="set-music-body"></div></div></div>
+            </div>
+            <div class="exp">
               <button type="button" class="exp-h" data-toggle="set-data" aria-expanded="false">
                 <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-download"/></svg>
                 <span class="exp-t"><b>Datos y exportación</b><span>Descarga o borra tu historial</span></span>
@@ -328,6 +337,17 @@
               <div class="exp-body" id="help-look"><div inert><div class="exp-inner">
                 <p class="help-p">Elige una escena desde el menú de fondo, arriba a la derecha, o sube tus propias imágenes (JPG, PNG o WebP, hasta 6). También puedes arrastrar una imagen sobre la app. Se guardan en tu cuenta y el anillo toma sus colores.</p>
                 <p class="help-p">El botón de sol y luna alterna el modo claro y oscuro. El color de acento de los gráficos se cambia en Configuración.</p>
+              </div></div></div>
+            </div>
+            <div class="exp">
+              <button type="button" class="exp-h" data-toggle="help-music" aria-expanded="false">
+                <svg class="ic lead" aria-hidden="true"><use href="/static/img/icons.svg#i-music"/></svg>
+                <span class="exp-t"><b>Música de concentración</b><span>Sonidos de fondo mientras trabajas</span></span>
+                <svg class="ic s16 chev-d" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+              </button>
+              <div class="exp-body" id="help-music"><div inert><div class="exp-inner">
+                <p class="help-p">El botón de la <b>nota musical</b>, arriba a la derecha, abre el panel de música: elige <b>Lo-fi</b>, <b>Ambiente</b>, <b>Lluvia</b>, <b>Bosque</b>, <b>Olas</b>, <b>Chimenea</b> o <b>Ruido marrón</b> y ajusta el volumen. Se generan en tu navegador, así que funcionan sin conexión.</p>
+                <p class="help-p">Con <b>Sincronizar con el temporizador</b> activado, la música empieza al iniciar el trabajo y se pausa cuando pausas o empieza un descanso. Al sonar la alarma baja un momento para que la oigas. Tu elección y el volumen se recuerdan en este navegador.</p>
               </div></div></div>
             </div>
             <div class="exp">

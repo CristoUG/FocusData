@@ -1,5 +1,5 @@
 // Temporizador: Pomodoro (cuenta atrás) y Cronómetro (cuenta hacia adelante).
-import { $, $$, ic, esc, toast, on, fmtMin, localDateStr, daysAgoStr, ICONS } from './util.js';
+import { $, $$, ic, esc, toast, on, emit, fmtMin, localDateStr, daysAgoStr, ICONS } from './util.js';
 import { S, logSession, categoryById, studyRecs, CFG_LIMITS, CFG_DEFAULT, setCfg, setActiveCategory } from './store.js';
 import { openMenu, closeMenu, openModal, closeModal, confirmDialog } from './ui.js';
 import { computeStreaks } from './metrics.js';
@@ -62,6 +62,8 @@ function updateToggle() {
   $('#btn-toggle-icon').setAttribute('href', `${ICONS}#i-${T.running ? 'pause' : 'play'}`);
   $('#btn-save').hidden = T.mode !== 'cronometro';
   $('#btn-mode-label').textContent = T.mode === 'cronometro' ? 'Cronómetro' : 'Pomodoro';
+  // Todo cambio de estado pasa por aquí: la música se sincroniza con este evento.
+  emit('timer', { running: T.running, mode: T.mode, phase: T.phase });
 }
 
 function tick() {
@@ -176,6 +178,7 @@ function syncIdleRemaining(key) {
 
 // ── Alarma (Web Audio, sin archivos) y notificaciones ──
 function playAlarm() {
+  emit('alarm');
   const ring = (volume, length) => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();

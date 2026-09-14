@@ -393,6 +393,44 @@ button.bg-add:disabled { cursor: progress; opacity: .7; }
 .exp-inner .pp-row { max-width: 460px; }
 .exp-inner .pp-row:last-child { border-bottom: 0; }
 
+/* Música de concentración: botón de la barra superior, panel y sección de Configuración */
+.eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+.eq i { width: 3px; height: 100%; border-radius: 2px; background: currentColor; transform-origin: bottom; animation: eq 1s ease-in-out infinite; }
+.eq i:nth-child(2) { animation-duration: .8s; animation-delay: -.4s; }
+.eq i:nth-child(3) { animation-duration: 1.15s; animation-delay: -.7s; }
+@keyframes eq { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+#btn-music .eq { display: none; }
+#btn-music.on { color: var(--text); }
+#btn-music.on .ic { display: none; }
+#btn-music.on .eq { display: inline-flex; }
+.menu.mu-pop { width: 356px; }
+.mu-lab { margin-top: 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.mu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; padding: 10px 0; }
+.mu-lab + .mu-grid { padding-top: 6px; }
+.mu-tile {
+  display: flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 10px 6px 6px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); text-align: left;
+}
+.mu-tile:hover { background: color-mix(in srgb, var(--text) 5%, var(--surface-solid)); }
+.mu-tile[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.mu-sw { width: 30px; height: 30px; flex: none; border-radius: 9px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--c1), var(--c2)); }
+.mu-sw .eq { display: none; height: 12px; }
+.mu-tile.playing .mu-sw .eq { display: inline-flex; }
+.mu-t { min-width: 0; }
+.mu-t b, .mu-t small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mu-t b { font-size: 13px; line-height: 17px; font-weight: 600; }
+.mu-t small { font-size: 11.5px; line-height: 15px; color: var(--muted); }
+.mu-bar { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.mu-play { width: 34px; height: 34px; flex: none; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--ink); color: var(--ink-fg); }
+.mu-bar input[type=range] { flex: 1; min-width: 0; accent-color: var(--ink); }
+.mu-bar output { min-width: 40px; text-align: right; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mu-sync { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0 2px; border-top: 1px solid var(--line); font-size: 13.5px; line-height: 18px; cursor: pointer; }
+.mu-sync input { flex: none; margin: 2px 0 0; accent-color: var(--ink); }
+.mu-sync small { display: block; font-size: 12px; line-height: 17px; color: var(--muted); }
+.exp-inner .mu-grid { max-width: 720px; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); }
+.exp-inner .mu-bar, .exp-inner .mu-sync { max-width: 460px; }
+.exp-inner .mu-sync { padding-bottom: 10px; }
+
 /* ── Modales ── */
 .modal-overlay { position: fixed; inset: 0; z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--overlay); animation: fade-in .15s ease; }
 @keyframes fade-in { from { opacity: 0; } }

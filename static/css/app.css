@@ -365,6 +365,7 @@ button.bg-add:disabled { cursor: progress; opacity: .7; }
   border-radius: 14px; box-shadow: var(--menu-shadow); animation: menu-in .18s var(--ease);
 }
 .menu.up { animation-name: menu-up; }
+.menu:focus { outline: none; }
 @keyframes menu-in { from { opacity: 0; transform: translateY(-8px); } }
 @keyframes menu-up { from { opacity: 0; transform: translateY(8px); } }
 .menu-search { display: flex; align-items: center; gap: 8px; padding: 4px 10px 8px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line); color: var(--muted); }

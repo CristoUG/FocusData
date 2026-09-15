@@ -17,10 +17,17 @@ import { $, $$, ic, esc, norm } from './util.js';
 // })
 let panel = null, ctx = null, view = [];
 
+// Con el dedo no se enfoca el buscador del menú: en el móvil eso despliega el teclado,
+// tapa la lista y, al encoger la ventana, llegaba a cerrar el menú sin dejar elegir.
+let lastPointer = 'mouse';
+document.addEventListener('pointerdown', e => { lastPointer = e.pointerType || 'mouse'; }, true);
+document.addEventListener('keydown', () => { lastPointer = 'keyboard'; }, true);
+
 function buildPanel() {
   panel = document.createElement('div');
   panel.className = 'menu';
   panel.hidden = true;
+  panel.tabIndex = -1;
   document.body.appendChild(panel);
   panel.addEventListener('click', e => {
     const b = e.target.closest('.mi');
@@ -31,7 +38,17 @@ function buildPanel() {
     if (!ctx || panel.contains(e.target) || ctx.anchor.contains(e.target)) return;
     closeMenu(false);
   }, true);
-  window.addEventListener('resize', () => ctx && closeMenu(false));
+  // El teclado del móvil (o girar la pantalla) cambia el área visible: el menú se recoloca en
+  // vez de cerrarse. Solo se cierra si el botón que lo abrió ya no se ve.
+  const onViewport = () => {
+    if (!ctx) return;
+    if (ctx.anchor.getClientRects().length) position(); else closeMenu(false);
+  };
+  window.addEventListener('resize', onViewport);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onViewport);
+    window.visualViewport.addEventListener('scroll', onViewport);
+  }
   document.addEventListener('scroll', e => { if (ctx && !panel.contains(e.target)) position(); }, true);
 }
 
@@ -55,6 +72,7 @@ function itemHTML(it, i, flat) {
 }
 
 function renderItems() {
+  if (!ctx) return;
   const input = panel.querySelector('.menu-search input');
   const q = input ? norm(input.value.trim()) : '';
   const all = ctx.items || [];
@@ -86,37 +104,48 @@ export function openMenu(opts) {
       : '') + '<div class="menu-list"></div>';
     renderItems();
     const input = panel.querySelector('.menu-search input');
-    if (input) input.addEventListener('input', () => { renderItems(); position(); });
+    // El teclado del móvil puede enviar texto después de cerrarse el menú: se ignora.
+    if (input) input.addEventListener('input', () => { if (ctx) { renderItems(); position(); } });
   }
   panel.hidden = false;
   opts.anchor.setAttribute('aria-expanded', 'true');
   position();
-  const first = panel.querySelector('.menu-search input')
-    || panel.querySelector('.mi[aria-checked="true"]:not(:disabled)')
-    || panel.querySelector('.mi:not(:disabled), button:not(:disabled), input');
-  if (first) first.focus({ preventScroll: true });
+  const touch = lastPointer === 'touch' || lastPointer === 'pen';
+  const first = touch ? null
+    : panel.querySelector('.menu-search input')
+      || panel.querySelector('.mi[aria-checked="true"]:not(:disabled)')
+      || panel.querySelector('.mi:not(:disabled), button:not(:disabled), input');
+  // Con el dedo se enfoca el propio panel: no sale el teclado y Escape sigue cerrándolo.
+  (first || panel).focus({ preventScroll: true });
 }
 
 function position() {
   if (!ctx) return;
   const r = ctx.anchor.getBoundingClientRect();
-  const vw = window.innerWidth, vh = window.innerHeight;
+  const vw = window.innerWidth;
+  // Con el teclado del móvil abierto, lo que se ve es el visual viewport, no toda la ventana.
+  const vv = window.visualViewport;
+  const viewTop = vv ? vv.offsetTop : 0;
+  const viewBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  const visible = viewBottom - viewTop - 16;
   const list = panel.querySelector('.menu-list');
   if (list) list.style.maxHeight = '';
   const width = Math.min(panel.offsetWidth, vw - 16);
   let left = ctx.align === 'end' ? r.right - width : r.left;
   left = Math.max(8, Math.min(left, vw - width - 8));
-  const below = vh - r.bottom - 12, above = r.top - 12;
+  const below = viewBottom - r.bottom - 12, above = r.top - viewTop - 12;
   const wantUp = ctx.placement === 'up' || (ctx.placement !== 'down' && below < Math.min(panel.offsetHeight, 320) && above > below);
   if (list) {
     const frame = panel.offsetHeight - list.offsetHeight;
-    list.style.maxHeight = Math.max(140, Math.min(380, (wantUp ? above : below) - frame)) + 'px';
+    const room = Math.min(wantUp ? above : below, visible);
+    list.style.maxHeight = Math.max(Math.min(140, visible - frame), Math.min(380, room - frame)) + 'px';
   }
   const h = panel.offsetHeight;
-  const top = wantUp ? Math.max(8, r.top - h - 8) : Math.min(r.bottom + 8, vh - h - 8);
+  // Si el botón quedó bajo el teclado, el panel se sube hasta caber en la parte visible.
+  const top = Math.max(viewTop + 8, Math.min(wantUp ? r.top - h - 8 : r.bottom + 8, viewBottom - h - 8));
   panel.classList.toggle('up', wantUp);
   panel.style.left = Math.round(left) + 'px';
-  panel.style.top = Math.round(Math.max(8, top)) + 'px';
+  panel.style.top = Math.round(top) + 'px';
 }
 
 function choose(i) {

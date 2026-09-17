@@ -209,6 +209,51 @@ def test_add_session_valid_input_persists_and_keeps_ts_intact(client):
     # exactamente como llegó, sin normalizar.
     assert rows[0]["ts"] == ts
     assert rows[0]["type"] == "Cálculo"
+    assert r.get_json()["id"] == rows[0]["id"]
+
+
+# ── Idempotencia de POST /api/sessions por (user_id, ts) (Fase 2) ──
+
+def test_add_session_same_ts_twice_does_not_duplicate(client):
+    register(client)
+    ts = "2026-08-26T10:00:00"
+    payload = {"minutes": 25, "type": "Cálculo", "mode": "pomodoro", "ts": ts}
+
+    r1 = client.post("/api/sessions", json=payload)
+    assert r1.status_code == 200
+    body1 = r1.get_json()
+    assert "duplicate" not in body1 or body1["duplicate"] is False
+
+    r2 = client.post("/api/sessions", json=payload)
+    assert r2.status_code == 200
+    body2 = r2.get_json()
+    assert body2["duplicate"] is True
+    assert body2["id"] == body1["id"]
+    assert body2["category_id"] == body1["category_id"]
+
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert len(rows) == 1
+
+
+def test_add_session_different_ts_creates_two_rows(client):
+    register(client)
+    client.post("/api/sessions", json={"minutes": 25, "type": "A", "mode": "pomodoro", "ts": "2026-08-26T10:00:00"})
+    client.post("/api/sessions", json={"minutes": 25, "type": "A", "mode": "pomodoro", "ts": "2026-08-26T10:00:01"})
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert len(rows) == 2
+
+
+def test_add_session_ts_dedup_is_per_user(client):
+    ts = "2026-08-26T10:00:00"
+    register(client, "aliceidem")
+    client.post("/api/sessions", json={"minutes": 25, "type": "A", "mode": "pomodoro", "ts": ts})
+    client.get("/logout")
+
+    register(client, "bobidem")
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "B", "mode": "pomodoro", "ts": ts})
+    assert r.status_code == 200
+    assert "duplicate" not in r.get_json() or r.get_json()["duplicate"] is False
+    assert len(client.get("/api/sessions?include_breaks=1").get_json()) == 1
 
 
 def test_break_sessions_excluded_from_stats_by_default(client):
@@ -857,3 +902,76 @@ def test_device_name_is_truncated(client):
     with app_module.closing(app_module.get_db()) as conn, conn:
         row = conn.execute("SELECT device_name FROM api_tokens").fetchone()
     assert len(row["device_name"]) == app_module.TOKEN_DEVICE_MAX
+
+
+# ── DELETE /api/account (Fase 2) ─────────────────────────
+
+def test_delete_account_wrong_password_rejected_and_keeps_data(client):
+    register(client, "keepme")
+    client.post("/api/sessions", json={"minutes": 25, "type": "Test", "mode": "manual"})
+
+    r = client.delete("/api/account", json={"password": "clave-incorrecta"})
+    assert r.status_code == 401
+
+    client.get("/logout")
+    assert login(client, "keepme").status_code == 200
+    assert len(client.get("/api/sessions?include_breaks=1").get_json()) == 1
+
+
+def test_delete_account_correct_password_removes_everything(client, uploads):
+    register(client, "byebye")
+    client.post("/api/sessions", json={"minutes": 25, "type": "Test", "mode": "manual"})
+    bg = upload_bg(client, thumb=JPEG).get_json()["background"]
+    assert len([p for p in uploads.rglob("*") if p.is_file()]) == 2
+
+    r = client.delete("/api/account", json={"password": "12345678"})
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+    # Ya no queda sesión (cookie) abierta ni cuenta con la que entrar.
+    assert client.get("/api/me").status_code == 401
+    assert login(client, "byebye").status_code == 401
+
+    # Sus fondos desaparecen del disco.
+    assert [p for p in uploads.rglob("*") if p.is_file()] == []
+
+    with app_module.closing(app_module.get_db()) as conn, conn:
+        assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM api_tokens").fetchone()[0] == 0
+
+
+def test_delete_account_does_not_affect_other_users(client, uploads):
+    register(client, "victim")
+    client.post("/api/sessions", json={"minutes": 25, "type": "Mine", "mode": "manual"})
+    client.get("/logout")
+
+    register(client, "bystander")
+    client.post("/api/sessions", json={"minutes": 10, "type": "Bystander", "mode": "manual"})
+    client.get("/logout")
+
+    login(client, "victim")
+    assert client.delete("/api/account", json={"password": "12345678"}).status_code == 200
+
+    assert login(client, "bystander").status_code == 200
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert len(rows) == 1 and rows[0]["type"] == "Bystander"
+
+
+def test_delete_account_works_with_bearer_token(client):
+    auth_register(client, "mobiledelete")
+    token = auth_login(client, "mobiledelete").get_json()["token"]
+
+    r = client.delete("/api/account", json={"password": "12345678"}, headers=bearer(token))
+    assert r.status_code == 200
+    assert client.get("/api/me", headers=bearer(token)).status_code == 401
+
+
+def test_delete_account_rate_limited(client):
+    register(client, "bruteforce3")
+    for _ in range(app_module.LOGIN_MAX_FAILS):
+        assert client.delete("/api/account", json={"password": "clave-incorrecta"}).status_code == 401
+
+    r = client.delete("/api/account", json={"password": "clave-incorrecta"})
+    assert r.status_code == 429

@@ -44,7 +44,7 @@ FocusData/
 ├── study.db            ← Base de datos SQLite (se crea automáticamente)
 ├── requirements.txt    ← Dependencias de producción (flask, flask-login)
 ├── requirements-dev.txt ← Dependencias de desarrollo (pytest)
-├── tests/test_api.py   ← 63 tests de la API (base de datos temporal por test)
+├── tests/test_api.py   ← 84 tests de la API (base de datos temporal por test)
 ├── uploads/            ← Fondos subidos por los usuarios (se crea sola; no se versiona)
 └── static/
     ├── index.html      ← Interfaz principal (requiere login)
@@ -71,6 +71,19 @@ FocusData/
 | GET | `/logout` | Cerrar sesión |
 | GET | `/api/me` | Datos del usuario actual (incluye `theme`, `accent`, `scene` y `active_category_id`) |
 | POST | `/api/preferences` | Guardar preferencias (parcial: `theme`, `accent`, `scene` y/o `active_category_id`). `scene` es un id del catálogo o `bg:<id>` de un fondo propio |
+| DELETE | `/api/account` | Borrar la cuenta y todos sus datos (sesiones, carpetas, fondos, tokens): `{password}`. Con la contraseña incorrecta, 401 con el mismo freno de fuerza bruta que el login |
+
+### Autenticación por token Bearer (app móvil)
+La web sigue con su cookie de sesión; estas rutas son la alternativa para la app, que
+guarda el token en `expo-secure-store` y lo manda como `Authorization: Bearer <token>`.
+Con ese token, todas las rutas anteriores (y las de fondos y carpetas) funcionan igual
+que con la cookie.
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/auth/register` | Crear cuenta: `{username, password, device_name?}` → `{ok, token, user}` |
+| POST | `/api/auth/login` | Iniciar sesión: `{username, password, device_name?}` → `{ok, token, user}` |
+| POST | `/api/auth/logout` | Revocar el token de la cabecera `Authorization` |
 
 ### Fondos propios _(requieren login)_
 | Método | Ruta | Descripción |
@@ -94,7 +107,7 @@ FocusData/
 |--------|------|-------------|
 | GET | `/` | Interfaz web |
 | GET | `/api/sessions` | Listar sesiones. Parámetros: `?days=7`, `?type=Matemáticas`, `?include_breaks=1` (incluir descansos, necesario para el RDA) |
-| POST | `/api/sessions` | Guardar sesión (estudio `pomodoro`/`manual`/`cronometro` o descanso `break`) |
+| POST | `/api/sessions` | Guardar sesión (estudio `pomodoro`/`manual`/`cronometro` o descanso `break`). Idempotente por `(usuario, ts)`: reenviar el mismo `ts` no duplica, devuelve `{ok, id, category_id, duplicate: true}` con los datos de la existente |
 | GET | `/api/stats` | Estadísticas del backend (totales, por día, por tipo) |
 | GET | `/api/export/csv` | Descargar CSV |
 | GET | `/api/export/json` | Descargar JSON |
@@ -163,6 +176,19 @@ FocusData/
 | name | TEXT | Clave primaria: nombre de la migración de datos ya aplicada |
 | applied_at | TEXT | Cuándo se aplicó |
 
+### Tabla `api_tokens`
+
+Tokens Bearer de la app móvil (la web sigue con su cookie de sesión).
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | INTEGER | Clave primaria |
+| user_id | INTEGER | Usuario propietario (FK → `users.id`) |
+| token_hash | TEXT | SHA-256 del token; el token en claro nunca se guarda |
+| device_name | TEXT | Nombre del dispositivo (hasta 60 caracteres) |
+| created_at | TEXT | Fecha de emisión |
+| last_used_at | TEXT | Última vez que se usó para autenticar una petición |
+
 ### Índices
 
 ```sql
@@ -171,6 +197,7 @@ idx_sessions_user_ts    ON sessions(user_id, ts)
 idx_categories_user     ON categories(user_id)
 idx_categories_parent   ON categories(parent_id)
 idx_backgrounds_user    ON backgrounds(user_id)
+idx_api_tokens_user     ON api_tokens(user_id)
 ```
 
 > **Migraciones automáticas:** al arrancar, `init_db()` añade las columnas que falten en bases de datos antiguas (`users.theme`, `users.accent`, `users.scene`, `sessions.user_id`, `sessions.category_id`, `users.active_category_id`) y reconstruye `categories` para añadir `parent_id` y cambiar `UNIQUE(user_id, name)` por `UNIQUE(user_id, parent_id, name)` (SQLite no permite alterar una restricción de tabla con `ALTER`). Los usuarios existentes sin carpetas reciben una llamada **"Semestre 1"** con todas sus sesiones asignadas; las cuentas **nuevas** empiezan con una carpeta **"General"**. No requiere intervención manual. Las migraciones de datos que solo deben aplicarse una vez (por ejemplo, pasar a modo oscuro las cuentas que tenían el claro) quedan registradas en la tabla `migrations` para no repetirse.
@@ -179,7 +206,7 @@ idx_backgrounds_user    ON backgrounds(user_id)
 
 ```bash
 pip install -r requirements-dev.txt
-pytest                                # 63 tests, cada uno con su base de datos temporal
+pytest                                # 84 tests, cada uno con su base de datos temporal
 ```
 
 > Para la explicación extendida de la arquitectura y de cada archivo, ver [`DOCUMENTACION.md`](DOCUMENTACION.md).

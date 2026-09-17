@@ -2,7 +2,7 @@
 from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, url_for
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3, csv, hashlib, json, io, os, re, secrets, time
+import sqlite3, csv, hashlib, json, io, os, re, secrets, shutil, time
 from datetime import datetime, timedelta
 from contextlib import closing
 
@@ -1153,13 +1153,23 @@ def add_session():
             category_id = None
 
     with closing(get_db()) as conn, conn:
+        # Idempotencia por (user_id, ts): un reintento del cliente (o el mismo
+        # registro sincronizado dos veces) no debe duplicar la sesión. No hay
+        # índice UNIQUE porque en producción puede haber duplicados antiguos
+        # de antes de esta fase; se comprueba a mano antes de insertar.
+        existing = conn.execute(
+            "SELECT id, category_id FROM sessions WHERE user_id = ? AND ts = ?", (uid, ts)
+        ).fetchone()
+        if existing:
+            return jsonify({"ok": True, "id": existing["id"], "category_id": existing["category_id"], "duplicate": True})
+
         category_id = resolve_category(conn, uid, category_id)
-        conn.execute(
+        cur = conn.execute(
             "INSERT INTO sessions (user_id,date,hour,time,minutes,type,mode,ts,category_id) VALUES (?,?,?,?,?,?,?,?,?)",
             (uid, date, hour, time_, minutes, stype, mode, ts, category_id)
         )
         conn.commit()
-    return jsonify({"ok": True, "category_id": category_id})
+    return jsonify({"ok": True, "id": cur.lastrowid, "category_id": category_id})
 
 @app.route("/api/stats")
 @login_required
@@ -1247,6 +1257,46 @@ def delete_all():
     with closing(get_db()) as conn, conn:
         conn.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         conn.commit()
+    return jsonify({"ok": True})
+
+@app.route("/api/account", methods=["DELETE"])
+@login_required
+def delete_account():
+    """Borra la cuenta y todos sus datos, sin dejar rastro.
+
+    Exigido por Apple si la app permite crear una cuenta (guía 5.1.1(v)).
+    Confirma con la contraseña, igual que un login, incluido el freno de
+    fuerza bruta: sin eso, cualquiera con la sesión abierta (o un token
+    robado) podría borrar la cuenta sin saber la contraseña.
+    """
+    data = request.get_json(silent=True) or {}
+    password = data.get("password") if isinstance(data.get("password"), str) else ""
+    uid = current_user.id
+    ip = request.remote_addr or "desconocida"
+
+    retry = _login_retry_after(ip)
+    if retry:
+        return jsonify({"error": f"Demasiados intentos fallidos. Reintenta en {retry} segundos."}), 429
+
+    with closing(get_db()) as conn, conn:
+        row = conn.execute("SELECT password FROM users WHERE id = ?", (uid,)).fetchone()
+    if not row or not check_password_hash(row["password"], password):
+        _record_login_fail(ip)
+        return jsonify({"error": "Contraseña incorrecta"}), 401
+    _login_fails.pop(ip, None)
+
+    with closing(get_db()) as conn, conn:
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (uid,))
+        conn.execute("DELETE FROM categories WHERE user_id = ?", (uid,))
+        conn.execute("DELETE FROM backgrounds WHERE user_id = ?", (uid,))
+        conn.execute("DELETE FROM api_tokens WHERE user_id = ?", (uid,))
+        conn.execute("DELETE FROM users WHERE id = ?", (uid,))
+        conn.commit()
+
+    shutil.rmtree(_user_upload_dir(uid), ignore_errors=True)
+
+    if current_user.is_authenticated:
+        logout_user()
     return jsonify({"ok": True})
 
 if __name__ == "__main__":

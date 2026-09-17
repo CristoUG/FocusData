@@ -32,6 +32,12 @@ export function localISOString(d = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
+// HH:MM en 24 h, sin toLocaleTimeString(): con el idioma del navegador puede
+// salir "2:05 p. m." y el backend lo rechaza (regex ^\d{1,2}:\d{2}$).
+export function localTimeStr(d = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 export function daysAgoStr(n) {
   const d = new Date(); d.setDate(d.getDate() - n);
   return localDateStr(d);

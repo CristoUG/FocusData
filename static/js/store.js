@@ -1,5 +1,5 @@
 // Estado de la app, caché local del historial y sincronización con el backend.
-import { api, emit, toast, localDateStr, localISOString, lsGet, lsSet } from './util.js';
+import { api, emit, toast, localDateStr, localISOString, localTimeStr, lsGet, lsSet } from './util.js';
 
 export const S = {
   user: null,                 // { id, username }
@@ -107,7 +107,7 @@ export function logSession(minutes, type, mode) {
   const cat = categoryById(S.activeCategoryId);
   const session = {
     id: Date.now(), date: localDateStr(now), hour: now.getHours(),
-    time: now.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
+    time: localTimeStr(now),
     minutes, type, mode, ts: localISOString(now),
     category_id: S.activeCategoryId, category_name: cat ? cat.name : '',
   };
@@ -117,7 +117,17 @@ export function logSession(minutes, type, mode) {
   api('/api/sessions', {
     method: 'POST',
     body: { minutes, type, mode, date: session.date, hour: session.hour, time: session.time, ts: session.ts, category_id: S.activeCategoryId },
-  }).then(r => { if (!r.ok && r.status !== 0) toast(r.data.error || 'No se pudo guardar la sesión en el servidor', 'error'); });
+  }).then(r => {
+    if (r.ok && r.data && r.data.id != null) {
+      // Se confirma al instante: si otro dispositivo borra el historial antes
+      // de la próxima sincronización, syncSessions() ya no la reenvía.
+      session.remote_id = r.data.id;
+      saveDb();
+      emit('sessions');
+    } else if (!r.ok && r.status !== 0) {
+      toast(r.data.error || 'No se pudo guardar la sesión en el servidor', 'error');
+    }
+  });
 }
 
 // Backend = fuente de verdad; se conservan los registros locales aún no subidos.
@@ -126,12 +136,23 @@ export async function syncSessions() {
   if (!ok || !Array.isArray(remote)) return;
   remote.forEach(r => { r.remote_id = r.id; });
   const seen = new Set(remote.map(sessionKey));
-  const localOnly = S.db.filter(r => !seen.has(sessionKey(r)));
+  // Un registro local que no está en el servidor y YA tenía remote_id fue
+  // borrado desde otro dispositivo (Borrar historial o eliminar carpeta):
+  // se descarta, no se reenvía. Solo se reintentan los que nunca se
+  // confirmaron (sin remote_id): esos sí podrían haberse perdido por un
+  // fallo de red y hay que insistir.
+  const localOnly = S.db.filter(r => !seen.has(sessionKey(r)) && r.remote_id == null);
   localOnly.forEach(r => {
     if (!r.ts) r.ts = `${r.date}T${r.time || '00:00'}:00`;
     api('/api/sessions', {
       method: 'POST',
       body: { minutes: r.minutes, type: r.type, mode: r.mode, date: r.date, hour: r.hour, time: r.time, ts: r.ts, category_id: r.category_id },
+    }).then(res => {
+      if (res.ok && res.data && res.data.id != null) {
+        r.remote_id = res.data.id;
+        saveDb();
+        emit('sessions');
+      }
     });
   });
   S.db = [...remote, ...localOnly].sort((a, b) => sessionTime(a) - sessionTime(b));

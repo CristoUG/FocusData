@@ -45,6 +45,24 @@ def login(client, username="user1", password="12345678"):
     return client.post("/api/login", json={"username": username, "password": password})
 
 
+def auth_register(client, username="user1", password="12345678", device_name=None):
+    body = {"username": username, "password": password}
+    if device_name is not None:
+        body["device_name"] = device_name
+    return client.post("/api/auth/register", json=body)
+
+
+def auth_login(client, username="user1", password="12345678", device_name=None):
+    body = {"username": username, "password": password}
+    if device_name is not None:
+        body["device_name"] = device_name
+    return client.post("/api/auth/login", json=body)
+
+
+def bearer(token):
+    return {"Authorization": f"Bearer {token}"}
+
+
 # ── Registro y login ────────────────────────────────────
 
 def test_register_login_logout_flow(client):
@@ -712,3 +730,130 @@ def test_deleting_the_active_background_resets_scene_and_removes_files(client, u
     assert r.get_json()["scene"] == "road"
     assert client.get("/api/me").get_json()["scene"] == "road"
     assert [p for p in uploads.rglob("*") if p.is_file()] == []
+
+
+# ── Autenticación por token Bearer (app móvil, Fase 1) ──
+
+def test_auth_register_returns_token_and_creates_active_folder(client):
+    r = auth_register(client, "mobileuser")
+    assert r.status_code == 200
+    data = r.get_json()
+    assert isinstance(data["token"], str) and len(data["token"]) > 20
+    assert data["user"]["username"] == "mobileuser"
+    assert isinstance(data["user"]["id"], int)
+
+    me = client.get("/api/me", headers=bearer(data["token"]))
+    assert me.status_code == 200
+    assert me.get_json()["active_category_id"] is not None
+
+
+def test_auth_login_returns_token(client):
+    register(client, "tokenuser")
+    r = auth_login(client, "tokenuser")
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data["user"]["username"] == "tokenuser"
+
+    me = client.get("/api/me", headers=bearer(data["token"]))
+    assert me.status_code == 200
+    assert me.get_json()["username"] == "tokenuser"
+
+
+def test_auth_register_duplicate_username_rejected(client):
+    auth_register(client, "dupmobile")
+    r = auth_register(client, "dupmobile")
+    assert r.status_code == 409
+
+
+def test_auth_register_same_validation_as_web_register(client):
+    r = auth_register(client, "ab", password="12345678")
+    assert r.status_code == 400
+    r = auth_register(client, "validname", password="1234")
+    assert r.status_code == 400
+
+
+def test_bearer_token_required_without_cookie(client):
+    register(client, "needsauth")
+    token = auth_login(client, "needsauth").get_json()["token"]
+    client.get("/logout")  # limpia la cookie de sesión; el token sigue vivo
+    assert client.get("/api/me").status_code == 401
+    assert client.get("/api/me", headers=bearer(token)).status_code == 200
+
+
+def test_invalid_or_missing_token_rejected(client):
+    register(client, "someone")
+    client.get("/logout")
+    assert client.get("/api/me").status_code == 401
+    assert client.get("/api/me", headers=bearer("token-que-no-existe")).status_code == 401
+
+
+def test_auth_logout_revokes_token(client):
+    register(client, "logoutuser")
+    client.get("/logout")
+    token = auth_login(client, "logoutuser").get_json()["token"]
+    assert client.get("/api/me", headers=bearer(token)).status_code == 200
+
+    r = client.post("/api/auth/logout", headers=bearer(token))
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+    assert client.get("/api/me", headers=bearer(token)).status_code == 401
+
+
+def test_auth_logout_without_token_rejected(client):
+    assert client.post("/api/auth/logout").status_code == 401
+    assert client.post("/api/auth/logout", headers=bearer("no-existe")).status_code == 401
+
+
+def test_token_does_not_leak_data_between_users(client):
+    register(client, "alice5")
+    client.post("/api/sessions", json={"minutes": 25, "type": "Test", "mode": "manual"})
+    client.get("/logout")
+
+    register(client, "bob5")
+    client.get("/logout")
+    token_bob = auth_login(client, "bob5").get_json()["token"]
+
+    r = client.get("/api/sessions", headers=bearer(token_bob))
+    assert r.status_code == 200
+    assert r.get_json() == []
+
+
+def test_bearer_token_works_for_backgrounds_and_preferences(client, uploads):
+    register(client, "bgowner")
+    bg = upload_bg(client, thumb=JPEG).get_json()["background"]
+    client.get("/logout")
+    token = auth_login(client, "bgowner").get_json()["token"]
+
+    r = client.post("/api/preferences", json={"scene": f"bg:{bg['id']}"}, headers=bearer(token))
+    assert r.status_code == 200
+    img = client.get(bg["url"], headers=bearer(token))
+    assert img.status_code == 200
+    assert img.data == JPEG
+
+
+def test_auth_login_rate_limit_applies(client):
+    register(client, "bruteforce2")
+    client.get("/logout")
+
+    for _ in range(app_module.LOGIN_MAX_FAILS):
+        assert auth_login(client, "bruteforce2", "clave-incorrecta").status_code == 401
+
+    r = auth_login(client, "bruteforce2", "clave-incorrecta")
+    assert r.status_code == 429
+    assert "Reintenta" in r.get_json()["error"]
+
+
+def test_token_hash_stored_not_plaintext(client):
+    token = auth_register(client, "hashcheck").get_json()["token"]
+    with app_module.closing(app_module.get_db()) as conn, conn:
+        row = conn.execute("SELECT token_hash FROM api_tokens").fetchone()
+    assert row["token_hash"] != token
+    assert row["token_hash"] == app_module._hash_token(token)
+
+
+def test_device_name_is_truncated(client):
+    auth_register(client, "devname", device_name="x" * 200)
+    with app_module.closing(app_module.get_db()) as conn, conn:
+        row = conn.execute("SELECT device_name FROM api_tokens").fetchone()
+    assert len(row["device_name"]) == app_module.TOKEN_DEVICE_MAX

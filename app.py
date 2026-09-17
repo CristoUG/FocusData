@@ -2,7 +2,7 @@
 from flask import Flask, request, jsonify, send_file, send_from_directory, redirect, url_for
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3, csv, json, io, os, re, secrets, time
+import sqlite3, csv, hashlib, json, io, os, re, secrets, time
 from datetime import datetime, timedelta
 from contextlib import closing
 
@@ -95,6 +95,55 @@ def unauthorized():
     if request.path.startswith("/api/"):
         return jsonify({"error": "No autorizado"}), 401
     return redirect(url_for("login_page"))
+
+# ── Tokens Bearer (app móvil) ────────────────────────────
+# La web sigue con su cookie de sesión (login_user()); estos tokens son la
+# alternativa para la app, que no puede guardar cookies como SecureStore.
+
+TOKEN_DEVICE_MAX = 60
+
+
+def _bearer_token():
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    return auth[len("Bearer "):].strip() or None
+
+
+def _hash_token(token):
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _issue_token(user_id, device_name):
+    token = secrets.token_urlsafe(32)
+    device_name = device_name.strip()[:TOKEN_DEVICE_MAX] if isinstance(device_name, str) else ""
+    with closing(get_db()) as conn, conn:
+        conn.execute(
+            "INSERT INTO api_tokens (user_id, token_hash, device_name, created_at) VALUES (?, ?, ?, ?)",
+            (user_id, _hash_token(token), device_name, datetime.now().isoformat(timespec="seconds"))
+        )
+        conn.commit()
+    return token
+
+
+@login_manager.request_loader
+def load_user_from_token(_req):
+    token = _bearer_token()
+    if not token:
+        return None
+    with closing(get_db()) as conn, conn:
+        row = conn.execute(
+            """SELECT u.id, u.username FROM api_tokens t JOIN users u ON u.id = t.user_id
+               WHERE t.token_hash = ?""", (_hash_token(token),)
+        ).fetchone()
+        if not row:
+            return None
+        conn.execute(
+            "UPDATE api_tokens SET last_used_at = ? WHERE token_hash = ?",
+            (datetime.now().isoformat(timespec="seconds"), _hash_token(token))
+        )
+        conn.commit()
+    return User(row["id"], row["username"])
 
 # ── Database ────────────────────────────────────────────
 
@@ -213,6 +262,17 @@ def init_db():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_backgrounds_user ON backgrounds(user_id)")
+        # Tokens Bearer de la app móvil: la cookie de sesión de la web no cambia.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS api_tokens (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      INTEGER NOT NULL REFERENCES users(id),
+                token_hash   TEXT    NOT NULL UNIQUE,
+                device_name  TEXT    NOT NULL DEFAULT '',
+                created_at   TEXT    NOT NULL,
+                last_used_at TEXT
+            )
+        """)
         # Migración del rediseño: las escenas retiradas pasan a la escena por defecto.
         marcas = ",".join("?" * len(REMOVED_SCENES))
         conn.execute(f"UPDATE users SET scene = ? WHERE scene IN ({marcas})", [DEFAULT_SCENE, *REMOVED_SCENES])
@@ -237,6 +297,7 @@ def init_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_ts   ON sessions(user_id, ts)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_user    ON categories(user_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_parent  ON categories(parent_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_api_tokens_user    ON api_tokens(user_id)")
         conn.commit()
 
 def resolve_category(conn, uid, category_id):
@@ -346,18 +407,19 @@ def login_page():
         return redirect("/")
     return send_from_directory('static', 'login.html')
 
-@app.route("/api/register", methods=["POST"])
-def register():
-    data = request.get_json(silent=True) or {}
-    username = data.get("username").strip() if isinstance(data.get("username"), str) else ""
-    password = data.get("password") if isinstance(data.get("password"), str) else ""
+def _create_account(username, password):
+    """Valida y crea una cuenta nueva, con su carpeta activa por defecto.
 
+    Común a /api/register y /api/auth/register: devuelve (User, None) si
+    todo fue bien, o (None, (mensaje, status)) con el mismo texto y código
+    que ya usaba el registro de la web.
+    """
     if not username or not password:
-        return jsonify({"error": "Usuario y contraseña son requeridos"}), 400
+        return None, ("Usuario y contraseña son requeridos", 400)
     if len(username) < 3 or len(username) > USERNAME_MAX:
-        return jsonify({"error": f"El usuario debe tener entre 3 y {USERNAME_MAX} caracteres"}), 400
+        return None, (f"El usuario debe tener entre 3 y {USERNAME_MAX} caracteres", 400)
     if len(password) < PASSWORD_MIN:
-        return jsonify({"error": f"La contraseña debe tener al menos {PASSWORD_MIN} caracteres"}), 400
+        return None, (f"La contraseña debe tener al menos {PASSWORD_MIN} caracteres", 400)
 
     try:
         with closing(get_db()) as conn, conn:
@@ -373,11 +435,27 @@ def register():
             )
             conn.execute("UPDATE users SET active_category_id = ? WHERE id = ?", (cur.lastrowid, row["id"]))
             conn.commit()
-            user = User(row["id"], row["username"])
-            login_user(user)
-        return jsonify({"ok": True, "username": username})
+        return User(row["id"], row["username"]), None
     except sqlite3.IntegrityError:
-        return jsonify({"error": "Ese nombre de usuario ya existe"}), 409
+        return None, ("Ese nombre de usuario ya existe", 409)
+
+
+def _request_credentials():
+    data = request.get_json(silent=True) or {}
+    username = data.get("username").strip() if isinstance(data.get("username"), str) else ""
+    password = data.get("password") if isinstance(data.get("password"), str) else ""
+    return username, password
+
+
+@app.route("/api/register", methods=["POST"])
+def register():
+    username, password = _request_credentials()
+    user, err = _create_account(username, password)
+    if err:
+        message, status = err
+        return jsonify({"error": message}), status
+    login_user(user)
+    return jsonify({"ok": True, "username": user.username})
 
 # ── Freno de fuerza bruta en el login ───────────────────
 # Contador en memoria del proceso: se pierde al reiniciar y es por worker.
@@ -407,28 +485,78 @@ def _record_login_fail(ip):
         count, start = 0, time.monotonic()
     _login_fails[ip] = (count + 1, start)
 
-@app.route("/api/login", methods=["POST"])
-def login():
-    data = request.get_json(silent=True) or {}
-    username = data.get("username").strip() if isinstance(data.get("username"), str) else ""
-    password = data.get("password") if isinstance(data.get("password"), str) else ""
+def _check_credentials(username, password, ip):
+    """Verifica usuario/contraseña con el freno de fuerza bruta por IP.
 
-    ip = request.remote_addr or "desconocida"
+    Común a /api/login y /api/auth/login. Devuelve (User, None) o
+    (None, (mensaje, status)).
+    """
     retry = _login_retry_after(ip)
     if retry:
-        return jsonify({"error": f"Demasiados intentos fallidos. Reintenta en {retry} segundos."}), 429
+        return None, (f"Demasiados intentos fallidos. Reintenta en {retry} segundos.", 429)
 
     with closing(get_db()) as conn, conn:
         row = conn.execute("SELECT id, username, password FROM users WHERE username = ?", (username,)).fetchone()
 
     if not row or not check_password_hash(row["password"], password):
         _record_login_fail(ip)
-        return jsonify({"error": "Usuario o contraseña incorrectos"}), 401
+        return None, ("Usuario o contraseña incorrectos", 401)
 
     _login_fails.pop(ip, None)
-    user = User(row["id"], row["username"])
+    return User(row["id"], row["username"]), None
+
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    username, password = _request_credentials()
+    ip = request.remote_addr or "desconocida"
+    user, err = _check_credentials(username, password, ip)
+    if err:
+        message, status = err
+        return jsonify({"error": message}), status
     login_user(user)
-    return jsonify({"ok": True, "username": username})
+    return jsonify({"ok": True, "username": user.username})
+
+
+# ── Autenticación por token Bearer (app móvil) ──────────
+# No llaman a login_user(): no crean cookie de sesión, solo emiten el token.
+
+@app.route("/api/auth/register", methods=["POST"])
+def auth_register():
+    data = request.get_json(silent=True) or {}
+    username, password = _request_credentials()
+    user, err = _create_account(username, password)
+    if err:
+        message, status = err
+        return jsonify({"error": message}), status
+    token = _issue_token(user.id, data.get("device_name"))
+    return jsonify({"ok": True, "token": token, "user": {"id": user.id, "username": user.username}})
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def auth_login():
+    data = request.get_json(silent=True) or {}
+    username, password = _request_credentials()
+    ip = request.remote_addr or "desconocida"
+    user, err = _check_credentials(username, password, ip)
+    if err:
+        message, status = err
+        return jsonify({"error": message}), status
+    token = _issue_token(user.id, data.get("device_name"))
+    return jsonify({"ok": True, "token": token, "user": {"id": user.id, "username": user.username}})
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def auth_logout():
+    token = _bearer_token()
+    if not token:
+        return jsonify({"error": "No autorizado"}), 401
+    with closing(get_db()) as conn, conn:
+        cur = conn.execute("DELETE FROM api_tokens WHERE token_hash = ?", (_hash_token(token),))
+        conn.commit()
+    if cur.rowcount == 0:
+        return jsonify({"error": "No autorizado"}), 401
+    return jsonify({"ok": True})
 
 @app.route("/logout")
 @login_required

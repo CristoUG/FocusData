@@ -6,7 +6,8 @@ export const S = {
   db: [],                     // sesiones (incluye descansos)
   categories: [],             // preorden, con depth y path
   activeCategoryId: null,     // carpeta donde se guardan las sesiones nuevas
-  filterCategoryId: '',       // filtro de Estadísticas y Registro ('' = todas)
+  filterCategoryId: '',       // filtro de carpeta de Estadísticas y Registro ('' = todas)
+  period: 'all',              // filtro de periodo: 'all' | 'year' | 'month' | 'week' | 'today'
   prefs: { theme: 'dark', accent: '#3b82f6', scene: 'road' },
   backgrounds: [],            // fondos subidos: [{ id, name, colors, url, thumb_url }]
   cfg: { work: 25, short: 5, long: 15, cycles: 4 },
@@ -97,6 +98,54 @@ export function setFilter(id) {
   S.filterCategoryId = id === '' || id == null ? '' : +id;
   emit('filter');
 }
+
+// ── Periodo (filtro temporal de Estadísticas y Registro) ──
+const PERIOD_KEY = 'focusdata.period';
+export const PERIOD_OPTIONS = [
+  { value: 'all',   label: 'Todo el historial' },
+  { value: 'year',  label: 'Este año' },
+  { value: 'month', label: 'Este mes' },
+  { value: 'week',  label: 'Esta semana' },
+  { value: 'today', label: 'Hoy' },
+];
+export function loadPeriod() {
+  const saved = lsGet(PERIOD_KEY, null);
+  if (PERIOD_OPTIONS.some(o => o.value === saved)) S.period = saved;
+}
+export function setPeriod(p) {
+  if (!PERIOD_OPTIONS.some(o => o.value === p) || p === S.period) return;
+  S.period = p;
+  lsSet(PERIOD_KEY, p);
+  emit('filter');   // mismo evento que el filtro de carpeta: todo lo que ya lo escucha se refresca solo
+}
+
+// Rango de fechas del periodo elegido, en 'YYYY-MM-DD'. `from` es null para 'all'.
+// Todos terminan hoy; la semana empieza en lunes (igual que el calendario de consistencia).
+export function periodRange() {
+  const today = new Date();
+  const to = localDateStr(today);
+  if (S.period === 'today') return { from: to, to };
+  if (S.period === 'week') {
+    const mondayOffset = (today.getDay() + 6) % 7;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - mondayOffset);
+    return { from: localDateStr(monday), to };
+  }
+  if (S.period === 'month') {
+    return { from: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`, to };
+  }
+  if (S.period === 'year') return { from: `${today.getFullYear()}-01-01`, to };
+  return { from: null, to };   // 'all'
+}
+
+// filteredDb() (carpeta) acotado además por el periodo elegido. Incluye descansos,
+// igual que filteredDb(): quien no los quiera los filtra aparte (ver periodStudyRecs).
+export function periodDb() {
+  const { from, to } = periodRange();
+  const base = filteredDb();
+  return from ? base.filter(r => r.date >= from && r.date <= to) : base;
+}
+export const periodStudyRecs = () => periodDb().filter(r => r.mode !== 'break');
 
 // ── Sesiones ──
 const sessionKey = r => r.ts || `${r.date}|${r.time}|${r.minutes}|${r.type}|${r.mode}`;

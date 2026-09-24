@@ -1,26 +1,20 @@
 // Registro: historial filtrable, reasignación de carpeta, exportación y borrado.
-import { $, ic, esc, toast, on, fmtMin, daysAgoStr, prettyDate } from './util.js';
-import { S, filteredDb, categoryById, reassignSession, clearHistory } from './store.js';
+import { $, ic, esc, toast, on, fmtMin, prettyDate } from './util.js';
+import { S, filteredDb, periodStudyRecs, categoryById, reassignSession, clearHistory } from './store.js';
 import { openMenu, confirmDialog } from './ui.js';
 import { folderItems } from './folders.js';
 
 let visible = false;
-const filters = { type: '', days: 7 };
-const RANGES = [
-  { value: 1, label: 'Hoy' },
-  { value: 7, label: 'Últimos 7 días' },
-  { value: 30, label: 'Últimos 30 días' },
-  { value: 0, label: 'Todo el historial' },
-];
+const filters = { type: '' };
 const MODE_LABEL = { pomodoro: 'Pomodoro', cronometro: 'Cronómetro', manual: 'Manual' };
+// El periodo global ('Todo el historial') no acota por fecha: sin tope se podrían
+// pintar miles de filas de golpe. Se revela de a tramos con "Mostrar más".
+const PAGE_SIZE = 200;
+let limit = PAGE_SIZE;
 
 function rows() {
-  let recs = filteredDb().filter(r => r.mode !== 'break');
+  let recs = periodStudyRecs();
   if (filters.type) recs = recs.filter(r => r.type === filters.type);
-  if (filters.days > 0) {
-    const from = daysAgoStr(filters.days - 1);
-    recs = recs.filter(r => r.date >= from);
-  }
   return recs.slice().reverse();
 }
 
@@ -34,13 +28,17 @@ function folderCell(r) {
 }
 
 function render() {
-  const list = rows();
+  const all = rows();
+  // El tope de 200 solo aplica con "Todo el historial": los demás periodos ya
+  // acotan por fecha y no suelen acumular tantas filas de golpe.
+  const capped = S.period === 'all' && all.length > limit;
+  const list = capped ? all.slice(0, limit) : all;
   const minutes = list.reduce((a, r) => a + r.minutes, 0);
   $('#log-count').textContent = list.length
-    ? `${list.length} ${list.length === 1 ? 'sesión' : 'sesiones'} · ${fmtMin(minutes)}`
+    ? `${list.length}${capped ? ` de ${all.length}` : ''} ${list.length === 1 ? 'sesión' : 'sesiones'} · ${fmtMin(minutes)}`
     : '';
   $('#log-type-label').textContent = filters.type || 'Todos los tipos';
-  $('#log-days-label').textContent = RANGES.find(r => r.value === filters.days).label;
+  $('#log-more').hidden = !capped;
   const box = $('#log-table');
   if (!list.length) {
     box.innerHTML = `<div class="empty">${ic('calendar')}No hay sesiones con estos filtros. Prueba con otra carpeta o un periodo más largo.</div>`;
@@ -65,14 +63,10 @@ export function initLog() {
     openMenu({
       anchor: e.currentTarget, value: filters.type, search: true,
       items: [{ value: '', label: 'Todos los tipos' }, { type: 'sep' }, ...types.map(t => ({ value: t, label: t }))],
-      onSelect: v => { filters.type = v; render(); },
+      onSelect: v => { filters.type = v; limit = PAGE_SIZE; render(); },
     });
   });
-  $('#log-days').addEventListener('click', e => openMenu({
-    anchor: e.currentTarget, value: filters.days,
-    items: RANGES,
-    onSelect: v => { filters.days = +v; render(); },
-  }));
+  $('#log-more').addEventListener('click', () => { limit += PAGE_SIZE; render(); });
   $('#log-export').addEventListener('click', e => openMenu({
     anchor: e.currentTarget, align: 'end',
     items: [
@@ -104,6 +98,8 @@ export function initLog() {
 
   const refresh = () => visible && render();
   on('sessions', refresh);
-  on('filter', refresh);
+  // 'filter' cubre tanto el filtro de carpeta como el de periodo (mismo evento):
+  // cualquiera de los dos cambia qué filas hay, así que se vuelve a la primera página.
+  on('filter', () => { limit = PAGE_SIZE; refresh(); });
   on('categories', refresh);
 }

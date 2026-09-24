@@ -257,10 +257,10 @@ Define el armazón y las seis vistas, que se muestran y ocultan con el atributo 
 | Zona | Contenido |
 |---|---|
 | **Barra lateral** (plegable) | Marca · **Nueva sesión** · navegación Timer / Estadísticas / Registro · árbol de **Carpetas** (tocar = filtrar; `⋯` = acciones; horas por carpeta incluyendo subcarpetas) · **Recientes** (hoy y ayer) · menú de cuenta |
-| **Barra superior** | Selector **Filtro** · selector de **Escena** · **Música** · botón sol/luna |
+| **Barra superior** | Selector **Filtro** (carpeta) · selector de **Periodo** (todo / año / mes / semana / hoy) · selector de **Escena** · **Música** · botón sol/luna |
 | **Timer** | Saludo · anillo con reloj y fase · línea `Sesión · Ciclo · ● carpeta activa` · compositor (actividad + modo + carpeta + rueda de tiempos) · **Recomendados** · 3 mini-métricas |
 | **Estadísticas** | 8 indicadores · calendario de consistencia · distribución por tema · últimos 7 días · densidad por hora |
-| **Registro** | Tabla filtrable por tipo y periodo · cambiar carpeta por fila · Exportar CSV/JSON · Borrar historial |
+| **Registro** | Tabla filtrable por tipo, con el periodo global (carpeta y periodo de la barra superior) · cambiar carpeta por fila · «Mostrar más» si hay más de 200 filas con «Todo el historial» · Exportar CSV/JSON · Borrar historial |
 | **Carpetas** | Árbol con insignias y horas · formulario de nueva carpeta |
 | **Configuración** | Tema · Escena · Acento · Tiempos del Pomodoro · Notificaciones · Música · Datos · Cuenta |
 | **Ayuda** | Temporizador · Carpetas · Estadísticas y Registro · Fondos · Música · Tus datos |
@@ -278,13 +278,13 @@ Define el armazón y las seis vistas, que se muestran y ocultan con el atributo 
 | Módulo | Responsabilidad |
 |---|---|
 | **`app.js`** | **Arranque.** Inicializa todos los módulos, navega entre vistas (`go()`), pinta la píldora de filtro y las sesiones recientes, monta el menú de cuenta y ejecuta `boot()`: apariencia en caché → `/api/me` → carpetas y fondos → `syncSessions()`. También reinterpreta los temas de legado `ocean`/`forest` como tema oscuro + escena del mismo nombre |
-| **`store.js`** | **Estado y datos.** El objeto `S` (usuario, sesiones, carpetas, preferencias, filtro), la caché `localStorage` aislada por usuario, `loadCategories()`, `descendantIds()`, `logSession()`, `syncSessions()` (merge por `ts` + backfill), `reassignSession()`, `clearHistory()`, `savePrefs()` y la configuración del Pomodoro (`CFG_LIMITS`, `CFG_DEFAULT`, `loadCfg`, `setCfg`) |
+| **`store.js`** | **Estado y datos.** El objeto `S` (usuario, sesiones, carpetas, preferencias, filtro de carpeta, filtro de periodo), la caché `localStorage` aislada por usuario, `loadCategories()`, `descendantIds()`, `logSession()`, `syncSessions()` (merge por `ts` + backfill), `reassignSession()`, `clearHistory()`, `savePrefs()`, la configuración del Pomodoro (`CFG_LIMITS`, `CFG_DEFAULT`, `loadCfg`, `setCfg`) y el **filtro de periodo** (`PERIOD_OPTIONS`, `loadPeriod()`, `setPeriod()`, `periodRange()`, `periodDb()`, `periodStudyRecs()`) |
 | **`util.js`** | **Utilidades comunes.** Selectores `$`/`$$`, `ic()` (iconos del sprite), `esc()` (anti-XSS), `norm()` (búsqueda sin acentos), formato (`fmtMin`, `fmtHours`, `prettyDate`), fechas **locales** (`localDateStr`, `localISOString`, `daysAgoStr`), cliente `api()`, `toast()`, bus de eventos (`on`/`emit`) y envoltorios de `localStorage` |
 | **`ui.js`** | **Componentes.** Menús desplegables con buscador y navegación por teclado (`openMenu`), modales (`openModal`, `askText`, `confirmDialog`), secciones plegables y tooltips |
 | **`timer.js`** | **Pomodoro, cronómetro y sesión manual.** El tiempo se calcula siempre desde el **reloj de pared** (`endTime − ahora`), no contando ticks. Fin de fase: alarma, registro de la sesión y preparación de la siguiente (que **no** arranca sola). Rueda de tiempos, saludo por hora del día y chips de tipos recomendados |
-| **`metrics.js`** | **Cálculo puro de métricas**: `minutesByDate`, `computeStreaks`, `computeIRS`, `computeRDA`, `sumMinutes`, `sumBetween` y `hoursSeries` (reparte los minutos de cada sesión **hacia atrás** desde su hora de fin) |
-| **`stats.js`** | **Vista de Estadísticas**: los 8 indicadores y los gráficos, todos **SVG generados a mano** (columnas con escala `niceScale`, dona con leyenda, calendario de 26 semanas) |
-| **`log.js`** | **Vista de Registro**: tabla filtrable por tipo y periodo, insignias de modo, cambio de carpeta por fila y borrado del historial |
+| **`metrics.js`** | **Cálculo puro de métricas**: `minutesByDate`, `computeStreaks`, `computeIRS`, `computeRDA(recs)` (recibe las filas a contar: por defecto `filteredDb()`, o `periodDb()` para que respete también el periodo), `sumMinutes`, `sumBetween` y `hoursSeries` (reparte los minutos de cada sesión **hacia atrás** desde su hora de fin) |
+| **`stats.js`** | **Vista de Estadísticas**: los 8 indicadores y los gráficos, todos **SVG generados a mano** (columnas con escala `niceScale`, dona con leyenda, calendario de 26 semanas). Algunos respetan el **filtro de periodo** de la barra superior y otros tienen ventana fija (ver la sección 9, «Glosario de métricas») |
+| **`log.js`** | **Vista de Registro**: tabla filtrable por tipo, acotada por el filtro de carpeta y de **periodo** globales (sin selector propio de fechas), insignias de modo, cambio de carpeta por fila, borrado del historial y, con «Todo el historial», paginación de 200 en 200 con el botón «Mostrar más» |
 | **`folders.js`** | **Árbol de carpetas**: render con sangría por profundidad, horas por carpeta sumando descendientes, menú de acciones (activa, filtrar, subcarpeta, renombrar, mover, archivar/restaurar, eliminar) y los diálogos de cada una, incluido el de eliminación con confirmación escrita |
 | **`settings.js`** | **Apariencia**: aplicar y persistir tema y color de acento (presets + campo hex validado, con espera de 600 ms en el personalizado) |
 | **`scenes.js`** | **Escenas y fondos propios**: catálogo `SCENES`, aplicar la escena (foto de fondo, velo y los 3 colores que tiñen anillo y marca), caché de apariencia para pintar sin parpadeo, y subir/listar/borrar los fondos del usuario |
@@ -491,23 +491,31 @@ manda un mensaje a la pestaña abierta y la siguiente fase arranca sin cambiar d
 
 ## 9. Glosario de métricas (calculadas en el cliente)
 
-Todas se calculan sobre las sesiones del **filtro activo**, excluyendo los descansos
-(salvo el RDA, que los necesita).
+Todas se calculan sobre las sesiones del **filtro de carpeta activo** (`S.filterCategoryId`),
+excluyendo los descansos (salvo el RDA, que los necesita). Además, el **filtro de
+periodo** (`S.period`: todo el historial, este año, este mes, esta semana u hoy —
+`periodRange()` / `periodDb()` / `periodStudyRecs()` en `store.js`) acota algunas de
+ellas y no otras:
 
-| Métrica | Dónde | Definición |
-|---|---|---|
-| **Esta semana** | `stats.js` | Minutos de los últimos 7 días, comparados con los 7 anteriores (variación en %) |
-| **Hoy** | `stats.js` | Minutos de hoy y número de sesiones |
-| **Racha** | `computeStreaks` | Días consecutivos estudiando. Un día cuenta con **≥ 1 min**. Se muestra la actual y la máxima histórica |
-| **Regularidad (IRS)** | `computeIRS` | % de los últimos 7 días con **≥ 20 min** estudiados |
-| **Total estudiado** | `stats.js` | Suma de minutos de todo el historial |
-| **Sesiones** | `stats.js` | Número de sesiones de estudio registradas |
-| **Descanso activo (RDA)** | `computeRDA` | Minutos de descanso ÷ minutos de estudio. Meta ~20 %: por debajo de 15 % «bajo», hasta 30 % «en el rango ideal», por encima «alto» |
-| **Enfoque Pomodoro** | `stats.js` | % del tiempo de estudio hecho en modo `pomodoro` |
-| **Calendario de consistencia** | `stats.js` | Últimas **26 semanas** en columnas que empiezan en lunes; 5 niveles de intensidad por minutos/día (0 · <25 · <60 · <120 · resto) |
-| **Distribución por tema** | `stats.js` | Dona con los totales por tipo; con más de 6 tipos muestra los 5 primeros + «Otros». **El color sigue al tipo** en toda la app |
-| **Últimos 7 días** | `stats.js` | Columnas por día, con hoy resaltado |
-| **Densidad por hora** | `hoursSeries` | Minutos por hora del día. Como la sesión se registra **al terminar**, sus minutos se reparten **hacia atrás** desde su hora, cruzando la medianoche si hace falta. Muestra tu franja más productiva |
+- **Respetan el periodo** (su subtítulo cambia con él): Total estudiado, Sesiones,
+  Descanso activo (RDA), Enfoque Pomodoro, Distribución por tema, Densidad por hora.
+- **Tienen su propia ventana fija**, sea cual sea el periodo elegido: Esta semana, Hoy,
+  Racha, Regularidad, Calendario de consistencia, Últimos 7 días.
+
+| Métrica | Dónde | Ventana | Definición |
+|---|---|---|---|
+| **Esta semana** | `stats.js` | fija | Minutos de los últimos 7 días, comparados con los 7 anteriores (variación en %) |
+| **Hoy** | `stats.js` | fija | Minutos de hoy y número de sesiones |
+| **Racha** | `computeStreaks` | fija | Días consecutivos estudiando. Un día cuenta con **≥ 1 min**. Se muestra la actual y la máxima histórica |
+| **Regularidad (IRS)** | `computeIRS` | fija | % de los últimos 7 días con **≥ 20 min** estudiados |
+| **Total estudiado** | `stats.js` | periodo | Suma de minutos del periodo elegido |
+| **Sesiones** | `stats.js` | periodo | Número de sesiones de estudio registradas en el periodo elegido |
+| **Descanso activo (RDA)** | `computeRDA` | periodo | Minutos de descanso ÷ minutos de estudio, dentro del periodo elegido. Meta ~20 %: por debajo de 15 % «bajo», hasta 30 % «en el rango ideal», por encima «alto» |
+| **Enfoque Pomodoro** | `stats.js` | periodo | % del tiempo de estudio del periodo hecho en modo `pomodoro` |
+| **Calendario de consistencia** | `stats.js` | fija | Últimas **26 semanas** en columnas que empiezan en lunes; 5 niveles de intensidad por minutos/día (0 · <25 · <60 · <120 · resto) |
+| **Distribución por tema** | `stats.js` | periodo | Dona con los totales por tipo dentro del periodo elegido; con más de 6 tipos muestra los 5 primeros + «Otros». **El color sigue al tipo** en toda la app |
+| **Últimos 7 días** | `stats.js` | fija | Columnas por día, con hoy resaltado |
+| **Densidad por hora** | `hoursSeries` | periodo | Minutos por hora del día, dentro del periodo elegido. Como la sesión se registra **al terminar**, sus minutos se reparten **hacia atrás** desde su hora, cruzando la medianoche si hace falta. Muestra tu franja más productiva |
 
 **Formato** (`util.js`): `fmtMin` → `45 min` / `2 h` / `2 h 05 min`.
 `fmtHours` → `3 h` si llega a 60 minutos, si no `45 min`.

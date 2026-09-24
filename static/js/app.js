@@ -1,6 +1,6 @@
 // Arranque de FocusData: navegación, barra lateral, menús globales y carga de datos.
 import { $, $$, ic, esc, on, emit, api, lsGet, lsSet, localDateStr, daysAgoStr, fmtMin } from './util.js';
-import { S, initStorage, loadCategories, syncSessions, loadCfg, setFilter, categoryById, savePrefs } from './store.js';
+import { S, initStorage, loadCategories, syncSessions, loadCfg, setFilter, categoryById, savePrefs, loadPeriod, setPeriod, PERIOD_OPTIONS } from './store.js';
 import { openMenu, openModal, closeModal, initCollapsibles, initTooltips } from './ui.js';
 import { initTimer, setGreeting, focusTypeInput } from './timer.js';
 import { initFolders, folderItems } from './folders.js';
@@ -39,6 +39,11 @@ function renderFilterPill() {
   const cat = categoryById(S.filterCategoryId);
   $('#btn-filter-label').textContent = cat ? cat.name : 'Todas las carpetas';
   $('#btn-filter').title = cat ? `Filtro: ${cat.path}` : 'Filtra lo que ves en Estadísticas y Registro';
+}
+
+function renderPeriodPill() {
+  const opt = PERIOD_OPTIONS.find(o => o.value === S.period) || PERIOD_OPTIONS[0];
+  $('#btn-period-label').textContent = opt.label;
 }
 
 function renderRecents() {
@@ -120,11 +125,16 @@ function initShell() {
     ],
     onSelect: v => setFilter(v),
   }));
+  $('#btn-period').addEventListener('click', e => openMenu({
+    anchor: e.currentTarget, value: S.period, align: 'end', minWidth: 220,
+    items: PERIOD_OPTIONS,
+    onSelect: v => setPeriod(v),
+  }));
   window.addEventListener('hashchange', () => go(location.hash.slice(1)));
   window.matchMedia('(max-width: 900px)').addEventListener('change', ev => setSide(ev.matches ? true : !!lsGet(SIDE_KEY, false), false));
 
   on('go', go);
-  on('filter', renderFilterPill);
+  on('filter', () => { renderFilterPill(); renderPeriodPill(); });
   on('categories', () => { renderFilterPill(); renderRecents(); });
   on('sessions', renderRecents);
 }
@@ -133,6 +143,8 @@ async function boot() {
   initCollapsibles();
   initTooltips();
   loadCfg();
+  loadPeriod();
+  renderPeriodPill();
 
   // Apariencia en caché primero: evita el parpadeo mientras responde /api/me.
   const cached = readAppearance();

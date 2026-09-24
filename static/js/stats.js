@@ -1,10 +1,16 @@
 // Estadísticas: indicadores, calendario, distribución por tema y gráficos de columnas.
 import { $, $$, ic, esc, on, fmtMin, fmtHours, localDateStr, daysAgoStr, DAY_SHORT, MONTH_SHORT } from './util.js';
-import { S, studyRecs, categoryById } from './store.js';
+import { S, studyRecs, periodDb, periodStudyRecs, categoryById, PERIOD_OPTIONS } from './store.js';
 import { minutesByDate, computeStreaks, computeIRS, computeRDA, sumMinutes, sumBetween, hoursSeries } from './metrics.js';
 
 let visible = false;
 const series = { week: [], weekDates: [], hour: [] };
+
+// Frase de periodo, reutilizada en los subtítulos de las tarjetas que sí lo respetan
+// (Total estudiado, Sesiones, distribución por tema...). "Hoy", "Esta semana", la
+// racha, la regularidad y el calendario tienen su propia ventana fija y no la usan.
+const PERIOD_PHRASE = { all: 'en todo tu historial', year: 'este año', month: 'este mes', week: 'esta semana', today: 'hoy' };
+const periodPhrase = () => PERIOD_PHRASE[S.period] || PERIOD_PHRASE.all;
 
 const kpi = (icon, label, val, sub) =>
   `<div class="kpi"><div class="kpi-label">${ic(icon)}${label}</div><div class="kpi-val">${val}</div><div class="kpi-sub">${sub}</div></div>`;
@@ -148,16 +154,21 @@ function heatHTML(recs) {
 }
 
 function render() {
+  // Ventana fija (no la mueve el periodo elegido): hoy, esta semana, racha,
+  // regularidad, últimos 7 días y el calendario de consistencia.
   const recs = studyRecs();
+  // Respeta el periodo elegido (ver S.period / periodRange en store.js).
+  const periodRecs = periodStudyRecs();
+
   const today = localDateStr();
   const week = sumBetween(recs, daysAgoStr(6));
   const prevWeek = sumBetween(recs, daysAgoStr(13), daysAgoStr(7));
-  const total = sumMinutes(recs);
+  const total = sumMinutes(periodRecs);
   const todayRecs = recs.filter(r => r.date === today);
   const streak = computeStreaks(recs);
   const irs = computeIRS(recs);
-  const rda = computeRDA();
-  const pomo = sumMinutes(recs.filter(r => r.mode === 'pomodoro'));
+  const rda = computeRDA(periodDb());
+  const pomo = sumMinutes(periodRecs.filter(r => r.mode === 'pomodoro'));
 
   let delta = 'sin datos de la semana anterior';
   if (prevWeek > 0) {
@@ -172,19 +183,21 @@ function render() {
     kpi('clock', 'Hoy', fmtMin(sumMinutes(todayRecs)), `${todayRecs.length} ${todayRecs.length === 1 ? 'sesión' : 'sesiones'}`),
     kpi('fire', 'Racha', `${streak.current} ${streak.current === 1 ? 'día' : 'días'}`, `máx. ${streak.max} ${streak.max === 1 ? 'día' : 'días'}`),
     kpi('target', 'Regularidad', `${irs.pct}%`, `${irs.active} de 7 días con 20+ min`),
-    kpi('history', 'Total estudiado', fmtHours(total), 'en todo tu historial'),
-    kpi('table', 'Sesiones', String(recs.length), 'de estudio registradas'),
+    kpi('history', 'Total estudiado', fmtHours(total), periodPhrase()),
+    kpi('table', 'Sesiones', String(periodRecs.length), periodPhrase()),
     kpi('coffee', 'Descanso activo', `${rda.ratio}%`, rdaHint),
     kpi('timer', 'Enfoque Pomodoro', `${total ? Math.round(pomo / total * 100) : 0}%`, 'del tiempo estudiado'),
   ].join('');
 
   $('#heat').innerHTML = heatHTML(recs);
-  $('#donut').innerHTML = donutHTML(recs);
+  $('#donut').innerHTML = donutHTML(periodRecs);
+  const donutSub = $('#donut-sub');
+  if (donutSub) donutSub.textContent = periodPhrase();
 
   series.weekDates = [6, 5, 4, 3, 2, 1, 0].map(daysAgoStr);
   const byDate = minutesByDate(recs);
   series.week = series.weekDates.map(d => byDate[d] || 0);
-  series.hour = hoursSeries(recs);
+  series.hour = hoursSeries(periodRecs);
   $$('[data-chart]').forEach(draw);
 
   const hmax = Math.max(0, ...series.hour);
@@ -196,7 +209,14 @@ function render() {
 
 function renderSub() {
   const cat = categoryById(S.filterCategoryId);
-  $('#stats-sub').textContent = cat ? `Filtrado por ${cat.path}` : 'Todas las carpetas';
+  const parts = [];
+  if (cat) parts.push(`Filtrado por ${cat.path}`);
+  else parts.push('Todas las carpetas');
+  if (S.period !== 'all') {
+    const opt = PERIOD_OPTIONS.find(o => o.value === S.period);
+    parts.push(opt ? opt.label : '');
+  }
+  $('#stats-sub').textContent = parts.filter(Boolean).join(' · ');
 }
 
 export function setStatsVisible(v) {

@@ -279,6 +279,9 @@ html.has-photo .home-stats { margin-top: 22px; }
 .cell-folder:hover, .cell-folder[aria-expanded="true"] { background: var(--hover); border-color: var(--line); }
 .cell-folder .lbl { overflow: hidden; text-overflow: ellipsis; }
 .cell-folder .chev { color: var(--muted); }
+/* Hijo directo de .v-body (flex column, align-items: stretch por defecto): sin esto
+   el botón se estira al ancho completo de la tarjeta. */
+#log-more { align-self: flex-start; }
 
 /* Carpetas */
 .frows { display: flex; flex-direction: column; }

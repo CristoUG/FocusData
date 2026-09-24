@@ -439,6 +439,93 @@ def test_delete_sessions_all_route_still_works_alongside_delete_by_id(client):
     assert client.get("/api/sessions").get_json() == []
 
 
+# ── Renombrar un tema en todo el historial (POST /api/sessions/rename-type) ──
+
+def test_rename_type_updates_all_matching_sessions(client):
+    register(client)
+    for i in range(3):
+        client.post("/api/sessions", json={"minutes": 10, "type": "Calculo", "mode": "pomodoro", "ts": f"2026-09-0{i+1}T10:00:00"})
+    client.post("/api/sessions", json={"minutes": 10, "type": "Otro", "mode": "pomodoro", "ts": "2026-09-04T10:00:00"})
+
+    r = client.post("/api/sessions/rename-type", json={"from": "Calculo", "to": "Cálculo"})
+    assert r.status_code == 200
+    assert r.get_json()["updated"] == 3
+
+    types = {row["type"] for row in client.get("/api/sessions?include_breaks=1").get_json()}
+    assert types == {"Cálculo", "Otro"}
+
+
+def test_rename_type_merges_into_existing_type(client):
+    register(client)
+    client.post("/api/sessions", json={"minutes": 10, "type": "Calculo", "mode": "pomodoro", "ts": "2026-09-01T10:00:00"})
+    client.post("/api/sessions", json={"minutes": 20, "type": "Cálculo", "mode": "pomodoro", "ts": "2026-09-02T10:00:00"})
+
+    r = client.post("/api/sessions/rename-type", json={"from": "Calculo", "to": "Cálculo"})
+    assert r.status_code == 200
+    assert r.get_json()["updated"] == 1
+
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert all(row["type"] == "Cálculo" for row in rows)
+    assert sum(row["minutes"] for row in rows) == 30
+
+
+def test_rename_type_does_not_touch_breaks(client):
+    register(client)
+    client.post("/api/sessions", json={"minutes": 25, "type": "Descanso", "mode": "break", "ts": "2026-09-01T10:00:00"})
+
+    r = client.post("/api/sessions/rename-type", json={"from": "Descanso", "to": "Pausa"})
+    assert r.status_code == 200
+    assert r.get_json()["updated"] == 0
+
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert rows[0]["type"] == "Descanso"
+
+
+def test_rename_type_is_per_user(client):
+    register(client, "alice5")
+    client.post("/api/sessions", json={"minutes": 10, "type": "Compartido", "mode": "pomodoro"})
+    client.get("/logout")
+
+    register(client, "bob5")
+    client.post("/api/sessions", json={"minutes": 10, "type": "Compartido", "mode": "pomodoro"})
+    r = client.post("/api/sessions/rename-type", json={"from": "Compartido", "to": "Renombrado por bob"})
+    assert r.status_code == 200
+    assert r.get_json()["updated"] == 1
+    client.get("/logout")
+
+    login(client, "alice5")
+    types = {row["type"] for row in client.get("/api/sessions?include_breaks=1").get_json()}
+    assert types == {"Compartido"}
+
+
+def test_rename_type_no_matching_sessions_returns_zero(client):
+    register(client)
+    r = client.post("/api/sessions/rename-type", json={"from": "No existe", "to": "Tampoco"})
+    assert r.status_code == 200
+    assert r.get_json()["updated"] == 0
+
+
+@pytest.mark.parametrize("payload,expected_fragment", [
+    ({"from": "", "to": "X"}, "from"),
+    ({"from": "X", "to": ""}, "to"),
+    ({"from": "x" * 41, "to": "X"}, "from"),
+    ({"from": "X", "to": "x" * 41}, "to"),
+    ({"from": "Igual", "to": "Igual"}, "distinto"),
+    ({"from": "X"}, "to"),
+    ({"to": "X"}, "from"),
+])
+def test_rename_type_validation_rejected(client, payload, expected_fragment):
+    register(client)
+    r = client.post("/api/sessions/rename-type", json=payload)
+    assert r.status_code == 400
+    assert expected_fragment in r.get_json()["error"]
+
+
+def test_rename_type_requires_login(client):
+    r = client.post("/api/sessions/rename-type", json={"from": "A", "to": "B"})
+    assert r.status_code == 401
+
+
 # ── Categorías ───────────────────────────────────────────
 
 def test_category_crud_and_cannot_archive_last_active(client):

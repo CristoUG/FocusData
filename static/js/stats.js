@@ -2,6 +2,8 @@
 import { $, $$, ic, esc, on, fmtMin, fmtHours, localDateStr, daysAgoStr, DAY_SHORT, MONTH_SHORT } from './util.js';
 import { S, studyRecs, categoryById } from './store.js';
 import { minutesByDate, computeStreaks, computeIRS, computeRDA, sumMinutes, sumBetween, hoursSeries } from './metrics.js';
+import { openMenu } from './ui.js';
+import { openRenameTypeModal } from './log.js';
 
 let visible = false;
 const series = { week: [], weekDates: [], hour: [] };
@@ -116,7 +118,11 @@ function donutHTML(recs) {
   entries.forEach(([name, m, color]) => {
     const pct = m / total * 100, len = Math.max(pct - gap, 0.05), p = Math.round(pct);
     segs += `<circle class="seg" cx="80" cy="80" r="${r}" pathLength="100" style="stroke:${color}" stroke-dasharray="${len.toFixed(2)} ${(100 - len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" tabindex="0" data-tip="${esc(`${fmtMin(m)} · ${p}%|${name}`)}"/>`;
-    legend += `<div class="lg-row"><span class="lg-sw" style="--c:${color}"></span><span class="lg-name" title="${esc(name)}">${esc(name)}</span><span class="lg-v">${fmtHours(m)}</span><span class="lg-p">${p}%</span></div>`;
+    const inner = `<span class="lg-sw" style="--c:${color}"></span><span class="lg-name" title="${esc(name)}">${esc(name)}</span><span class="lg-v">${fmtHours(m)}</span><span class="lg-p">${p}%</span>`;
+    // "Otros" agrupa varios temas reales: no hay un único tema que renombrar ahí.
+    legend += name === 'Otros'
+      ? `<div class="lg-row">${inner}</div>`
+      : `<button type="button" class="lg-row" data-type-menu="${esc(name)}" aria-haspopup="menu" aria-expanded="false" title="Opciones de «${esc(name)}»">${inner}</button>`;
     acc += pct;
   });
   return `<div class="donut"><div class="donut-fig"><svg viewBox="0 0 160 160" role="img" aria-label="Distribución del tiempo por tema">${segs}</svg><div class="donut-c"><b>${fmtHours(total)}</b><span>en total</span></div></div><div class="lg">${legend}</div></div>`;
@@ -206,6 +212,16 @@ export function setStatsVisible(v) {
 
 export function initStats() {
   if (ro) $$('[data-chart]').forEach(el => ro.observe(el));
+  $('#donut').addEventListener('click', e => {
+    const btn = e.target.closest('[data-type-menu]');
+    if (!btn) return;
+    const name = btn.dataset.typeMenu;
+    openMenu({
+      anchor: btn, align: 'end', minWidth: 200,
+      items: [{ value: 'rename', label: 'Renombrar tema…', icon: 'rename', action: true }],
+      onSelect: v => { if (v === 'rename') openRenameTypeModal(name); },
+    });
+  });
   on('sessions', () => visible && render());
   on('filter', () => { renderSub(); if (visible) render(); });
   on('categories', renderSub);

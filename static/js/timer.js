@@ -398,6 +398,12 @@ export function initTimer() {
   on('categories', renderActive);
   on('sessions', () => { renderRecos(); renderHomeStats(); });
   on('filter', renderHomeStats);
+  // Si el tema escrito en la barra de actividad se acaba de renombrar en otro sitio
+  // (Registro o Estadísticas), lo sigue: si no, la próxima sesión se guardaría con el
+  // nombre viejo sin que se note.
+  on('type-renamed', ({ from, to }) => {
+    if (T.type === from) { T.type = to; $('#type-input').value = to; }
+  });
   // Al volver a la pestaña, el reloj se pone al día al instante.
   document.addEventListener('visibilitychange', () => { if (!document.hidden && T.running) tick(); });
 

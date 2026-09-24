@@ -1,7 +1,7 @@
 // Registro: historial filtrable, reasignación de carpeta, exportación y borrado.
 import { $, ic, esc, toast, on, fmtMin, daysAgoStr, prettyDate } from './util.js';
-import { S, filteredDb, categoryById, reassignSession, renameSession, deleteSession, clearHistory } from './store.js';
-import { openMenu, askText, confirmDialog } from './ui.js';
+import { S, filteredDb, categoryById, reassignSession, renameSession, renameType, deleteSession, clearHistory } from './store.js';
+import { openMenu, openModal, closeModal, askText, confirmDialog } from './ui.js';
 import { folderItems } from './folders.js';
 
 let visible = false;
@@ -51,6 +51,60 @@ async function renameRow(rec) {
   renameSession(rec.ts, name);
 }
 
+// Renombra (o fusiona) un tema en TODO el historial de una vez: se abre desde el
+// filtro de Registro y desde la leyenda de la dona en Estadísticas. El botón y el
+// aviso cambian mientras se escribe, según si el nombre nuevo ya existe o no.
+export function openRenameTypeModal(currentType) {
+  const count = S.db.filter(r => r.mode !== 'break' && r.type === currentType).length;
+  const others = typeSuggestions(currentType);
+  const othersSet = new Set(others);
+  const hintFor = v => (v && v !== currentType && othersSet.has(v))
+    ? `Ya existe «${esc(v)}»: las sesiones se unirán a ese tema.`
+    : `Afecta a ${count} ${count === 1 ? 'sesión' : 'sesiones'} en todo tu historial.`;
+  const labelFor = v => ((v && v !== currentType && othersSet.has(v)) ? 'Fusionar' : 'Renombrar');
+
+  const card = openModal(`
+    <h3>${ic('rename')} Renombrar tema</h3>
+    <p class="modal-sub" data-hint>${hintFor(currentType)}</p>
+    <form class="modal-field" novalidate>
+      <label class="modal-label" for="rt-input">Nuevo nombre</label>
+      <input id="rt-input" class="field" type="text" maxlength="${TYPE_MAX}" autocomplete="off" spellcheck="false" value="${esc(currentType)}">
+    </form>
+    ${others.length ? `<div class="chips ask-chips">${others.map(t => `<button type="button" class="chip" data-sugg="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}
+    <div class="modal-actions">
+      <button type="button" class="btn" data-cancel>Cancelar</button>
+      <button type="button" class="btn primary" data-ok>Renombrar</button>
+    </div>`);
+  const input = card.querySelector('#rt-input');
+  const hint = card.querySelector('[data-hint]');
+  const okBtn = card.querySelector('[data-ok]');
+  const sync = () => {
+    const v = input.value.trim();
+    hint.textContent = hintFor(v);
+    okBtn.textContent = labelFor(v);
+  };
+  input.addEventListener('input', sync);
+  input.select();
+  const submit = () => {
+    const name = input.value.trim();
+    closeModal();
+    if (!name || name === currentType) return;
+    renameType(currentType, name);
+  };
+  card.querySelector('form').addEventListener('submit', e => { e.preventDefault(); submit(); });
+  okBtn.addEventListener('click', submit);
+  card.querySelector('[data-cancel]').addEventListener('click', () => closeModal());
+  if (others.length) {
+    card.querySelector('.ask-chips').addEventListener('click', e => {
+      const chip = e.target.closest('[data-sugg]');
+      if (!chip) return;
+      input.value = chip.dataset.sugg;
+      sync();
+      input.focus();
+    });
+  }
+}
+
 function folderCell(r) {
   const cat = categoryById(r.category_id);
   const name = cat ? cat.path + (cat.archived ? ' (archivada)' : '') : (r.category_name || '—');
@@ -90,10 +144,18 @@ export function setLogVisible(v) {
 export function initLog() {
   $('#log-type').addEventListener('click', e => {
     const types = [...new Set(filteredDb().filter(r => r.mode !== 'break').map(r => r.type))].sort((a, b) => a.localeCompare(b));
+    const items = [{ value: '', label: 'Todos los tipos' }, { type: 'sep' }, ...types.map(t => ({ value: t, label: t }))];
+    if (filters.type) {
+      items.push({ type: 'sep' }, { value: '__rename__', label: 'Renombrar este tema…', icon: 'rename', action: true });
+    }
     openMenu({
       anchor: e.currentTarget, value: filters.type, search: true,
-      items: [{ value: '', label: 'Todos los tipos' }, { type: 'sep' }, ...types.map(t => ({ value: t, label: t }))],
-      onSelect: v => { filters.type = v; render(); },
+      items,
+      onSelect: v => {
+        if (v === '__rename__') { openRenameTypeModal(filters.type); return; }
+        filters.type = v;
+        render();
+      },
     });
   });
   $('#log-days').addEventListener('click', e => openMenu({
@@ -156,4 +218,9 @@ export function initLog() {
   on('sessions', refresh);
   on('filter', refresh);
   on('categories', refresh);
+  // Si el tema que está filtrado se acaba de renombrar, el filtro lo sigue: si no, el
+  // filtro se queda con el nombre viejo y la tabla se ve vacía hasta que se cambie a mano.
+  on('type-renamed', ({ from, to }) => {
+    if (filters.type === from) { filters.type = to; refresh(); }
+  });
 }

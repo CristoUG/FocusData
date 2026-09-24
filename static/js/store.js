@@ -190,6 +190,23 @@ export async function renameSession(ts, type) {
   if (data) toast('Sesión renombrada');
 }
 
+// Renombra (o fusiona, si `to` ya existe) un tema en TODO el historial de una vez.
+export async function renameType(from, to) {
+  const merging = S.db.some(r => r.mode !== 'break' && r.type === to);
+  const { ok, data } = await api('/api/sessions/rename-type', { method: 'POST', body: { from, to } });
+  if (!ok) { toast(data.error || 'No se pudo renombrar el tema', 'error'); return false; }
+  // Se aplica también a las sesiones locales aún no sincronizadas: al subirse
+  // llegarán ya con el nombre nuevo, sin esperar a la próxima sincronización.
+  S.db.forEach(r => { if (r.mode !== 'break' && r.type === from) r.type = to; });
+  saveDb();
+  emit('sessions');
+  // Aparte de refrescar el historial, avisa a quien tenga ese nombre escrito en algún
+  // sitio (la portada, un filtro) para que lo actualice sin que el usuario lo note.
+  emit('type-renamed', { from, to });
+  toast(merging ? `Fusionado con «${to}»` : `Tema renombrado a «${to}»`);
+  return true;
+}
+
 export async function deleteSession(ts) {
   const rec = S.db.find(r => r.ts === ts);
   if (!rec) return;

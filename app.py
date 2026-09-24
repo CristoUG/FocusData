@@ -1216,6 +1216,34 @@ def add_session():
         conn.commit()
     return jsonify({"ok": True, "id": cur.lastrowid, "category_id": category_id})
 
+@app.route("/api/sessions/rename-type", methods=["POST"])
+@login_required
+def rename_type():
+    data = request.get_json(silent=True) or {}
+    uid = current_user.id
+
+    from_type = data.get("from").strip() if isinstance(data.get("from"), str) else ""
+    if not from_type or len(from_type) > TYPE_MAX:
+        return jsonify({"error": f"from debe tener entre 1 y {TYPE_MAX} caracteres"}), 400
+
+    to_type = data.get("to").strip() if isinstance(data.get("to"), str) else ""
+    if not to_type or len(to_type) > TYPE_MAX:
+        return jsonify({"error": f"to debe tener entre 1 y {TYPE_MAX} caracteres"}), 400
+
+    if from_type == to_type:
+        return jsonify({"error": "El nuevo nombre debe ser distinto"}), 400
+
+    with closing(get_db()) as conn, conn:
+        # Los descansos se llaman siempre "Descanso" (logSession() los registra así)
+        # y no deben tocarse. Si `to_type` ya existe como tema, sus sesiones se
+        # fusionan: es el comportamiento buscado, no hace falta distinguirlo.
+        cur = conn.execute(
+            "UPDATE sessions SET type = ? WHERE user_id = ? AND type = ? AND mode != 'break'",
+            (to_type, uid, from_type)
+        )
+        conn.commit()
+    return jsonify({"ok": True, "updated": cur.rowcount})
+
 @app.route("/api/stats")
 @login_required
 def get_stats():

@@ -43,7 +43,7 @@ Solo hay **dos dependencias de producción**: `flask` y `flask-login`.
 | Tecnología | Rol |
 |---|---|
 | **HTML5 / CSS3** | Estructura y estilos: variables CSS (`tokens.css`), tema claro y oscuro |
-| **JavaScript (ES6+) vanilla** | Toda la lógica de cliente, repartida en **13 módulos ES** sin bundler |
+| **JavaScript (ES6+) vanilla** | Toda la lógica de cliente, repartida en **14 módulos ES** sin bundler |
 | **SVG generado a mano** | **Todos** los gráficos (columnas, dona, calendario, anillo del reloj). No se usa ninguna librería de charts |
 | **Web Audio API** | Música de concentración **sintetizada en el navegador** (`music.js`), sin archivos de audio |
 | **Notifications API + Service Worker** | Avisos de fin de fase, incluso con la app en segundo plano (`notifications.js`, `sw.js`) |
@@ -123,7 +123,7 @@ FocusData/
 │   ├── css/
 │   │   ├── tokens.css      ← Tokens de tema: colores, radios, sombras (claro y oscuro)
 │   │   └── app.css         ← Estilos de todos los componentes
-│   ├── js/                 ← 13 módulos ES (ver sección 5.2)
+│   ├── js/                 ← 14 módulos ES (ver sección 5.2)
 │   ├── img/icons.svg       ← Sprite de Fluent UI System Icons (MIT)
 │   ├── scenes/             ← Fotos de las escenas del catálogo (+ su README)
 │   └── music/              ← Pistas propias opcionales y tracks.json (+ su README)
@@ -273,7 +273,7 @@ Define el armazón y las seis vistas, que se muestran y ocultan con el atributo 
 - **`app.css`**: estilos de todos los componentes (barra lateral, compositor, anillo,
   menús, modales, tarjetas, gráficos, calendario, panel de música…).
 
-#### 📜 `static/js/` — los 13 módulos
+#### 📜 `static/js/` — los 14 módulos
 
 | Módulo | Responsabilidad |
 |---|---|
@@ -281,14 +281,15 @@ Define el armazón y las seis vistas, que se muestran y ocultan con el atributo 
 | **`store.js`** | **Estado y datos.** El objeto `S` (usuario, sesiones, carpetas, preferencias, filtro), la caché `localStorage` aislada por usuario, `loadCategories()`, `descendantIds()`, `logSession()`, `syncSessions()` (merge por `ts` + backfill), `reassignSession()`, `clearHistory()`, `savePrefs()` y la configuración del Pomodoro (`CFG_LIMITS`, `CFG_DEFAULT`, `loadCfg`, `setCfg`) |
 | **`util.js`** | **Utilidades comunes.** Selectores `$`/`$$`, `ic()` (iconos del sprite), `esc()` (anti-XSS), `norm()` (búsqueda sin acentos), formato (`fmtMin`, `fmtHours`, `prettyDate`), fechas **locales** (`localDateStr`, `localISOString`, `daysAgoStr`), cliente `api()`, `toast()`, bus de eventos (`on`/`emit`) y envoltorios de `localStorage` |
 | **`ui.js`** | **Componentes.** Menús desplegables con buscador y navegación por teclado (`openMenu`), modales (`openModal`, `askText`, `confirmDialog`), secciones plegables y tooltips |
-| **`timer.js`** | **Pomodoro, cronómetro y sesión manual.** El tiempo se calcula siempre desde el **reloj de pared** (`endTime − ahora`), no contando ticks. Fin de fase: alarma, registro de la sesión y preparación de la siguiente (que **no** arranca sola). Rueda de tiempos, saludo por hora del día y chips de tipos recomendados |
+| **`audio.js`** | **Motor de audio compartido.** Un único `AudioContext` para toda la app, usado por `timer.js` (alarma) y `music.js` (música): crear uno por módulo, o crearlo fuera de un gesto del usuario, lo deja `'suspended'` en Safari/iOS y no suena nada. `unlockAudio()` se registra una vez al arrancar y lo desbloquea con el primer toque/clic/tecla (más `navigator.audioSession = 'playback'` en iOS 16.4+, para sonar aunque el silencio físico esté activado) |
+| **`timer.js`** | **Pomodoro, cronómetro y sesión manual.** El tiempo se calcula siempre desde el **reloj de pared** (`endTime − ahora`), no contando ticks. Fin de fase: alarma (vía `audio.js`), registro de la sesión y preparación de la siguiente (que **no** arranca sola). Rueda de tiempos, saludo por hora del día y chips de tipos recomendados |
 | **`metrics.js`** | **Cálculo puro de métricas**: `minutesByDate`, `computeStreaks`, `computeIRS`, `computeRDA`, `sumMinutes`, `sumBetween` y `hoursSeries` (reparte los minutos de cada sesión **hacia atrás** desde su hora de fin) |
 | **`stats.js`** | **Vista de Estadísticas**: los 8 indicadores y los gráficos, todos **SVG generados a mano** (columnas con escala `niceScale`, dona con leyenda, calendario de 26 semanas) |
 | **`log.js`** | **Vista de Registro**: tabla filtrable por tipo y periodo, insignias de modo, cambio de carpeta por fila y borrado del historial |
 | **`folders.js`** | **Árbol de carpetas**: render con sangría por profundidad, horas por carpeta sumando descendientes, menú de acciones (activa, filtrar, subcarpeta, renombrar, mover, archivar/restaurar, eliminar) y los diálogos de cada una, incluido el de eliminación con confirmación escrita |
 | **`settings.js`** | **Apariencia**: aplicar y persistir tema y color de acento (presets + campo hex validado, con espera de 600 ms en el personalizado) |
 | **`scenes.js`** | **Escenas y fondos propios**: catálogo `SCENES`, aplicar la escena (foto de fondo, velo y los 3 colores que tiñen anillo y marca), caché de apariencia para pintar sin parpadeo, y subir/listar/borrar los fondos del usuario |
-| **`music.js`** | **Música de concentración** (el módulo más grande, ~945 líneas): 7 sonidos **sintetizados con Web Audio** —Lo-fi, Ambiente, Lluvia, Bosque, Olas, Chimenea y Ruido marrón— más pistas propias opcionales de `tracks.json`. Volumen con ganancia cuadrática, fundidos de entrada y salida, sincronización con el temporizador y atenuación al 20 % mientras suena la alarma |
+| **`music.js`** | **Música de concentración** (el módulo más grande, ~945 líneas): 7 sonidos **sintetizados con Web Audio** —Lo-fi, Ambiente, Lluvia, Bosque, Olas, Chimenea y Ruido marrón— más pistas propias opcionales de `tracks.json`. Usa el `AudioContext` compartido de `audio.js` (no lo suspende en pausa: lo necesita la alarma). Volumen con ganancia cuadrática, fundidos de entrada y salida, sincronización con el temporizador y atenuación al 20 % mientras suena la alarma |
 | **`notifications.js`** | **Avisos de fin de fase** mediante el service worker (o `new Notification()` como respaldo). Interruptores independientes para pomodoros y descansos, permiso pedido una sola vez, y solo avisa si **no** estás mirando la app |
 
 #### 🔔 `static/sw.js` — Service worker

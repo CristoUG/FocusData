@@ -10,6 +10,7 @@ import { initScenes, applyScene, loadBackgrounds, readAppearance, cacheAppearanc
 import { initSettings, applyTheme, applyAccent, setTheme } from './settings.js';
 import { initMusic } from './music.js';
 import { initNotifications } from './notifications.js';
+import { unlockAudio } from './audio.js';
 
 const VIEWS = { timer: 'Timer', stats: 'Estadísticas', log: 'Registro', folders: 'Carpetas', settings: 'Configuración', help: 'Ayuda' };
 const SIDE_KEY = 'focusdata.side.collapsed';
@@ -130,6 +131,7 @@ function initShell() {
 }
 
 async function boot() {
+  unlockAudio();
   initCollapsibles();
   initTooltips();
   loadCfg();

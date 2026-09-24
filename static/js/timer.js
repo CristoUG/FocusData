@@ -1,11 +1,16 @@
 // Temporizador: Pomodoro (cuenta atrás) y Cronómetro (cuenta hacia adelante).
-import { $, $$, ic, esc, toast, on, emit, fmtMin, localDateStr, daysAgoStr, ICONS } from './util.js';
+import { $, $$, ic, esc, toast, on, emit, fmtMin, localDateStr, daysAgoStr, ICONS, lsGet, lsSet } from './util.js';
 import { S, logSession, categoryById, studyRecs, CFG_LIMITS, CFG_DEFAULT, setCfg, setActiveCategory } from './store.js';
 import { openMenu, closeMenu, openModal, closeModal, confirmDialog } from './ui.js';
 import { computeStreaks } from './metrics.js';
 import { folderItems } from './folders.js';
 
 const CRONO_CYCLE = 60 * 60;   // el anillo da una vuelta completa por hora
+
+// Preferencia de "saltar descanso": si se activa, el trabajo arranca solo al saltar.
+// Se guarda en este navegador, igual que los tiempos del Pomodoro.
+const SKIP_AUTO_KEY = 'focusdata.skipAutoStart';
+let skipAutoStart = false;
 
 const T = {
   mode: 'pomodoro',            // 'pomodoro' | 'cronometro'
@@ -63,6 +68,7 @@ function updateToggle() {
   btn.title = label;
   $('#btn-toggle-icon').setAttribute('href', `${ICONS}#i-${T.running ? 'pause' : 'play'}`);
   $('#btn-save').hidden = T.mode !== 'cronometro';
+  $('#btn-skip').hidden = !(T.mode === 'pomodoro' && T.phase !== 'work');
   $('#btn-mode-label').textContent = T.mode === 'cronometro' ? 'Cronómetro' : 'Pomodoro';
   // Todo cambio de estado pasa por aquí: la música se sincroniza con este evento.
   emit('timer', { running: T.running, mode: T.mode, phase: T.phase });
@@ -150,6 +156,30 @@ function phaseComplete() {
   renderClock();
   // Las notificaciones del sistema viven en notifications.js.
   emit('phase-end', { finished, minutes, type: T.type, next: T.phase, nextMinutes: phaseMinutes() });
+}
+
+// Termina un descanso antes de tiempo y pasa directo a trabajar. A diferencia de
+// phaseComplete(): no suena la alarma, no manda notificación, y solo registra el
+// descanso si se llevaba un minuto entero o más.
+function skipBreak() {
+  if (T.mode !== 'pomodoro' || T.phase === 'work') return;
+  clearInterval(T.iv);
+  clearTimeout(T.due);
+  // Se recalcula desde el reloj real por si el intervalo aún no había refrescado
+  // T.remaining (igual que hace tick()); si estaba en pausa ya estaba al día.
+  if (T.running) T.remaining = Math.max(0, Math.round((T.endTime - Date.now()) / 1000));
+  const elapsedMin = Math.floor(((T.phaseTotal || phaseDuration()) - T.remaining) / 60);
+  if (elapsedMin >= 1) logSession(elapsedMin, 'Descanso', 'break');
+  T.session++;
+  T.phase = 'work';
+  T.phaseTotal = phaseDuration();
+  T.remaining = T.phaseTotal;
+  T.running = false;
+  T.paused = false;
+  updateToggle();
+  renderClock();
+  toast('Descanso saltado. ¡A concentrarse!');
+  if (skipAutoStart) start();
 }
 
 function saveCrono() {
@@ -242,6 +272,10 @@ function openGear(anchor) {
         <div class="pp-head"><b>Pomodoro</b><span data-cfg-summary></span></div>
         ${pomoRowsHTML('gear')}
         <p class="pp-note"${T.mode === 'cronometro' ? '' : ' hidden'}>En modo Cronómetro estos tiempos no se usan.</p>
+        <label class="mu-sync">
+          <input type="checkbox" data-skip-auto${skipAutoStart ? ' checked' : ''}>
+          <span>Empezar a trabajar al saltar un descanso<small>Si no, el reloj queda listo para pulsar Iniciar</small></span>
+        </label>
         <div class="pp-foot">
           <button type="button" class="btn sm" data-cfg-reset>Restablecer</button>
           <button type="button" class="btn sm primary" data-menu-close>Listo</button>
@@ -355,10 +389,12 @@ export function focusTypeInput() {
 
 export function initTimer() {
   T.remaining = T.phaseTotal = S.cfg.work * 60;
+  skipAutoStart = lsGet(SKIP_AUTO_KEY, false) === true;
 
   $('#btn-toggle').addEventListener('click', () => { if (T.running) pause(); else start(); });
   $('#btn-reset').addEventListener('click', resetTimer);
   $('#btn-save').addEventListener('click', saveCrono);
+  $('#btn-skip').addEventListener('click', skipBreak);
   $('#btn-mode').addEventListener('click', e => openModeMenu(e.currentTarget));
   $('#btn-active').addEventListener('click', e => openActiveMenu(e.currentTarget));
   $('#btn-gear').addEventListener('click', e => openGear(e.currentTarget));
@@ -387,6 +423,12 @@ export function initTimer() {
     }
     if (e.target.closest('[data-cfg-reset]')) { Object.keys(CFG_DEFAULT).forEach(k => setCfg(k, CFG_DEFAULT[k])); return; }
     if (e.target.closest('[data-menu-close]')) closeMenu();
+  });
+  document.addEventListener('change', e => {
+    if (e.target.matches('[data-skip-auto]')) {
+      skipAutoStart = e.target.checked;
+      lsSet(SKIP_AUTO_KEY, skipAutoStart);
+    }
   });
 
   on('cfg', key => { syncCfgControls(); syncIdleRemaining(key); });

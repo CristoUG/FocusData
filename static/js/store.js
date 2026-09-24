@@ -160,16 +160,34 @@ export async function syncSessions() {
   emit('sessions');
 }
 
-export async function reassignSession(ts, catId) {
+// Actualiza una sesión ya registrada en el servidor: moverla de carpeta, renombrarla
+// (campo `type`), o ambas cosas en la misma llamada. Solo funciona si el servidor ya
+// la confirmó (remote_id); antes de eso no existe ahí para editarla.
+async function patchSession(ts, patch) {
   const rec = S.db.find(r => r.ts === ts);
-  if (!rec || rec.remote_id == null) return;
-  const { ok, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'PATCH', body: { category_id: +catId } });
-  if (!ok) { toast(data.error || 'No se pudo mover la sesión', 'error'); emit('sessions'); return; }
+  if (!rec) return null;
+  if (rec.remote_id == null) {
+    toast('Se podrá editar cuando se sincronice', 'error');
+    return null;
+  }
+  const { ok, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'PATCH', body: patch });
+  if (!ok) { toast(data.error || 'No se pudo actualizar la sesión', 'error'); emit('sessions'); return null; }
   rec.category_id = data.category_id;
   rec.category_name = data.category_name;
+  rec.type = data.type;
   saveDb();
-  toast(`Sesión movida a ${data.category_name}`);
   emit('sessions');
+  return data;
+}
+
+export async function reassignSession(ts, catId) {
+  const data = await patchSession(ts, { category_id: +catId });
+  if (data) toast(`Sesión movida a ${data.category_name}`);
+}
+
+export async function renameSession(ts, type) {
+  const data = await patchSession(ts, { type });
+  if (data) toast('Sesión renombrada');
 }
 
 export async function deleteSession(ts) {

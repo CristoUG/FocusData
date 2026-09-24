@@ -309,6 +309,78 @@ def test_cannot_reassign_session_to_another_users_category(client):
     assert r.get_json()["error"] == "Carpeta no válida"
 
 
+# ── Renombrar una sesión (PATCH /api/sessions/<id> con `type`) ──
+
+def test_update_session_type_only_renames_and_keeps_category(client):
+    register(client)
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Calculo", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    cid_before = r.get_json()["category_id"]
+
+    r = client.patch(f"/api/sessions/{sid}", json={"type": "Cálculo"})
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["type"] == "Cálculo"
+    assert body["category_id"] == cid_before
+
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert rows[0]["type"] == "Cálculo"
+    assert rows[0]["category_id"] == cid_before
+
+
+def test_update_session_type_and_category_together(client):
+    register(client)
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Estudio", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    new_cat = client.post("/api/categories", json={"name": "Trabajo"}).get_json()["id"]
+
+    r = client.patch(f"/api/sessions/{sid}", json={"type": "Trabajo enfocado", "category_id": new_cat})
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["type"] == "Trabajo enfocado"
+    assert body["category_id"] == new_cat
+    assert body["category_name"] == "Trabajo"
+
+
+@pytest.mark.parametrize("payload,expected_fragment", [
+    ({"type": ""}, "type"),
+    ({"type": "   "}, "type"),
+    ({"type": "x" * 41}, "type"),
+])
+def test_update_session_type_validation_rejected(client, payload, expected_fragment):
+    register(client)
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Estudio", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    r = client.patch(f"/api/sessions/{sid}", json=payload)
+    assert r.status_code == 400
+    assert expected_fragment in r.get_json()["error"]
+
+
+def test_update_session_empty_body_rejected(client):
+    register(client)
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Estudio", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    r = client.patch(f"/api/sessions/{sid}", json={})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "Nada que actualizar"
+
+
+def test_update_session_type_of_another_user_returns_404(client):
+    register(client, "alice4")
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Alice", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    client.get("/logout")
+
+    register(client, "bob4")
+    r = client.patch(f"/api/sessions/{sid}", json={"type": "Hackeado"})
+    assert r.status_code == 404
+    client.get("/logout")
+
+    login(client, "alice4")
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert rows[0]["type"] == "Alice"
+
+
 # ── Eliminar una sesión (DELETE /api/sessions/<id>) ─────
 
 def test_delete_session_removes_only_that_row(client):

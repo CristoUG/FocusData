@@ -169,6 +169,7 @@ html.has-photo .v-body > .hint b { color: var(--on-photo); }
 }
 .chip:hover { background: var(--surface-solid); }
 .chip.selected { border-color: color-mix(in srgb, var(--text) 40%, transparent); font-weight: 600; }
+.chips.ask-chips { justify-content: flex-start; margin-top: 10px; }
 .home-stats { display: flex; gap: 28px; margin-top: 26px; font-size: 13px; color: var(--muted); flex-wrap: wrap; justify-content: center; }
 .home-stats span { display: inline-flex; align-items: center; gap: 7px; }
 .home-stats b { color: var(--text); font-weight: 600; }

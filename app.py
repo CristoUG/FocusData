@@ -902,21 +902,55 @@ def delete_category(cid):
 def update_session(sid):
     data = request.get_json(silent=True) or {}
     uid = current_user.id
-    try:
-        cid_req = int(data.get("category_id"))
-    except (TypeError, ValueError):
-        return jsonify({"error": "Carpeta no válida"}), 400
+    has_category = "category_id" in data
+    has_type = "type" in data
+    if not has_category and not has_type:
+        return jsonify({"error": "Nada que actualizar"}), 400
+
+    cid_req = None
+    if has_category:
+        try:
+            cid_req = int(data.get("category_id"))
+        except (TypeError, ValueError):
+            return jsonify({"error": "Carpeta no válida"}), 400
+
+    stype = None
+    if has_type:
+        stype = data.get("type").strip() if isinstance(data.get("type"), str) else ""
+        if not stype or len(stype) > TYPE_MAX:
+            return jsonify({"error": f"type debe tener entre 1 y {TYPE_MAX} caracteres"}), 400
+
     with closing(get_db()) as conn, conn:
         if not conn.execute("SELECT id FROM sessions WHERE id = ? AND user_id = ?", (sid, uid)).fetchone():
             return jsonify({"error": "Sesión no encontrada"}), 404
-        cat = conn.execute(
-            "SELECT id, name FROM categories WHERE id = ? AND user_id = ?", (cid_req, uid)
-        ).fetchone()
-        if not cat:
-            return jsonify({"error": "Carpeta no válida"}), 400
-        conn.execute("UPDATE sessions SET category_id = ? WHERE id = ? AND user_id = ?", (cat["id"], sid, uid))
+
+        sets, params = [], []
+        if has_category:
+            cat = conn.execute(
+                "SELECT id, name FROM categories WHERE id = ? AND user_id = ?", (cid_req, uid)
+            ).fetchone()
+            if not cat:
+                return jsonify({"error": "Carpeta no válida"}), 400
+            sets.append("category_id = ?")
+            params.append(cat["id"])
+        if has_type:
+            sets.append("type = ?")
+            params.append(stype)
+
+        conn.execute(f"UPDATE sessions SET {', '.join(sets)} WHERE id = ? AND user_id = ?", [*params, sid, uid])
         conn.commit()
-    return jsonify({"ok": True, "category_id": cat["id"], "category_name": cat["name"]})
+        updated = conn.execute(
+            "SELECT s.category_id, s.type, c.name AS category_name "
+            "FROM sessions s LEFT JOIN categories c ON c.id = s.category_id "
+            "WHERE s.id = ? AND s.user_id = ?", (sid, uid)
+        ).fetchone()
+
+    return jsonify({
+        "ok": True,
+        "category_id": updated["category_id"],
+        "category_name": updated["category_name"],
+        "type": updated["type"],
+    })
 
 @app.route("/api/sessions/<int:sid>", methods=["DELETE"])
 @login_required

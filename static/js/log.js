@@ -1,7 +1,7 @@
 // Registro: historial filtrable, reasignación de carpeta, exportación y borrado.
 import { $, ic, esc, toast, on, fmtMin, daysAgoStr, prettyDate } from './util.js';
-import { S, filteredDb, categoryById, reassignSession, deleteSession, clearHistory } from './store.js';
-import { openMenu, confirmDialog } from './ui.js';
+import { S, filteredDb, categoryById, reassignSession, renameSession, deleteSession, clearHistory } from './store.js';
+import { openMenu, askText, confirmDialog } from './ui.js';
 import { folderItems } from './folders.js';
 
 let visible = false;
@@ -13,6 +13,7 @@ const RANGES = [
   { value: 0, label: 'Todo el historial' },
 ];
 const MODE_LABEL = { pomodoro: 'Pomodoro', cronometro: 'Cronómetro', manual: 'Manual' };
+const TYPE_MAX = 40;   // igual que TYPE_MAX en app.py y el maxlength de #type-input
 
 function rows() {
   let recs = filteredDb().filter(r => r.mode !== 'break');
@@ -22,6 +23,32 @@ function rows() {
     recs = recs.filter(r => r.date >= from);
   }
   return recs.slice().reverse();
+}
+
+// Los temas ya usados en el historial, para sugerir al renombrar (evita variantes
+// como "Calculo" / "Cálculo" por descuido). Excluye el propio tema actual.
+function typeSuggestions(current) {
+  const types = new Set(S.db.filter(r => r.mode !== 'break' && r.type).map(r => r.type));
+  types.delete(current);
+  return [...types].sort((a, b) => a.localeCompare(b)).slice(0, 12);
+}
+
+// La celda de carpeta y "Mover a carpeta…" del menú ⋯ abren el mismo selector.
+function openFolderPicker(anchor, rec) {
+  openMenu({
+    anchor, value: rec.category_id, search: true, minWidth: 260,
+    items: [{ type: 'head', label: 'Mover la sesión a' }, ...folderItems({ archived: 'hide', keepId: rec.category_id })],
+    onSelect: v => { if (+v !== +rec.category_id) reassignSession(rec.ts, v); },
+  });
+}
+
+async function renameRow(rec) {
+  const name = await askText({
+    title: 'Renombrar sesión', icon: 'rename', label: 'Tema', value: rec.type,
+    confirmLabel: 'Renombrar', maxLength: TYPE_MAX, suggestions: typeSuggestions(rec.type),
+  });
+  if (!name || name === rec.type) return;
+  renameSession(rec.ts, name);
 }
 
 function folderCell(r) {
@@ -95,12 +122,7 @@ export function initLog() {
     const reassignBtn = e.target.closest('[data-reassign]');
     if (reassignBtn) {
       const rec = S.db.find(r => r.ts === reassignBtn.dataset.reassign);
-      if (!rec) return;
-      openMenu({
-        anchor: reassignBtn, value: rec.category_id, search: true, minWidth: 260,
-        items: [{ type: 'head', label: 'Mover la sesión a' }, ...folderItems({ archived: 'hide', keepId: rec.category_id })],
-        onSelect: v => { if (+v !== +rec.category_id) reassignSession(rec.ts, v); },
-      });
+      if (rec) openFolderPicker(reassignBtn, rec);
       return;
     }
     const menuBtn = e.target.closest('[data-session-menu]');
@@ -108,11 +130,16 @@ export function initLog() {
       const rec = S.db.find(r => r.ts === menuBtn.dataset.sessionMenu);
       if (!rec) return;
       openMenu({
-        anchor: menuBtn, align: 'end', minWidth: 200,
+        anchor: menuBtn, align: 'end', minWidth: 220,
         items: [
+          { value: 'rename', label: 'Renombrar…', icon: 'rename', action: true },
+          { value: 'move', label: 'Mover a carpeta…', icon: 'move', action: true },
+          { type: 'sep' },
           { value: 'delete', label: 'Eliminar sesión', icon: 'delete', action: true, danger: true },
         ],
         onSelect: async v => {
+          if (v === 'rename') { renameRow(rec); return; }
+          if (v === 'move') { openFolderPicker(menuBtn, rec); return; }
           if (v !== 'delete') return;
           const ok = await confirmDialog({
             title: 'Eliminar sesión',

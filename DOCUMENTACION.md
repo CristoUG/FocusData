@@ -260,7 +260,7 @@ Define el armazón y las seis vistas, que se muestran y ocultan con el atributo 
 | **Barra superior** | Selector **Filtro** · selector de **Escena** · **Música** · botón sol/luna |
 | **Timer** | Saludo · anillo con reloj y fase · línea `Sesión · Ciclo · ● carpeta activa` · compositor (actividad + modo + carpeta + rueda de tiempos) · **Recomendados** · 3 mini-métricas |
 | **Estadísticas** | 8 indicadores · calendario de consistencia · distribución por tema · últimos 7 días · densidad por hora |
-| **Registro** | Tabla filtrable por tipo y periodo · cambiar carpeta por fila · Exportar CSV/JSON · Borrar historial |
+| **Registro** | Tabla filtrable por tipo y periodo · cambiar carpeta o eliminar por fila (menú ⋯) · Exportar CSV/JSON · Borrar historial |
 | **Carpetas** | Árbol con insignias y horas · formulario de nueva carpeta |
 | **Configuración** | Tema · Escena · Acento · Tiempos del Pomodoro · Notificaciones · Música · Datos · Cuenta |
 | **Ayuda** | Temporizador · Carpetas · Estadísticas y Registro · Fondos · Música · Tus datos |
@@ -278,13 +278,13 @@ Define el armazón y las seis vistas, que se muestran y ocultan con el atributo 
 | Módulo | Responsabilidad |
 |---|---|
 | **`app.js`** | **Arranque.** Inicializa todos los módulos, navega entre vistas (`go()`), pinta la píldora de filtro y las sesiones recientes, monta el menú de cuenta y ejecuta `boot()`: apariencia en caché → `/api/me` → carpetas y fondos → `syncSessions()`. También reinterpreta los temas de legado `ocean`/`forest` como tema oscuro + escena del mismo nombre |
-| **`store.js`** | **Estado y datos.** El objeto `S` (usuario, sesiones, carpetas, preferencias, filtro), la caché `localStorage` aislada por usuario, `loadCategories()`, `descendantIds()`, `logSession()`, `syncSessions()` (merge por `ts` + backfill), `reassignSession()`, `clearHistory()`, `savePrefs()` y la configuración del Pomodoro (`CFG_LIMITS`, `CFG_DEFAULT`, `loadCfg`, `setCfg`) |
+| **`store.js`** | **Estado y datos.** El objeto `S` (usuario, sesiones, carpetas, preferencias, filtro), la caché `localStorage` aislada por usuario, `loadCategories()`, `descendantIds()`, `logSession()`, `syncSessions()` (merge por `ts` + backfill), `reassignSession()`, `deleteSession()` (borra en el servidor si ya se sincronizó; si no, solo en local), `clearHistory()`, `savePrefs()` y la configuración del Pomodoro (`CFG_LIMITS`, `CFG_DEFAULT`, `loadCfg`, `setCfg`) |
 | **`util.js`** | **Utilidades comunes.** Selectores `$`/`$$`, `ic()` (iconos del sprite), `esc()` (anti-XSS), `norm()` (búsqueda sin acentos), formato (`fmtMin`, `fmtHours`, `prettyDate`), fechas **locales** (`localDateStr`, `localISOString`, `daysAgoStr`), cliente `api()`, `toast()`, bus de eventos (`on`/`emit`) y envoltorios de `localStorage` |
 | **`ui.js`** | **Componentes.** Menús desplegables con buscador y navegación por teclado (`openMenu`), modales (`openModal`, `askText`, `confirmDialog`), secciones plegables y tooltips |
 | **`timer.js`** | **Pomodoro, cronómetro y sesión manual.** El tiempo se calcula siempre desde el **reloj de pared** (`endTime − ahora`), no contando ticks. Fin de fase: alarma, registro de la sesión y preparación de la siguiente (que **no** arranca sola). Rueda de tiempos, saludo por hora del día y chips de tipos recomendados |
 | **`metrics.js`** | **Cálculo puro de métricas**: `minutesByDate`, `computeStreaks`, `computeIRS`, `computeRDA`, `sumMinutes`, `sumBetween` y `hoursSeries` (reparte los minutos de cada sesión **hacia atrás** desde su hora de fin) |
 | **`stats.js`** | **Vista de Estadísticas**: los 8 indicadores y los gráficos, todos **SVG generados a mano** (columnas con escala `niceScale`, dona con leyenda, calendario de 26 semanas) |
-| **`log.js`** | **Vista de Registro**: tabla filtrable por tipo y periodo, insignias de modo, cambio de carpeta por fila y borrado del historial |
+| **`log.js`** | **Vista de Registro**: tabla filtrable por tipo y periodo, insignias de modo, menú **⋯** por fila (cambiar de carpeta, eliminar la sesión con confirmación) y borrado de todo el historial |
 | **`folders.js`** | **Árbol de carpetas**: render con sangría por profundidad, horas por carpeta sumando descendientes, menú de acciones (activa, filtrar, subcarpeta, renombrar, mover, archivar/restaurar, eliminar) y los diálogos de cada una, incluido el de eliminación con confirmación escrita |
 | **`settings.js`** | **Apariencia**: aplicar y persistir tema y color de acento (presets + campo hex validado, con espera de 600 ms en el personalizado) |
 | **`scenes.js`** | **Escenas y fondos propios**: catálogo `SCENES`, aplicar la escena (foto de fondo, velo y los 3 colores que tiñen anillo y marca), caché de apariencia para pintar sin parpadeo, y subir/listar/borrar los fondos del usuario |
@@ -425,6 +425,7 @@ autenticación responde `401 {"error": "No autorizado"}`.
 | GET | `/api/sessions` | Listar. Parámetros: `?days=7`, `?type=X`, `?include_breaks=1` (necesario para el RDA). Orden `ts` DESC, sin paginación |
 | POST | `/api/sessions` | Guardar sesión. El backend corrige `category_id` si no es válido (activa → primera no archivada → crea «General») |
 | PATCH | `/api/sessions/<id>` | Mover una sesión a otra carpeta: `{category_id}` |
+| DELETE | `/api/sessions/<id>` | Eliminar una sesión. `404` si no existe o es de otro usuario |
 | DELETE | `/api/sessions/all` | Borrar todas las sesiones del usuario |
 | GET | `/api/stats` | Estadísticas del backend. **Existe pero la UI no lo usa** |
 | GET | `/api/export/csv` | CSV con BOM, sin descansos. Protegido contra inyección de fórmulas |

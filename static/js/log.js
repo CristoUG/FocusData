@@ -1,6 +1,6 @@
 // Registro: historial filtrable, reasignación de carpeta, exportación y borrado.
 import { $, ic, esc, toast, on, fmtMin, daysAgoStr, prettyDate } from './util.js';
-import { S, filteredDb, categoryById, reassignSession, clearHistory } from './store.js';
+import { S, filteredDb, categoryById, reassignSession, deleteSession, clearHistory } from './store.js';
 import { openMenu, confirmDialog } from './ui.js';
 import { folderItems } from './folders.js';
 
@@ -46,11 +46,12 @@ function render() {
     box.innerHTML = `<div class="empty">${ic('calendar')}No hay sesiones con estos filtros. Prueba con otra carpeta o un periodo más largo.</div>`;
     return;
   }
-  box.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Hora</th><th class="num">Duración</th><th>Tipo</th><th>Modo</th><th>Carpeta</th></tr></thead><tbody>`
+  box.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Hora</th><th class="num">Duración</th><th>Tipo</th><th>Modo</th><th>Carpeta</th><th class="col-actions"><span class="sr-only">Acciones</span></th></tr></thead><tbody>`
     + list.map(r => `<tr>
         <td>${prettyDate(r.date)}</td><td class="tnum">${esc(r.time)}</td><td class="num">${fmtMin(r.minutes)}</td>
         <td>${esc(r.type)}</td><td><span class="pill ${esc(r.mode)}">${esc(MODE_LABEL[r.mode] || r.mode)}</span></td>
-        <td>${folderCell(r)}</td></tr>`).join('')
+        <td>${folderCell(r)}</td>
+        <td class="col-actions"><button type="button" class="icon-btn" data-session-menu="${esc(r.ts)}" aria-haspopup="menu" aria-expanded="false" aria-label="Acciones de la sesión">${ic('more', 's16')}</button></td></tr>`).join('')
     + '</tbody></table>';
 }
 
@@ -91,15 +92,37 @@ export function initLog() {
     if (ok) clearHistory();
   });
   $('#log-table').addEventListener('click', e => {
-    const btn = e.target.closest('[data-reassign]');
-    if (!btn) return;
-    const rec = S.db.find(r => r.ts === btn.dataset.reassign);
-    if (!rec) return;
-    openMenu({
-      anchor: btn, value: rec.category_id, search: true, minWidth: 260,
-      items: [{ type: 'head', label: 'Mover la sesión a' }, ...folderItems({ archived: 'hide', keepId: rec.category_id })],
-      onSelect: v => { if (+v !== +rec.category_id) reassignSession(rec.ts, v); },
-    });
+    const reassignBtn = e.target.closest('[data-reassign]');
+    if (reassignBtn) {
+      const rec = S.db.find(r => r.ts === reassignBtn.dataset.reassign);
+      if (!rec) return;
+      openMenu({
+        anchor: reassignBtn, value: rec.category_id, search: true, minWidth: 260,
+        items: [{ type: 'head', label: 'Mover la sesión a' }, ...folderItems({ archived: 'hide', keepId: rec.category_id })],
+        onSelect: v => { if (+v !== +rec.category_id) reassignSession(rec.ts, v); },
+      });
+      return;
+    }
+    const menuBtn = e.target.closest('[data-session-menu]');
+    if (menuBtn) {
+      const rec = S.db.find(r => r.ts === menuBtn.dataset.sessionMenu);
+      if (!rec) return;
+      openMenu({
+        anchor: menuBtn, align: 'end', minWidth: 200,
+        items: [
+          { value: 'delete', label: 'Eliminar sesión', icon: 'delete', action: true, danger: true },
+        ],
+        onSelect: async v => {
+          if (v !== 'delete') return;
+          const ok = await confirmDialog({
+            title: 'Eliminar sesión',
+            message: `Se eliminará la sesión de <b>${esc(rec.type)}</b> del ${prettyDate(rec.date)} (${fmtMin(rec.minutes)}). No se puede deshacer.`,
+            confirmLabel: 'Eliminar sesión', danger: true, icon: 'delete',
+          });
+          if (ok) deleteSession(rec.ts);
+        },
+      });
+    }
   });
 
   const refresh = () => visible && render();

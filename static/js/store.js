@@ -172,6 +172,30 @@ export async function reassignSession(ts, catId) {
   emit('sessions');
 }
 
+export async function deleteSession(ts) {
+  const rec = S.db.find(r => r.ts === ts);
+  if (!rec) return;
+  if (rec.remote_id == null) {
+    // Nunca llegó a confirmarse en el servidor: basta con quitarla en local.
+    S.db = S.db.filter(r => r !== rec);
+    saveDb();
+    emit('sessions');
+    return;
+  }
+  const { ok, status, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'DELETE' });
+  // Un 404 significa que ya no existe en el servidor (p. ej. borrada desde otro
+  // dispositivo): se quita igual en local. Un fallo de red (status 0) no debe
+  // quitarla, o syncSessions() ya no la reenviaría.
+  if (!ok && status !== 404) {
+    toast(data.error || 'No se pudo eliminar la sesión', 'error');
+    return;
+  }
+  S.db = S.db.filter(r => r !== rec);
+  saveDb();
+  toast('Sesión eliminada');
+  emit('sessions');
+}
+
 export async function clearHistory() {
   const { ok, data } = await api('/api/sessions/all', { method: 'DELETE' });
   if (!ok) { toast(data.error || 'No se pudieron borrar los registros', 'error'); return false; }

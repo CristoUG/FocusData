@@ -918,6 +918,17 @@ def update_session(sid):
         conn.commit()
     return jsonify({"ok": True, "category_id": cat["id"], "category_name": cat["name"]})
 
+@app.route("/api/sessions/<int:sid>", methods=["DELETE"])
+@login_required
+def delete_session(sid):
+    uid = current_user.id
+    with closing(get_db()) as conn, conn:
+        if not conn.execute("SELECT id FROM sessions WHERE id = ? AND user_id = ?", (sid, uid)).fetchone():
+            return jsonify({"error": "Sesión no encontrada"}), 404
+        conn.execute("DELETE FROM sessions WHERE id = ? AND user_id = ?", (sid, uid))
+        conn.commit()
+    return jsonify({"ok": True})
+
 # ── Fondos propios ──────────────────────────────────────
 
 IMAGE_MIMETYPES = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}

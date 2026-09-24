@@ -309,6 +309,64 @@ def test_cannot_reassign_session_to_another_users_category(client):
     assert r.get_json()["error"] == "Carpeta no válida"
 
 
+# ── Eliminar una sesión (DELETE /api/sessions/<id>) ─────
+
+def test_delete_session_removes_only_that_row(client):
+    register(client)
+    client.post("/api/sessions", json={"minutes": 25, "type": "Se queda", "mode": "pomodoro", "ts": "2026-09-01T10:00:00"})
+    r = client.post("/api/sessions", json={"minutes": 10, "type": "Se borra", "mode": "pomodoro", "ts": "2026-09-01T11:00:00"})
+    sid = r.get_json()["id"]
+
+    r = client.delete(f"/api/sessions/{sid}")
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert len(rows) == 1
+    assert rows[0]["type"] == "Se queda"
+
+
+def test_delete_session_nonexistent_id_returns_404(client):
+    register(client)
+    r = client.delete("/api/sessions/999999")
+    assert r.status_code == 404
+    assert r.get_json()["error"]
+
+
+def test_delete_session_of_another_user_returns_404_and_does_not_delete(client):
+    register(client, "alice3")
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Alice", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    client.get("/logout")
+
+    register(client, "bob3")
+    r = client.delete(f"/api/sessions/{sid}")
+    assert r.status_code == 404
+    client.get("/logout")
+
+    login(client, "alice3")
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert len(rows) == 1
+
+
+def test_delete_session_requires_login(client):
+    r = client.delete("/api/sessions/1")
+    assert r.status_code == 401
+
+
+def test_delete_sessions_all_route_still_works_alongside_delete_by_id(client):
+    # DELETE /api/sessions/all no debe chocar con el nuevo DELETE /api/sessions/<int:sid>:
+    # el convertidor <int:> no acepta "all", así que sigue yendo a delete_all().
+    register(client)
+    client.post("/api/sessions", json={"minutes": 25, "type": "A", "mode": "pomodoro", "ts": "2026-09-01T10:00:00"})
+    client.post("/api/sessions", json={"minutes": 10, "type": "B", "mode": "pomodoro", "ts": "2026-09-01T11:00:00"})
+    assert len(client.get("/api/sessions").get_json()) == 2
+
+    r = client.delete("/api/sessions/all")
+    assert r.status_code == 200
+    assert client.get("/api/sessions").get_json() == []
+
+
 # ── Categorías ───────────────────────────────────────────
 
 def test_category_crud_and_cannot_archive_last_active(client):

@@ -279,6 +279,8 @@ html.has-photo .home-stats { margin-top: 22px; }
 .cell-folder:hover, .cell-folder[aria-expanded="true"] { background: var(--hover); border-color: var(--line); }
 .cell-folder .lbl { overflow: hidden; text-overflow: ellipsis; }
 .cell-folder .chev { color: var(--muted); }
+.tbl .col-actions { width: 1%; padding-left: 4px; padding-right: 8px; }
+.tbl td.col-actions .icon-btn { width: 30px; height: 30px; border-radius: 8px; }
 
 /* Carpetas */
 .frows { display: flex; flex-direction: column; }

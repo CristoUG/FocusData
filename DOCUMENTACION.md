@@ -259,7 +259,7 @@ Define el armazón y las seis vistas, que se muestran y ocultan con el atributo 
 | **Barra lateral** (plegable) | Marca · **Nueva sesión** · navegación Timer / Estadísticas / Registro · árbol de **Carpetas** (tocar = filtrar; `⋯` = acciones; horas por carpeta incluyendo subcarpetas) · **Recientes** (hoy y ayer) · menú de cuenta |
 | **Barra superior** | Selector **Filtro** (carpeta) · selector de **Periodo** (todo / año / mes / semana / hoy) · selector de **Escena** · **Música** · botón sol/luna |
 | **Timer** | Saludo · anillo con reloj y fase · línea `Sesión · Ciclo · ● carpeta activa` · compositor (actividad + modo + carpeta + rueda de tiempos) · **Recomendados** · 3 mini-métricas |
-| **Estadísticas** | 8 indicadores · calendario de consistencia · distribución por tema · últimos 7 días · densidad por hora |
+| **Estadísticas** | 8 indicadores · calendario de consistencia · distribución por tema · distribución por carpeta (navegable) · últimos 7 días · densidad por hora |
 | **Registro** | Tabla filtrable por tipo, con el periodo global (carpeta y periodo de la barra superior) · cambiar carpeta por fila · «Mostrar más» si hay más de 200 filas con «Todo el historial» · Exportar CSV/JSON · Borrar historial |
 | **Carpetas** | Árbol con insignias y horas · formulario de nueva carpeta |
 | **Configuración** | Tema · Escena · Acento · Tiempos del Pomodoro · Notificaciones · Música · Datos · Cuenta |
@@ -278,12 +278,12 @@ Define el armazón y las seis vistas, que se muestran y ocultan con el atributo 
 | Módulo | Responsabilidad |
 |---|---|
 | **`app.js`** | **Arranque.** Inicializa todos los módulos, navega entre vistas (`go()`), pinta la píldora de filtro y las sesiones recientes, monta el menú de cuenta y ejecuta `boot()`: apariencia en caché → `/api/me` → carpetas y fondos → `syncSessions()`. También reinterpreta los temas de legado `ocean`/`forest` como tema oscuro + escena del mismo nombre |
-| **`store.js`** | **Estado y datos.** El objeto `S` (usuario, sesiones, carpetas, preferencias, filtro de carpeta, filtro de periodo), la caché `localStorage` aislada por usuario, `loadCategories()`, `descendantIds()`, `logSession()`, `syncSessions()` (merge por `ts` + backfill), `reassignSession()`, `clearHistory()`, `savePrefs()`, la configuración del Pomodoro (`CFG_LIMITS`, `CFG_DEFAULT`, `loadCfg`, `setCfg`) y el **filtro de periodo** (`PERIOD_OPTIONS`, `loadPeriod()`, `setPeriod()`, `periodRange()`, `periodDb()`, `periodStudyRecs()`) |
+| **`store.js`** | **Estado y datos.** El objeto `S` (usuario, sesiones, carpetas, preferencias, filtro de carpeta, filtro de periodo), la caché `localStorage` aislada por usuario, `loadCategories()`, `descendantIds()`, `minutesByFolder(recs?)` (minutos por carpeta sumando el subárbol; por defecto todo el historial, o se le pasa `periodStudyRecs()`), `logSession()`, `syncSessions()` (merge por `ts` + backfill), `reassignSession()`, `clearHistory()`, `savePrefs()`, la configuración del Pomodoro (`CFG_LIMITS`, `CFG_DEFAULT`, `loadCfg`, `setCfg`) y el **filtro de periodo** (`PERIOD_OPTIONS`, `loadPeriod()`, `setPeriod()`, `periodRange()`, `periodDb()`, `periodStudyRecs()`) |
 | **`util.js`** | **Utilidades comunes.** Selectores `$`/`$$`, `ic()` (iconos del sprite), `esc()` (anti-XSS), `norm()` (búsqueda sin acentos), formato (`fmtMin`, `fmtHours`, `prettyDate`), fechas **locales** (`localDateStr`, `localISOString`, `daysAgoStr`), cliente `api()`, `toast()`, bus de eventos (`on`/`emit`) y envoltorios de `localStorage` |
 | **`ui.js`** | **Componentes.** Menús desplegables con buscador y navegación por teclado (`openMenu`), modales (`openModal`, `askText`, `confirmDialog`), secciones plegables y tooltips |
 | **`timer.js`** | **Pomodoro, cronómetro y sesión manual.** El tiempo se calcula siempre desde el **reloj de pared** (`endTime − ahora`), no contando ticks. Fin de fase: alarma, registro de la sesión y preparación de la siguiente (que **no** arranca sola). Rueda de tiempos, saludo por hora del día y chips de tipos recomendados |
 | **`metrics.js`** | **Cálculo puro de métricas**: `minutesByDate`, `computeStreaks`, `computeIRS`, `computeRDA(recs)` (recibe las filas a contar: por defecto `filteredDb()`, o `periodDb()` para que respete también el periodo), `sumMinutes`, `sumBetween` y `hoursSeries` (reparte los minutos de cada sesión **hacia atrás** desde su hora de fin) |
-| **`stats.js`** | **Vista de Estadísticas**: los 8 indicadores y los gráficos, todos **SVG generados a mano** (columnas con escala `niceScale`, dona con leyenda, calendario de 26 semanas). Algunos respetan el **filtro de periodo** de la barra superior y otros tienen ventana fija (ver la sección 9, «Glosario de métricas») |
+| **`stats.js`** | **Vista de Estadísticas**: los 8 indicadores y los gráficos, todos **SVG o HTML generados a mano** (columnas con escala `niceScale`, dona con leyenda, calendario de 26 semanas, barras horizontales de la **distribución por carpeta**). Algunos respetan el **filtro de periodo** de la barra superior y otros tienen ventana fija (ver la sección 9, «Glosario de métricas») |
 | **`log.js`** | **Vista de Registro**: tabla filtrable por tipo, acotada por el filtro de carpeta y de **periodo** globales (sin selector propio de fechas), insignias de modo, cambio de carpeta por fila, borrado del historial y, con «Todo el historial», paginación de 200 en 200 con el botón «Mostrar más» |
 | **`folders.js`** | **Árbol de carpetas**: render con sangría por profundidad, horas por carpeta sumando descendientes, menú de acciones (activa, filtrar, subcarpeta, renombrar, mover, archivar/restaurar, eliminar) y los diálogos de cada una, incluido el de eliminación con confirmación escrita |
 | **`settings.js`** | **Apariencia**: aplicar y persistir tema y color de acento (presets + campo hex validado, con espera de 600 ms en el personalizado) |
@@ -498,7 +498,8 @@ periodo** (`S.period`: todo el historial, este año, este mes, esta semana u hoy
 ellas y no otras:
 
 - **Respetan el periodo** (su subtítulo cambia con él): Total estudiado, Sesiones,
-  Descanso activo (RDA), Enfoque Pomodoro, Distribución por tema, Densidad por hora.
+  Descanso activo (RDA), Enfoque Pomodoro, Distribución por tema, Distribución por
+  carpeta, Densidad por hora.
 - **Tienen su propia ventana fija**, sea cual sea el periodo elegido: Esta semana, Hoy,
   Racha, Regularidad, Calendario de consistencia, Últimos 7 días.
 
@@ -514,6 +515,7 @@ ellas y no otras:
 | **Enfoque Pomodoro** | `stats.js` | periodo | % del tiempo de estudio del periodo hecho en modo `pomodoro` |
 | **Calendario de consistencia** | `stats.js` | fija | Últimas **26 semanas** en columnas que empiezan en lunes; 5 niveles de intensidad por minutos/día (0 · <25 · <60 · <120 · resto) |
 | **Distribución por tema** | `stats.js` | periodo | Dona con los totales por tipo dentro del periodo elegido; con más de 6 tipos muestra los 5 primeros + «Otros». **El color sigue al tipo** en toda la app |
+| **Distribución por carpeta** | `stats.js` | periodo | Barras horizontales por carpeta (subárbol completo), navegables: sin filtro muestra las raíces, con un filtro sus hijas directas más una fila de sesiones registradas directamente en esa carpeta. Máximo 8 filas + «Otras». Pulsar una fila baja de nivel (`setFilter`); «← …» sube uno |
 | **Últimos 7 días** | `stats.js` | fija | Columnas por día, con hoy resaltado |
 | **Densidad por hora** | `hoursSeries` | periodo | Minutos por hora del día, dentro del periodo elegido. Como la sesión se registra **al terminar**, sus minutos se reparten **hacia atrás** desde su hora, cruzando la medianoche si hace falta. Muestra tu franja más productiva |
 

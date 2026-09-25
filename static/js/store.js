@@ -61,10 +61,13 @@ export function filteredDb() {
 }
 export const studyRecs = () => filteredDb().filter(r => r.mode !== 'break');
 
-// Minutos de estudio por carpeta, sumando las subcarpetas (para el árbol).
-export function minutesByFolder() {
+// Minutos de estudio por carpeta, sumando las subcarpetas (para el árbol de la
+// barra lateral y la distribución por carpeta de Estadísticas). `recs` por defecto
+// es todo el historial (S.db); quien quiera respetar el periodo le pasa
+// periodStudyRecs() o periodDb() (los descansos se ignoran siempre).
+export function minutesByFolder(recs = S.db) {
   const own = {};
-  S.db.forEach(r => { if (r.mode !== 'break') own[+r.category_id] = (own[+r.category_id] || 0) + r.minutes; });
+  recs.forEach(r => { if (r.mode !== 'break') own[+r.category_id] = (own[+r.category_id] || 0) + r.minutes; });
   const total = {};
   S.categories.forEach(c => {
     let sum = 0;

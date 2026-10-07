@@ -4,6 +4,7 @@ import { S, logSession, categoryById, studyRecs, CFG_LIMITS, CFG_DEFAULT, setCfg
 import { openMenu, closeMenu, openModal, closeModal, confirmDialog } from './ui.js';
 import { computeStreaks } from './metrics.js';
 import { folderItems } from './folders.js';
+import { getAudioContext } from './audio.js';
 
 const CRONO_CYCLE = 60 * 60;   // el anillo da una vuelta completa por hora
 
@@ -110,6 +111,9 @@ function tick() {
 
 function start() {
   if (T.running || T.midBreak) return;
+  // Pulsar «Iniciar» es un gesto del usuario: aprovecharlo para dejar el contexto de
+  // audio listo, así la alarma del final de la fase suena aunque llegue sola.
+  getAudioContext();
   if (T.mode === 'cronometro') {
     T.startedAt = Date.now() - T.elapsed * 1000;
   } else {
@@ -270,11 +274,15 @@ function syncIdleRemaining(key) {
 }
 
 // ── Alarma (Web Audio, sin archivos) ──
+// Usa el AudioContext compartido de audio.js: crear uno nuevo aquí (como antes) lo
+// deja 'suspended' en Safari, porque este código lo dispara un setTimeout y no un
+// gesto del usuario.
 function playAlarm() {
   emit('alarm');
   const ring = (volume, length) => {
+    const ctx = getAudioContext();
+    if (!ctx) return;
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
       [523.25, 659.25, 783.99].forEach((freq, i) => {
         const osc = ctx.createOscillator(), gain = ctx.createGain(), t0 = ctx.currentTime + i * 0.25;
         osc.type = 'sine';

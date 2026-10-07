@@ -2,6 +2,7 @@
 // (sin archivos ni licencias) y pistas propias opcionales en /static/music.
 import { $, $$, ic, esc, toast, on, lsGet, lsSet, ICONS } from './util.js';
 import { openMenu } from './ui.js';
+import { getAudioContext } from './audio.js';
 
 const PREFS_KEY = 'focusdata.music';
 const TRACKS_URL = '/static/music/tracks.json';
@@ -50,12 +51,15 @@ function resolve(id) {
 }
 
 // ══ Motor de audio ═══════════════════════════════════════════════
-// El AudioContext se crea en el primer clic: los navegadores bloquean el audio sin gesto.
+// El contexto es el compartido de audio.js (también lo usa la alarma de timer.js):
+// dos AudioContext por separado no son fiables en Safari/iOS.
 function engine() {
-  if (!ctx) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;
-    ctx = new AC();
+  const shared = getAudioContext();
+  if (!shared) return null;
+  if (shared !== ctx) {
+    // Primera vez que este módulo ve el contexto (propio o recién compartido):
+    // construye su grafo de nodos una sola vez.
+    ctx = shared;
     master = gainNode(0);
     duck = gainNode(1);
     // Tope suave: varias capas sumadas nunca llegan a saturar.
@@ -65,7 +69,6 @@ function engine() {
     limiter.ratio.value = 6;
     master.connect(duck).connect(limiter).connect(ctx.destination);
   }
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   return ctx;
 }
 
@@ -749,7 +752,9 @@ function play() {
   syncControls();
 }
 
-// En pausa el contexto se suspende: no gasta CPU ni batería.
+// En pausa se silencia el volumen y se pausa el <audio> de la pista si la hay. El
+// contexto NO se suspende: lo comparte la alarma de fin de fase (timer.js) y debe
+// poder sonar en cualquier momento, incluso con la música en pausa.
 function pause() {
   if (!M.playing) return;
   M.playing = false;
@@ -758,7 +763,6 @@ function pause() {
   suspendTimer = setTimeout(() => {
     if (M.playing) return;
     if (voice && voice.media) voice.media.pause();
-    ctx.suspend().catch(() => {});
   }, 600);
   syncControls();
 }

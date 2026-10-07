@@ -225,10 +225,15 @@ export function closeModal() {
 }
 
 // Sustituye a prompt(): devuelve el texto o null si se cancela.
-export function askText({ title, icon = 'edit', message = '', label, value = '', placeholder = '', confirmLabel = 'Guardar', maxLength = 30 }) {
+// `suggestions`: chips opcionales bajo el campo (p. ej. temas ya usados) que, al
+// tocarlos, rellenan el input sin enviar el formulario todavía.
+export function askText({ title, icon = 'edit', message = '', label, value = '', placeholder = '', confirmLabel = 'Guardar', maxLength = 30, suggestions = [] }) {
   return new Promise(resolve => {
     let done = false;
     const finish = v => { if (done) return; done = true; resolve(v); };
+    const chipsHTML = suggestions.length
+      ? `<div class="chips ask-chips">${suggestions.map(s => `<button type="button" class="chip" data-sugg="${esc(s)}">${esc(s)}</button>`).join('')}</div>`
+      : '';
     const card = openModal(`
       <h3>${ic(icon)} ${esc(title)}</h3>
       ${message ? `<p class="modal-sub">${message}</p>` : ''}
@@ -237,6 +242,7 @@ export function askText({ title, icon = 'edit', message = '', label, value = '',
         <input id="ask-input" class="field" type="text" maxlength="${maxLength}" autocomplete="off" spellcheck="false"
           value="${esc(value)}" placeholder="${esc(placeholder)}">
       </form>
+      ${chipsHTML}
       <div class="modal-actions">
         <button type="button" class="btn" data-cancel>Cancelar</button>
         <button type="button" class="btn primary" data-ok>${esc(confirmLabel)}</button>
@@ -252,6 +258,14 @@ export function askText({ title, icon = 'edit', message = '', label, value = '',
     card.querySelector('form').addEventListener('submit', e => { e.preventDefault(); submit(); });
     card.querySelector('[data-ok]').addEventListener('click', submit);
     card.querySelector('[data-cancel]').addEventListener('click', () => closeModal());
+    if (suggestions.length) {
+      card.querySelector('.ask-chips').addEventListener('click', e => {
+        const chip = e.target.closest('[data-sugg]');
+        if (!chip) return;
+        input.value = chip.dataset.sugg;
+        input.focus();
+      });
+    }
   });
 }
 

@@ -231,15 +231,74 @@ export async function syncSessions() {
   emit('sessions');
 }
 
-export async function reassignSession(ts, catId) {
+// Actualiza una sesión ya registrada en el servidor: moverla de carpeta, renombrarla
+// (campo `type`), o ambas cosas en la misma llamada. Solo funciona si el servidor ya
+// la confirmó (remote_id); antes de eso no existe ahí para editarla.
+async function patchSession(ts, patch) {
   const rec = S.db.find(r => r.ts === ts);
-  if (!rec || rec.remote_id == null) return;
-  const { ok, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'PATCH', body: { category_id: +catId } });
-  if (!ok) { toast(data.error || 'No se pudo mover la sesión', 'error'); emit('sessions'); return; }
+  if (!rec) return null;
+  if (rec.remote_id == null) {
+    toast('Se podrá editar cuando se sincronice', 'error');
+    return null;
+  }
+  const { ok, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'PATCH', body: patch });
+  if (!ok) { toast(data.error || 'No se pudo actualizar la sesión', 'error'); emit('sessions'); return null; }
   rec.category_id = data.category_id;
   rec.category_name = data.category_name;
+  rec.type = data.type;
   saveDb();
-  toast(`Sesión movida a ${data.category_name}`);
+  emit('sessions');
+  return data;
+}
+
+export async function reassignSession(ts, catId) {
+  const data = await patchSession(ts, { category_id: +catId });
+  if (data) toast(`Sesión movida a ${data.category_name}`);
+}
+
+export async function renameSession(ts, type) {
+  const data = await patchSession(ts, { type });
+  if (data) toast('Sesión renombrada');
+}
+
+// Renombra (o fusiona, si `to` ya existe) un tema en TODO el historial de una vez.
+export async function renameType(from, to) {
+  const merging = S.db.some(r => r.mode !== 'break' && r.type === to);
+  const { ok, data } = await api('/api/sessions/rename-type', { method: 'POST', body: { from, to } });
+  if (!ok) { toast(data.error || 'No se pudo renombrar el tema', 'error'); return false; }
+  // Se aplica también a las sesiones locales aún no sincronizadas: al subirse
+  // llegarán ya con el nombre nuevo, sin esperar a la próxima sincronización.
+  S.db.forEach(r => { if (r.mode !== 'break' && r.type === from) r.type = to; });
+  saveDb();
+  emit('sessions');
+  // Aparte de refrescar el historial, avisa a quien tenga ese nombre escrito en algún
+  // sitio (la portada, un filtro) para que lo actualice sin que el usuario lo note.
+  emit('type-renamed', { from, to });
+  toast(merging ? `Fusionado con «${to}»` : `Tema renombrado a «${to}»`);
+  return true;
+}
+
+export async function deleteSession(ts) {
+  const rec = S.db.find(r => r.ts === ts);
+  if (!rec) return;
+  if (rec.remote_id == null) {
+    // Nunca llegó a confirmarse en el servidor: basta con quitarla en local.
+    S.db = S.db.filter(r => r !== rec);
+    saveDb();
+    emit('sessions');
+    return;
+  }
+  const { ok, status, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'DELETE' });
+  // Un 404 significa que ya no existe en el servidor (p. ej. borrada desde otro
+  // dispositivo): se quita igual en local. Un fallo de red (status 0) no debe
+  // quitarla, o syncSessions() ya no la reenviaría.
+  if (!ok && status !== 404) {
+    toast(data.error || 'No se pudo eliminar la sesión', 'error');
+    return;
+  }
+  S.db = S.db.filter(r => r !== rec);
+  saveDb();
+  toast('Sesión eliminada');
   emit('sessions');
 }
 

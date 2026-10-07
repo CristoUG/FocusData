@@ -309,6 +309,223 @@ def test_cannot_reassign_session_to_another_users_category(client):
     assert r.get_json()["error"] == "Carpeta no válida"
 
 
+# ── Renombrar una sesión (PATCH /api/sessions/<id> con `type`) ──
+
+def test_update_session_type_only_renames_and_keeps_category(client):
+    register(client)
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Calculo", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    cid_before = r.get_json()["category_id"]
+
+    r = client.patch(f"/api/sessions/{sid}", json={"type": "Cálculo"})
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["type"] == "Cálculo"
+    assert body["category_id"] == cid_before
+
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert rows[0]["type"] == "Cálculo"
+    assert rows[0]["category_id"] == cid_before
+
+
+def test_update_session_type_and_category_together(client):
+    register(client)
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Estudio", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    new_cat = client.post("/api/categories", json={"name": "Trabajo"}).get_json()["id"]
+
+    r = client.patch(f"/api/sessions/{sid}", json={"type": "Trabajo enfocado", "category_id": new_cat})
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["type"] == "Trabajo enfocado"
+    assert body["category_id"] == new_cat
+    assert body["category_name"] == "Trabajo"
+
+
+@pytest.mark.parametrize("payload,expected_fragment", [
+    ({"type": ""}, "type"),
+    ({"type": "   "}, "type"),
+    ({"type": "x" * 41}, "type"),
+])
+def test_update_session_type_validation_rejected(client, payload, expected_fragment):
+    register(client)
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Estudio", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    r = client.patch(f"/api/sessions/{sid}", json=payload)
+    assert r.status_code == 400
+    assert expected_fragment in r.get_json()["error"]
+
+
+def test_update_session_empty_body_rejected(client):
+    register(client)
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Estudio", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    r = client.patch(f"/api/sessions/{sid}", json={})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "Nada que actualizar"
+
+
+def test_update_session_type_of_another_user_returns_404(client):
+    register(client, "alice4")
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Alice", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    client.get("/logout")
+
+    register(client, "bob4")
+    r = client.patch(f"/api/sessions/{sid}", json={"type": "Hackeado"})
+    assert r.status_code == 404
+    client.get("/logout")
+
+    login(client, "alice4")
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert rows[0]["type"] == "Alice"
+
+
+# ── Eliminar una sesión (DELETE /api/sessions/<id>) ─────
+
+def test_delete_session_removes_only_that_row(client):
+    register(client)
+    client.post("/api/sessions", json={"minutes": 25, "type": "Se queda", "mode": "pomodoro", "ts": "2026-09-01T10:00:00"})
+    r = client.post("/api/sessions", json={"minutes": 10, "type": "Se borra", "mode": "pomodoro", "ts": "2026-09-01T11:00:00"})
+    sid = r.get_json()["id"]
+
+    r = client.delete(f"/api/sessions/{sid}")
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert len(rows) == 1
+    assert rows[0]["type"] == "Se queda"
+
+
+def test_delete_session_nonexistent_id_returns_404(client):
+    register(client)
+    r = client.delete("/api/sessions/999999")
+    assert r.status_code == 404
+    assert r.get_json()["error"]
+
+
+def test_delete_session_of_another_user_returns_404_and_does_not_delete(client):
+    register(client, "alice3")
+    r = client.post("/api/sessions", json={"minutes": 25, "type": "Alice", "mode": "pomodoro"})
+    sid = r.get_json()["id"]
+    client.get("/logout")
+
+    register(client, "bob3")
+    r = client.delete(f"/api/sessions/{sid}")
+    assert r.status_code == 404
+    client.get("/logout")
+
+    login(client, "alice3")
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert len(rows) == 1
+
+
+def test_delete_session_requires_login(client):
+    r = client.delete("/api/sessions/1")
+    assert r.status_code == 401
+
+
+def test_delete_sessions_all_route_still_works_alongside_delete_by_id(client):
+    # DELETE /api/sessions/all no debe chocar con el nuevo DELETE /api/sessions/<int:sid>:
+    # el convertidor <int:> no acepta "all", así que sigue yendo a delete_all().
+    register(client)
+    client.post("/api/sessions", json={"minutes": 25, "type": "A", "mode": "pomodoro", "ts": "2026-09-01T10:00:00"})
+    client.post("/api/sessions", json={"minutes": 10, "type": "B", "mode": "pomodoro", "ts": "2026-09-01T11:00:00"})
+    assert len(client.get("/api/sessions").get_json()) == 2
+
+    r = client.delete("/api/sessions/all")
+    assert r.status_code == 200
+    assert client.get("/api/sessions").get_json() == []
+
+
+# ── Renombrar un tema en todo el historial (POST /api/sessions/rename-type) ──
+
+def test_rename_type_updates_all_matching_sessions(client):
+    register(client)
+    for i in range(3):
+        client.post("/api/sessions", json={"minutes": 10, "type": "Calculo", "mode": "pomodoro", "ts": f"2026-09-0{i+1}T10:00:00"})
+    client.post("/api/sessions", json={"minutes": 10, "type": "Otro", "mode": "pomodoro", "ts": "2026-09-04T10:00:00"})
+
+    r = client.post("/api/sessions/rename-type", json={"from": "Calculo", "to": "Cálculo"})
+    assert r.status_code == 200
+    assert r.get_json()["updated"] == 3
+
+    types = {row["type"] for row in client.get("/api/sessions?include_breaks=1").get_json()}
+    assert types == {"Cálculo", "Otro"}
+
+
+def test_rename_type_merges_into_existing_type(client):
+    register(client)
+    client.post("/api/sessions", json={"minutes": 10, "type": "Calculo", "mode": "pomodoro", "ts": "2026-09-01T10:00:00"})
+    client.post("/api/sessions", json={"minutes": 20, "type": "Cálculo", "mode": "pomodoro", "ts": "2026-09-02T10:00:00"})
+
+    r = client.post("/api/sessions/rename-type", json={"from": "Calculo", "to": "Cálculo"})
+    assert r.status_code == 200
+    assert r.get_json()["updated"] == 1
+
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert all(row["type"] == "Cálculo" for row in rows)
+    assert sum(row["minutes"] for row in rows) == 30
+
+
+def test_rename_type_does_not_touch_breaks(client):
+    register(client)
+    client.post("/api/sessions", json={"minutes": 25, "type": "Descanso", "mode": "break", "ts": "2026-09-01T10:00:00"})
+
+    r = client.post("/api/sessions/rename-type", json={"from": "Descanso", "to": "Pausa"})
+    assert r.status_code == 200
+    assert r.get_json()["updated"] == 0
+
+    rows = client.get("/api/sessions?include_breaks=1").get_json()
+    assert rows[0]["type"] == "Descanso"
+
+
+def test_rename_type_is_per_user(client):
+    register(client, "alice5")
+    client.post("/api/sessions", json={"minutes": 10, "type": "Compartido", "mode": "pomodoro"})
+    client.get("/logout")
+
+    register(client, "bob5")
+    client.post("/api/sessions", json={"minutes": 10, "type": "Compartido", "mode": "pomodoro"})
+    r = client.post("/api/sessions/rename-type", json={"from": "Compartido", "to": "Renombrado por bob"})
+    assert r.status_code == 200
+    assert r.get_json()["updated"] == 1
+    client.get("/logout")
+
+    login(client, "alice5")
+    types = {row["type"] for row in client.get("/api/sessions?include_breaks=1").get_json()}
+    assert types == {"Compartido"}
+
+
+def test_rename_type_no_matching_sessions_returns_zero(client):
+    register(client)
+    r = client.post("/api/sessions/rename-type", json={"from": "No existe", "to": "Tampoco"})
+    assert r.status_code == 200
+    assert r.get_json()["updated"] == 0
+
+
+@pytest.mark.parametrize("payload,expected_fragment", [
+    ({"from": "", "to": "X"}, "from"),
+    ({"from": "X", "to": ""}, "to"),
+    ({"from": "x" * 41, "to": "X"}, "from"),
+    ({"from": "X", "to": "x" * 41}, "to"),
+    ({"from": "Igual", "to": "Igual"}, "distinto"),
+    ({"from": "X"}, "to"),
+    ({"to": "X"}, "from"),
+])
+def test_rename_type_validation_rejected(client, payload, expected_fragment):
+    register(client)
+    r = client.post("/api/sessions/rename-type", json=payload)
+    assert r.status_code == 400
+    assert expected_fragment in r.get_json()["error"]
+
+
+def test_rename_type_requires_login(client):
+    r = client.post("/api/sessions/rename-type", json={"from": "A", "to": "B"})
+    assert r.status_code == 401
+
+
 # ── Categorías ───────────────────────────────────────────
 
 def test_category_crud_and_cannot_archive_last_active(client):

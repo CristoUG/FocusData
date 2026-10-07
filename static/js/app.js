@@ -1,6 +1,6 @@
 // Arranque de FocusData: navegación, barra lateral, menús globales y carga de datos.
 import { $, $$, ic, esc, on, emit, api, lsGet, lsSet, localDateStr, daysAgoStr, fmtMin } from './util.js';
-import { S, initStorage, loadCategories, syncSessions, loadCfg, setFilter, categoryById, savePrefs, loadPeriod, setPeriod, PERIOD_OPTIONS } from './store.js';
+import { S, initStorage, loadCategories, syncSessions, loadCfg, setFilter, loadFilter, categoryById, savePrefs, loadPeriod, setPeriod, PERIOD_OPTIONS } from './store.js';
 import { openMenu, openModal, closeModal, initCollapsibles, initTooltips } from './ui.js';
 import { initTimer, setGreeting, focusTypeInput } from './timer.js';
 import { initFolders, folderItems } from './folders.js';
@@ -38,7 +38,7 @@ function go(view) {
 function renderFilterPill() {
   const cat = categoryById(S.filterCategoryId);
   $('#btn-filter-label').textContent = cat ? cat.name : 'Todas las carpetas';
-  $('#btn-filter').title = cat ? `Filtro: ${cat.path}` : 'Filtra lo que ves en Estadísticas y Registro';
+  $('#btn-filter').title = cat ? `Filtro: ${cat.path}` : 'Filtra Estadísticas, Registro y los recomendados del Timer';
 }
 
 function renderPeriodPill() {
@@ -120,7 +120,7 @@ function initShell() {
   $('#btn-filter').addEventListener('click', e => openMenu({
     anchor: e.currentTarget, value: S.filterCategoryId, align: 'end', search: true, minWidth: 260,
     items: [
-      { type: 'head', label: 'Mostrar en Estadísticas y Registro' },
+      { type: 'head', label: 'Estadísticas, Registro y recomendados' },
       ...folderItems({ archived: 'show', lead: { value: '', label: 'Todas las carpetas', icon: 'stack' } }),
     ],
     onSelect: v => setFilter(v),
@@ -181,6 +181,8 @@ async function boot() {
   applyTheme(theme);
   applyAccent(data.accent || '#3b82f6');
   S.activeCategoryId = data.active_category_id != null ? +data.active_category_id : null;
+  loadFilter();
+  emit('filter');
   emit('sessions');
 
   await Promise.all([loadCategories(), loadBackgrounds()]);

@@ -922,7 +922,8 @@ export function initMusic() {
 
   // Solo se actúa en los cambios: reiniciar un reloj parado no pausa la música.
   on('timer', s => {
-    const wants = s.running && (s.mode === 'cronometro' || s.phase === 'work');
+    // El descanso intermedio del cronómetro ('mid-break') pausa la música como un descanso más.
+    const wants = s.running && s.phase !== 'mid-break' && (s.mode === 'cronometro' || s.phase === 'work');
     const changed = wants !== timerWants;
     timerWants = wants;
     if (!changed || !M.sync || !resolve(M.sound)) return;

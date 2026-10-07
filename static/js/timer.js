@@ -19,18 +19,37 @@ const T = {
   type: 'General',
   iv: null,
   due: null,                   // setTimeout del final de la fase (ver start)
+  // Descanso intermedio del cronómetro: { startedAt, plannedSec | null }. Mientras dura,
+  // el cronómetro queda congelado en pausa y vuelve donde iba al terminar.
+  midBreak: null,
 };
+
+const MID_BREAK_OPTIONS = [5, 10, 15];   // minutos; además, «Sin límite»
+const midBreakElapsed = () => Math.max(0, Math.round((Date.now() - T.midBreak.startedAt) / 1000));
 
 const pad = n => String(n).padStart(2, '0');
 const phaseMinutes = () => (T.phase === 'work' ? S.cfg.work : T.phase === 'short' ? S.cfg.short : S.cfg.long);
 const phaseDuration = () => phaseMinutes() * 60;
 const phaseLabel = () => (T.phase === 'work' ? 'Tiempo de trabajo' : T.phase === 'short' ? 'Descanso corto' : 'Descanso largo');
 
+const clockText = t => {
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+};
+
 export function renderClock() {
   let text, pct;
-  if (T.mode === 'cronometro') {
-    const t = T.elapsed, h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
-    text = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  if (T.midBreak) {
+    // Con duración fija cuenta atrás; con «Sin límite», hacia adelante (una vuelta = 1 hora).
+    const t = midBreakElapsed(), planned = T.midBreak.plannedSec;
+    text = planned ? clockText(Math.max(0, planned - t)) : clockText(t);
+    pct = planned ? Math.min(1, t / planned) * 100 : (t % CRONO_CYCLE) / CRONO_CYCLE * 100;
+    $('#t-phase').textContent = 'Descanso intermedio';
+    $('#t-meta').textContent = `Cronómetro en espera en ${clockText(T.elapsed)}`;
+    $('#ring').classList.add('is-break');
+  } else if (T.mode === 'cronometro') {
+    const t = T.elapsed;
+    text = clockText(t);
     pct = (t % CRONO_CYCLE) / CRONO_CYCLE * 100;
     $('#t-phase').textContent = 'Cronómetro';
     $('#t-meta').textContent = T.running ? 'Contando…' : T.paused ? 'En pausa' : 'Una vuelta del anillo = 1 hora';
@@ -53,22 +72,30 @@ export function renderClock() {
   fg.style.strokeDashoffset = String(100 - pct);
   // Con el extremo redondeado, un anillo al 0% dejaría un punto suelto arriba.
   fg.style.opacity = pct > 0.05 ? '1' : '0';
-  document.title = T.running ? `${text} — FocusData` : 'FocusData';
+  document.title = T.running || T.midBreak ? `${text} — FocusData` : 'FocusData';
 }
 
 function updateToggle() {
-  const label = T.running ? 'Pausar' : T.paused ? 'Reanudar' : 'Iniciar';
+  const label = T.midBreak ? 'Volver al trabajo' : T.running ? 'Pausar' : T.paused ? 'Reanudar' : 'Iniciar';
   const btn = $('#btn-toggle');
   btn.setAttribute('aria-label', label);
   btn.title = label;
   $('#btn-toggle-icon').setAttribute('href', `${ICONS}#i-${T.running ? 'pause' : 'play'}`);
   $('#btn-save').hidden = T.mode !== 'cronometro';
+  $('#btn-midbreak').hidden = T.mode !== 'cronometro' || !!T.midBreak || !(T.running || T.paused);
   $('#btn-mode-label').textContent = T.mode === 'cronometro' ? 'Cronómetro' : 'Pomodoro';
   // Todo cambio de estado pasa por aquí: la música se sincroniza con este evento.
-  emit('timer', { running: T.running, mode: T.mode, phase: T.phase });
+  // El descanso intermedio cuenta como reloj en marcha, pero en fase de descanso.
+  emit('timer', { running: T.running || !!T.midBreak, mode: T.mode, phase: T.midBreak ? 'mid-break' : T.phase });
 }
 
 function tick() {
+  if (T.midBreak) {
+    renderClock();
+    const planned = T.midBreak.plannedSec;
+    if (planned && midBreakElapsed() >= planned) endMidBreak({ byTime: true });
+    return;
+  }
   if (!T.running) return;
   if (T.mode === 'cronometro') {
     T.elapsed = Math.max(0, Math.round((Date.now() - T.startedAt) / 1000));
@@ -82,7 +109,7 @@ function tick() {
 }
 
 function start() {
-  if (T.running) return;
+  if (T.running || T.midBreak) return;
   if (T.mode === 'cronometro') {
     T.startedAt = Date.now() - T.elapsed * 1000;
   } else {
@@ -113,14 +140,68 @@ function pause() {
 }
 
 export function resetTimer() {
+  // Lo ya descansado se registra aunque se reinicie o se cambie de modo a mitad del descanso.
+  if (T.midBreak) endMidBreak({ resume: false });
   clearInterval(T.iv);
   clearTimeout(T.due);
   Object.assign(T, {
     running: false, paused: false, phase: 'work', session: 1, cycleCount: 0,
     remaining: S.cfg.work * 60, phaseTotal: S.cfg.work * 60, endTime: null, elapsed: 0, startedAt: null,
+    midBreak: null,
   });
   updateToggle();
   renderClock();
+}
+
+// ── Descanso intermedio (solo cronómetro): el usuario elige cuándo y cuánto ──
+function startMidBreak(plannedSec) {
+  if (T.mode !== 'cronometro' || T.midBreak || !(T.running || T.paused)) return;
+  if (T.running) pause();   // congela el cronómetro donde va
+  T.midBreak = { startedAt: Date.now(), plannedSec };
+  clearInterval(T.iv);
+  T.iv = setInterval(tick, 250);
+  // Igual que en start(): un setTimeout creado desde el clic avisa a su hora aunque la pestaña esté oculta.
+  clearTimeout(T.due);
+  if (plannedSec) T.due = setTimeout(tick, plannedSec * 1000 + 50);
+  updateToggle();
+  renderClock();
+}
+
+// byTime: terminó solo (suena la alarma y el cronómetro espera a que vuelvas).
+// resume: lo terminó el usuario con «Volver al trabajo» y el cronómetro sigue al instante.
+function endMidBreak({ byTime = false, resume = true } = {}) {
+  if (!T.midBreak) return;
+  clearInterval(T.iv);
+  clearTimeout(T.due);
+  const { plannedSec } = T.midBreak;
+  const secs = byTime ? plannedSec : midBreakElapsed();
+  T.midBreak = null;
+  // Se registra como descanso: cuenta para el ratio de descanso activo.
+  const minutes = Math.min(600, Math.round(secs / 60));
+  if (minutes >= 1) logSession(minutes, 'Descanso', 'break');
+  if (byTime) {
+    playAlarm();
+    toast('Descanso terminado. Reanuda el cronómetro cuando vuelvas.');
+    emit('phase-end', { finished: 'mid-break', minutes, type: T.type });
+  } else if (resume) {
+    toast(minutes >= 1 ? `Descanso de ${fmtMin(minutes)} registrado. ¡A concentrarse!` : 'Descanso de menos de 1 minuto: no se registra');
+    start();
+    return;
+  }
+  updateToggle();
+  renderClock();
+}
+
+function openMidBreakMenu(anchor) {
+  openMenu({
+    anchor, minWidth: 220,
+    items: [
+      { type: 'head', label: 'Descanso intermedio' },
+      ...MID_BREAK_OPTIONS.map(m => ({ value: String(m), label: `${m} min` })),
+      { value: 'free', label: 'Sin límite', hint: 'tú decides cuándo volver' },
+    ],
+    onSelect: v => startMidBreak(v === 'free' ? null : +v * 60),
+  });
 }
 
 function phaseComplete() {
@@ -153,6 +234,7 @@ function phaseComplete() {
 }
 
 function saveCrono() {
+  if (T.midBreak) endMidBreak({ resume: false });
   if (T.running) pause();
   const mins = Math.round(T.elapsed / 60);
   if (mins < 1) { toast('Muy corto para registrar: el mínimo es 1 minuto', 'error'); return; }
@@ -317,13 +399,17 @@ function renderActive() {
   $('#t-active-dot').style.setProperty('--c', cat ? cat.color : 'transparent');
 }
 
-// Hasta 3 recomendaciones: los tipos más usados del historial.
+// Hasta 3 recomendaciones: los tipos más usados en la carpeta del filtro
+// (con sus subcarpetas), o en todo el historial si no hay filtro.
 function renderRecos() {
   const counts = {};
-  S.db.forEach(r => { if (r.mode !== 'break' && r.type) counts[r.type] = (counts[r.type] || 0) + 1; });
+  studyRecs().forEach(r => { if (r.type) counts[r.type] = (counts[r.type] || 0) + 1; });
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const box = $('#chips');
   box.hidden = !top.length;
+  const cat = categoryById(S.filterCategoryId);
+  $('#chips-lab-text').textContent = cat ? `Recomendados en ${cat.name}` : 'Recomendados';
+  box.title = cat ? `Lo que más estudias en ${cat.path}` : 'Lo que más estudias';
   const current = $('#type-input').value.trim();
   $('#chips-list').innerHTML = top.map(([t]) =>
     `<button type="button" class="chip${t === current ? ' selected' : ''}" data-type="${esc(t)}">${esc(t)}</button>`).join('');
@@ -356,9 +442,14 @@ export function focusTypeInput() {
 export function initTimer() {
   T.remaining = T.phaseTotal = S.cfg.work * 60;
 
-  $('#btn-toggle').addEventListener('click', () => { if (T.running) pause(); else start(); });
+  $('#btn-toggle').addEventListener('click', () => {
+    if (T.midBreak) endMidBreak();
+    else if (T.running) pause();
+    else start();
+  });
   $('#btn-reset').addEventListener('click', resetTimer);
   $('#btn-save').addEventListener('click', saveCrono);
+  $('#btn-midbreak').addEventListener('click', e => openMidBreakMenu(e.currentTarget));
   $('#btn-mode').addEventListener('click', e => openModeMenu(e.currentTarget));
   $('#btn-active').addEventListener('click', e => openActiveMenu(e.currentTarget));
   $('#btn-gear').addEventListener('click', e => openGear(e.currentTarget));
@@ -397,9 +488,10 @@ export function initTimer() {
   on('active', renderActive);
   on('categories', renderActive);
   on('sessions', () => { renderRecos(); renderHomeStats(); });
-  on('filter', renderHomeStats);
+  on('filter', () => { renderRecos(); renderHomeStats(); });
+  on('categories', renderRecos);   // las subcarpetas del filtro dependen del árbol
   // Al volver a la pestaña, el reloj se pone al día al instante.
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && T.running) tick(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && (T.running || T.midBreak)) tick(); });
 
   updateToggle();
   renderClock();

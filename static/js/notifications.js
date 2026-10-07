@@ -76,7 +76,10 @@ function onPhaseEnd(e) {
   flashTitle(workDone ? 'Pomodoro terminado' : 'Descanso terminado');
   if (!(workDone ? N.work : N.breaks) || !away()) return;
   const activity = e.type && e.type !== 'General' ? e.type : 'concentración';
-  if (workDone) {
+  if (e.finished === 'mid-break') {
+    // Descanso intermedio del cronómetro: el cronómetro espera en pausa a que vuelvas.
+    show('Descanso terminado', `Vuelve a tu sesión de ${activity}: el cronómetro te espera en pausa.`);
+  } else if (workDone) {
     show('Pomodoro terminado',
       `${fmtMin(e.minutes)} de ${activity}. Toca un descanso ${e.next === 'long' ? 'largo' : 'corto'} de ${fmtMin(e.nextMinutes)}.`,
       { actions: [{ action: 'start', title: 'Empezar descanso' }], data: { phase: e.next } });

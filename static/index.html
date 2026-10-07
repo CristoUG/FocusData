@@ -127,6 +127,7 @@
               <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-folder"/></svg><span class="pill-label" id="btn-active-label">—</span><svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
             </button>
             <button type="button" class="icon-btn gear" id="btn-gear" aria-haspopup="dialog" aria-expanded="false" aria-label="Tiempos del Pomodoro" title="Tiempos del Pomodoro"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-settings"/></svg></button>
+            <button type="button" class="icon-btn" id="btn-midbreak" aria-haspopup="menu" aria-expanded="false" aria-label="Tomar un descanso intermedio" title="Descanso intermedio" hidden><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-coffee"/></svg></button>
             <button type="button" class="icon-btn" id="btn-save" aria-label="Guardar sesión del cronómetro" title="Guardar sesión" hidden><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-save"/></svg></button>
             <button type="button" class="icon-btn" id="btn-reset" aria-label="Reiniciar" title="Reiniciar"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-reset"/></svg></button>
             <button type="button" class="go" id="btn-toggle" aria-label="Iniciar" title="Iniciar"><svg class="ic" aria-hidden="true"><use id="btn-toggle-icon" href="/static/img/icons.svg#i-play"/></svg></button>
@@ -134,7 +135,7 @@
         </div>
 
         <div class="chips" id="chips" hidden>
-          <span class="chips-lab"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-sparkle"/></svg>Recomendados</span>
+          <span class="chips-lab"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-sparkle"/></svg><span id="chips-lab-text">Recomendados</span></span>
           <span id="chips-list" style="display:contents"></span>
         </div>
         <div class="home-stats">

@@ -81,7 +81,12 @@ export async function loadCategories() {
   const { ok, data } = await api('/api/categories');
   if (!ok || !Array.isArray(data)) return;
   S.categories = data;
-  if (S.filterCategoryId && !categoryById(S.filterCategoryId)) S.filterCategoryId = '';
+  // Un filtro recordado puede apuntar a una carpeta que ya no existe (borrada en otro dispositivo).
+  if (S.filterCategoryId && !categoryById(S.filterCategoryId)) {
+    S.filterCategoryId = '';
+    saveFilter();
+    emit('filter');
+  }
   const active = categoryById(S.activeCategoryId);
   if (!active || active.archived) {
     const first = liveCategories()[0];
@@ -97,8 +102,22 @@ export function setActiveCategory(id) {
     .then(r => { if (!r.ok) toast(r.data.error || 'No se pudo guardar la carpeta activa', 'error'); });
 }
 
+// Filtro de carpeta: se recuerda en este navegador, con clave por usuario
+// (los ids de carpeta son de cada cuenta).
+const filterKey = () => (S.user ? `focusdata.filter.u${S.user.id}` : null);
+function saveFilter() {
+  const key = filterKey();
+  if (key) lsSet(key, S.filterCategoryId);
+}
+export function loadFilter() {
+  const key = filterKey();
+  const saved = key ? lsGet(key, '') : '';
+  S.filterCategoryId = Number.isInteger(saved) && saved > 0 ? saved : '';
+}
+
 export function setFilter(id) {
   S.filterCategoryId = id === '' || id == null ? '' : +id;
+  saveFilter();
   emit('filter');
 }
 

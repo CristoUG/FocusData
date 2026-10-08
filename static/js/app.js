@@ -1,6 +1,6 @@
 // Arranque de FocusData: navegación, barra lateral, menús globales y carga de datos.
 import { $, $$, ic, esc, on, emit, api, lsGet, lsSet, localDateStr, daysAgoStr, fmtMin } from './util.js';
-import { S, initStorage, loadCategories, syncSessions, loadCfg, setFilter, loadFilter, categoryById, savePrefs, loadPeriod, setPeriod, PERIOD_OPTIONS } from './store.js';
+import { S, initStorage, loadCategories, syncSessions, loadCfg, setFilter, categoryById, savePrefs } from './store.js';
 import { openMenu, openModal, closeModal, initCollapsibles, initTooltips } from './ui.js';
 import { initTimer, setGreeting, focusTypeInput } from './timer.js';
 import { initFolders, folderItems } from './folders.js';
@@ -10,7 +10,6 @@ import { initScenes, applyScene, loadBackgrounds, readAppearance, cacheAppearanc
 import { initSettings, applyTheme, applyAccent, setTheme } from './settings.js';
 import { initMusic } from './music.js';
 import { initNotifications } from './notifications.js';
-import { unlockAudio } from './audio.js';
 
 const VIEWS = { timer: 'Timer', stats: 'Estadísticas', log: 'Registro', folders: 'Carpetas', settings: 'Configuración', help: 'Ayuda' };
 const SIDE_KEY = 'focusdata.side.collapsed';
@@ -39,12 +38,7 @@ function go(view) {
 function renderFilterPill() {
   const cat = categoryById(S.filterCategoryId);
   $('#btn-filter-label').textContent = cat ? cat.name : 'Todas las carpetas';
-  $('#btn-filter').title = cat ? `Filtro: ${cat.path}` : 'Filtra Estadísticas, Registro y los recomendados del Timer';
-}
-
-function renderPeriodPill() {
-  const opt = PERIOD_OPTIONS.find(o => o.value === S.period) || PERIOD_OPTIONS[0];
-  $('#btn-period-label').textContent = opt.label;
+  $('#btn-filter').title = cat ? `Filtro: ${cat.path}` : 'Filtra lo que ves en Estadísticas y Registro';
 }
 
 function renderRecents() {
@@ -121,32 +115,24 @@ function initShell() {
   $('#btn-filter').addEventListener('click', e => openMenu({
     anchor: e.currentTarget, value: S.filterCategoryId, align: 'end', search: true, minWidth: 260,
     items: [
-      { type: 'head', label: 'Estadísticas, Registro y recomendados' },
+      { type: 'head', label: 'Mostrar en Estadísticas y Registro' },
       ...folderItems({ archived: 'show', lead: { value: '', label: 'Todas las carpetas', icon: 'stack' } }),
     ],
     onSelect: v => setFilter(v),
-  }));
-  $('#btn-period').addEventListener('click', e => openMenu({
-    anchor: e.currentTarget, value: S.period, align: 'end', minWidth: 220,
-    items: PERIOD_OPTIONS,
-    onSelect: v => setPeriod(v),
   }));
   window.addEventListener('hashchange', () => go(location.hash.slice(1)));
   window.matchMedia('(max-width: 900px)').addEventListener('change', ev => setSide(ev.matches ? true : !!lsGet(SIDE_KEY, false), false));
 
   on('go', go);
-  on('filter', () => { renderFilterPill(); renderPeriodPill(); });
+  on('filter', renderFilterPill);
   on('categories', () => { renderFilterPill(); renderRecents(); });
   on('sessions', renderRecents);
 }
 
 async function boot() {
-  unlockAudio();
   initCollapsibles();
   initTooltips();
   loadCfg();
-  loadPeriod();
-  renderPeriodPill();
 
   // Apariencia en caché primero: evita el parpadeo mientras responde /api/me.
   const cached = readAppearance();
@@ -183,8 +169,6 @@ async function boot() {
   applyTheme(theme);
   applyAccent(data.accent || '#3b82f6');
   S.activeCategoryId = data.active_category_id != null ? +data.active_category_id : null;
-  loadFilter();
-  emit('filter');
   emit('sessions');
 
   await Promise.all([loadCategories(), loadBackgrounds()]);

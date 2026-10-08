@@ -78,11 +78,6 @@
         <span class="pill-label" id="btn-filter-label">Todas las carpetas</span>
         <svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
       </button>
-      <button type="button" class="btn" id="btn-period" aria-haspopup="menu" aria-expanded="false" title="Filtra el periodo que ves en Estadísticas y Registro">
-        <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-calendar"/></svg>
-        <span class="pill-label" id="btn-period-label">Todo el historial</span>
-        <svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
-      </button>
       <button type="button" class="btn" id="btn-scene" aria-haspopup="menu" aria-expanded="false" title="Fondo de la aplicación">
         <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-image"/></svg>
         <span class="pill-label" id="btn-scene-label">Carretera</span>
@@ -127,16 +122,14 @@
               <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-folder"/></svg><span class="pill-label" id="btn-active-label">—</span><svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
             </button>
             <button type="button" class="icon-btn gear" id="btn-gear" aria-haspopup="dialog" aria-expanded="false" aria-label="Tiempos del Pomodoro" title="Tiempos del Pomodoro"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-settings"/></svg></button>
-            <button type="button" class="icon-btn" id="btn-midbreak" aria-haspopup="menu" aria-expanded="false" aria-label="Tomar un descanso intermedio" title="Descanso intermedio" hidden><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-coffee"/></svg></button>
             <button type="button" class="icon-btn" id="btn-save" aria-label="Guardar sesión del cronómetro" title="Guardar sesión" hidden><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-save"/></svg></button>
-            <button type="button" class="icon-btn" id="btn-skip" aria-label="Saltar descanso" title="Saltar descanso" hidden><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-skip"/></svg></button>
             <button type="button" class="icon-btn" id="btn-reset" aria-label="Reiniciar" title="Reiniciar"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-reset"/></svg></button>
             <button type="button" class="go" id="btn-toggle" aria-label="Iniciar" title="Iniciar"><svg class="ic" aria-hidden="true"><use id="btn-toggle-icon" href="/static/img/icons.svg#i-play"/></svg></button>
           </div>
         </div>
 
         <div class="chips" id="chips" hidden>
-          <span class="chips-lab"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-sparkle"/></svg><span id="chips-lab-text">Recomendados</span></span>
+          <span class="chips-lab"><svg class="ic s16" aria-hidden="true"><use href="/static/img/icons.svg#i-sparkle"/></svg>Recomendados</span>
           <span id="chips-list" style="display:contents"></span>
         </div>
         <div class="home-stats">
@@ -163,13 +156,9 @@
                 <span class="c" style="background:var(--accent)"></span> Más</div>
             </div>
             <div class="card">
-              <div class="card-h"><h3>Distribución por tema</h3><span id="donut-sub">en todo tu historial</span></div>
+              <div class="card-h"><h3>Distribución por tema</h3><span>todo el historial</span></div>
               <div id="donut"></div>
             </div>
-          </div>
-          <div class="card">
-            <div class="card-h"><h3>Distribución por carpeta</h3><span id="fdist-sub">en todo tu historial</span></div>
-            <div id="fdist"></div>
           </div>
           <div class="card">
             <div class="card-h"><h3>Últimos 7 días</h3><span>minutos por día</span></div>
@@ -190,6 +179,9 @@
             <button type="button" class="btn sm" id="log-type" aria-haspopup="menu" aria-expanded="false">
               <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-book"/></svg><span class="pill-label" id="log-type-label">Todos los tipos</span><svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
             </button>
+            <button type="button" class="btn sm" id="log-days" aria-haspopup="menu" aria-expanded="false">
+              <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-calendar"/></svg><span id="log-days-label">Últimos 7 días</span><svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
+            </button>
             <button type="button" class="btn sm" id="log-export" aria-haspopup="menu" aria-expanded="false">
               <svg class="ic s16 lead" aria-hidden="true"><use href="/static/img/icons.svg#i-download"/></svg>Exportar<svg class="ic s12" aria-hidden="true"><use href="/static/img/icons.svg#i-chev-down"/></svg>
             </button>
@@ -199,7 +191,6 @@
         <div class="v-body">
           <div class="hint" id="log-count"></div>
           <div class="card flush"><div class="tbl-wrap" id="log-table"></div></div>
-          <button type="button" class="btn" id="log-more" hidden>Mostrar más</button>
         </div>
       </section>
 
@@ -320,7 +311,6 @@
                 <p class="help-p">En el menú de modo eliges <b>Pomodoro</b>, que cuenta hacia atrás y alterna trabajo y descansos con una alarma al terminar cada fase, o <b>Cronómetro</b>, que cuenta hacia adelante sin límite: cuando termines, guárdalo con el botón de disquete. En el cronómetro el anillo da una vuelta por hora.</p>
                 <p class="help-p">La <b>rueda</b> de la barra ajusta los minutos de trabajo, descanso corto, descanso largo y cuántos ciclos pasan antes del descanso largo. ¿No usaste el temporizador? En el menú de modo está <b>Registrar sesión manual</b>.</p>
                 <p class="help-p">Al terminar un pomodoro o un descanso suena una alarma y, si no estás mirando la app, recibes una <b>notificación</b>. En Chrome y Edge trae un botón para empezar la siguiente fase sin volver a la pestaña. Da el permiso y elige qué avisos quieres en <b>Configuración › Notificaciones</b>.</p>
-                <p class="help-p">En iPhone o iPad, si bloqueas la pantalla o cambias de app, iOS congela la página y ni la alarma ni la notificación pueden avisarte al momento; al volver, el temporizador se pone al día enseguida. Para recibir avisos aunque la app esté en segundo plano, añádela a tu pantalla de inicio (compartir → «Añadir a pantalla de inicio») y abre FocusData desde ahí; solo funciona en iOS 16.4 o más reciente.</p>
               </div></div></div>
             </div>
             <div class="exp">

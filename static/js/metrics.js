@@ -47,11 +47,9 @@ export function computeIRS(recs = studyRecs()) {
 }
 
 // Ratio de descanso activo: minutos de descanso / minutos de estudio.
-// `recs` incluye los descansos (por defecto, filteredDb(): todo el historial de la
-// carpeta filtrada); quien quiera acotarlo también por periodo pasa periodDb().
-export function computeRDA(recs = filteredDb()) {
+export function computeRDA() {
   let study = 0, brk = 0;
-  recs.forEach(r => { if (r.mode === 'break') brk += r.minutes; else study += r.minutes; });
+  filteredDb().forEach(r => { if (r.mode === 'break') brk += r.minutes; else study += r.minutes; });
   return { ratio: study > 0 ? Math.round(brk / study * 100) : 0, study, brk };
 }
 

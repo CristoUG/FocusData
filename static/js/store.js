@@ -6,8 +6,7 @@ export const S = {
   db: [],                     // sesiones (incluye descansos)
   categories: [],             // preorden, con depth y path
   activeCategoryId: null,     // carpeta donde se guardan las sesiones nuevas
-  filterCategoryId: '',       // filtro de carpeta de Estadísticas y Registro ('' = todas)
-  period: 'all',              // filtro de periodo: 'all' | 'year' | 'month' | 'week' | 'today'
+  filterCategoryId: '',       // filtro de Estadísticas y Registro ('' = todas)
   prefs: { theme: 'dark', accent: '#3b82f6', scene: 'road' },
   backgrounds: [],            // fondos subidos: [{ id, name, colors, url, thumb_url }]
   cfg: { work: 25, short: 5, long: 15, cycles: 4 },
@@ -61,13 +60,10 @@ export function filteredDb() {
 }
 export const studyRecs = () => filteredDb().filter(r => r.mode !== 'break');
 
-// Minutos de estudio por carpeta, sumando las subcarpetas (para el árbol de la
-// barra lateral y la distribución por carpeta de Estadísticas). `recs` por defecto
-// es todo el historial (S.db); quien quiera respetar el periodo le pasa
-// periodStudyRecs() o periodDb() (los descansos se ignoran siempre).
-export function minutesByFolder(recs = S.db) {
+// Minutos de estudio por carpeta, sumando las subcarpetas (para el árbol).
+export function minutesByFolder() {
   const own = {};
-  recs.forEach(r => { if (r.mode !== 'break') own[+r.category_id] = (own[+r.category_id] || 0) + r.minutes; });
+  S.db.forEach(r => { if (r.mode !== 'break') own[+r.category_id] = (own[+r.category_id] || 0) + r.minutes; });
   const total = {};
   S.categories.forEach(c => {
     let sum = 0;
@@ -81,12 +77,7 @@ export async function loadCategories() {
   const { ok, data } = await api('/api/categories');
   if (!ok || !Array.isArray(data)) return;
   S.categories = data;
-  // Un filtro recordado puede apuntar a una carpeta que ya no existe (borrada en otro dispositivo).
-  if (S.filterCategoryId && !categoryById(S.filterCategoryId)) {
-    S.filterCategoryId = '';
-    saveFilter();
-    emit('filter');
-  }
+  if (S.filterCategoryId && !categoryById(S.filterCategoryId)) S.filterCategoryId = '';
   const active = categoryById(S.activeCategoryId);
   if (!active || active.archived) {
     const first = liveCategories()[0];
@@ -102,72 +93,10 @@ export function setActiveCategory(id) {
     .then(r => { if (!r.ok) toast(r.data.error || 'No se pudo guardar la carpeta activa', 'error'); });
 }
 
-// Filtro de carpeta: se recuerda en este navegador, con clave por usuario
-// (los ids de carpeta son de cada cuenta).
-const filterKey = () => (S.user ? `focusdata.filter.u${S.user.id}` : null);
-function saveFilter() {
-  const key = filterKey();
-  if (key) lsSet(key, S.filterCategoryId);
-}
-export function loadFilter() {
-  const key = filterKey();
-  const saved = key ? lsGet(key, '') : '';
-  S.filterCategoryId = Number.isInteger(saved) && saved > 0 ? saved : '';
-}
-
 export function setFilter(id) {
   S.filterCategoryId = id === '' || id == null ? '' : +id;
-  saveFilter();
   emit('filter');
 }
-
-// ── Periodo (filtro temporal de Estadísticas y Registro) ──
-const PERIOD_KEY = 'focusdata.period';
-export const PERIOD_OPTIONS = [
-  { value: 'all',   label: 'Todo el historial' },
-  { value: 'year',  label: 'Este año' },
-  { value: 'month', label: 'Este mes' },
-  { value: 'week',  label: 'Esta semana' },
-  { value: 'today', label: 'Hoy' },
-];
-export function loadPeriod() {
-  const saved = lsGet(PERIOD_KEY, null);
-  if (PERIOD_OPTIONS.some(o => o.value === saved)) S.period = saved;
-}
-export function setPeriod(p) {
-  if (!PERIOD_OPTIONS.some(o => o.value === p) || p === S.period) return;
-  S.period = p;
-  lsSet(PERIOD_KEY, p);
-  emit('filter');   // mismo evento que el filtro de carpeta: todo lo que ya lo escucha se refresca solo
-}
-
-// Rango de fechas del periodo elegido, en 'YYYY-MM-DD'. `from` es null para 'all'.
-// Todos terminan hoy; la semana empieza en lunes (igual que el calendario de consistencia).
-export function periodRange() {
-  const today = new Date();
-  const to = localDateStr(today);
-  if (S.period === 'today') return { from: to, to };
-  if (S.period === 'week') {
-    const mondayOffset = (today.getDay() + 6) % 7;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - mondayOffset);
-    return { from: localDateStr(monday), to };
-  }
-  if (S.period === 'month') {
-    return { from: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`, to };
-  }
-  if (S.period === 'year') return { from: `${today.getFullYear()}-01-01`, to };
-  return { from: null, to };   // 'all'
-}
-
-// filteredDb() (carpeta) acotado además por el periodo elegido. Incluye descansos,
-// igual que filteredDb(): quien no los quiera los filtra aparte (ver periodStudyRecs).
-export function periodDb() {
-  const { from, to } = periodRange();
-  const base = filteredDb();
-  return from ? base.filter(r => r.date >= from && r.date <= to) : base;
-}
-export const periodStudyRecs = () => periodDb().filter(r => r.mode !== 'break');
 
 // ── Sesiones ──
 const sessionKey = r => r.ts || `${r.date}|${r.time}|${r.minutes}|${r.type}|${r.mode}`;
@@ -231,74 +160,15 @@ export async function syncSessions() {
   emit('sessions');
 }
 
-// Actualiza una sesión ya registrada en el servidor: moverla de carpeta, renombrarla
-// (campo `type`), o ambas cosas en la misma llamada. Solo funciona si el servidor ya
-// la confirmó (remote_id); antes de eso no existe ahí para editarla.
-async function patchSession(ts, patch) {
+export async function reassignSession(ts, catId) {
   const rec = S.db.find(r => r.ts === ts);
-  if (!rec) return null;
-  if (rec.remote_id == null) {
-    toast('Se podrá editar cuando se sincronice', 'error');
-    return null;
-  }
-  const { ok, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'PATCH', body: patch });
-  if (!ok) { toast(data.error || 'No se pudo actualizar la sesión', 'error'); emit('sessions'); return null; }
+  if (!rec || rec.remote_id == null) return;
+  const { ok, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'PATCH', body: { category_id: +catId } });
+  if (!ok) { toast(data.error || 'No se pudo mover la sesión', 'error'); emit('sessions'); return; }
   rec.category_id = data.category_id;
   rec.category_name = data.category_name;
-  rec.type = data.type;
   saveDb();
-  emit('sessions');
-  return data;
-}
-
-export async function reassignSession(ts, catId) {
-  const data = await patchSession(ts, { category_id: +catId });
-  if (data) toast(`Sesión movida a ${data.category_name}`);
-}
-
-export async function renameSession(ts, type) {
-  const data = await patchSession(ts, { type });
-  if (data) toast('Sesión renombrada');
-}
-
-// Renombra (o fusiona, si `to` ya existe) un tema en TODO el historial de una vez.
-export async function renameType(from, to) {
-  const merging = S.db.some(r => r.mode !== 'break' && r.type === to);
-  const { ok, data } = await api('/api/sessions/rename-type', { method: 'POST', body: { from, to } });
-  if (!ok) { toast(data.error || 'No se pudo renombrar el tema', 'error'); return false; }
-  // Se aplica también a las sesiones locales aún no sincronizadas: al subirse
-  // llegarán ya con el nombre nuevo, sin esperar a la próxima sincronización.
-  S.db.forEach(r => { if (r.mode !== 'break' && r.type === from) r.type = to; });
-  saveDb();
-  emit('sessions');
-  // Aparte de refrescar el historial, avisa a quien tenga ese nombre escrito en algún
-  // sitio (la portada, un filtro) para que lo actualice sin que el usuario lo note.
-  emit('type-renamed', { from, to });
-  toast(merging ? `Fusionado con «${to}»` : `Tema renombrado a «${to}»`);
-  return true;
-}
-
-export async function deleteSession(ts) {
-  const rec = S.db.find(r => r.ts === ts);
-  if (!rec) return;
-  if (rec.remote_id == null) {
-    // Nunca llegó a confirmarse en el servidor: basta con quitarla en local.
-    S.db = S.db.filter(r => r !== rec);
-    saveDb();
-    emit('sessions');
-    return;
-  }
-  const { ok, status, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'DELETE' });
-  // Un 404 significa que ya no existe en el servidor (p. ej. borrada desde otro
-  // dispositivo): se quita igual en local. Un fallo de red (status 0) no debe
-  // quitarla, o syncSessions() ya no la reenviaría.
-  if (!ok && status !== 404) {
-    toast(data.error || 'No se pudo eliminar la sesión', 'error');
-    return;
-  }
-  S.db = S.db.filter(r => r !== rec);
-  saveDb();
-  toast('Sesión eliminada');
+  toast(`Sesión movida a ${data.category_name}`);
   emit('sessions');
 }
 

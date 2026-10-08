@@ -1,18 +1,10 @@
 // Estadísticas: indicadores, calendario, distribución por tema y gráficos de columnas.
 import { $, $$, ic, esc, on, fmtMin, fmtHours, localDateStr, daysAgoStr, DAY_SHORT, MONTH_SHORT } from './util.js';
-import { S, studyRecs, periodDb, periodStudyRecs, categoryById, minutesByFolder, setFilter, PERIOD_OPTIONS } from './store.js';
+import { S, studyRecs, categoryById } from './store.js';
 import { minutesByDate, computeStreaks, computeIRS, computeRDA, sumMinutes, sumBetween, hoursSeries } from './metrics.js';
-import { openMenu } from './ui.js';
-import { openRenameTypeModal } from './log.js';
 
 let visible = false;
 const series = { week: [], weekDates: [], hour: [] };
-
-// Frase de periodo, reutilizada en los subtítulos de las tarjetas que sí lo respetan
-// (Total estudiado, Sesiones, distribución por tema...). "Hoy", "Esta semana", la
-// racha, la regularidad y el calendario tienen su propia ventana fija y no la usan.
-const PERIOD_PHRASE = { all: 'en todo tu historial', year: 'este año', month: 'este mes', week: 'esta semana', today: 'hoy' };
-const periodPhrase = () => PERIOD_PHRASE[S.period] || PERIOD_PHRASE.all;
 
 const kpi = (icon, label, val, sub) =>
   `<div class="kpi"><div class="kpi-label">${ic(icon)}${label}</div><div class="kpi-val">${val}</div><div class="kpi-sub">${sub}</div></div>`;
@@ -124,72 +116,10 @@ function donutHTML(recs) {
   entries.forEach(([name, m, color]) => {
     const pct = m / total * 100, len = Math.max(pct - gap, 0.05), p = Math.round(pct);
     segs += `<circle class="seg" cx="80" cy="80" r="${r}" pathLength="100" style="stroke:${color}" stroke-dasharray="${len.toFixed(2)} ${(100 - len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" tabindex="0" data-tip="${esc(`${fmtMin(m)} · ${p}%|${name}`)}"/>`;
-    const inner = `<span class="lg-sw" style="--c:${color}"></span><span class="lg-name" title="${esc(name)}">${esc(name)}</span><span class="lg-v">${fmtHours(m)}</span><span class="lg-p">${p}%</span>`;
-    // "Otros" agrupa varios temas reales: no hay un único tema que renombrar ahí.
-    legend += name === 'Otros'
-      ? `<div class="lg-row">${inner}</div>`
-      : `<button type="button" class="lg-row" data-type-menu="${esc(name)}" aria-haspopup="menu" aria-expanded="false" title="Opciones de «${esc(name)}»">${inner}</button>`;
+    legend += `<div class="lg-row"><span class="lg-sw" style="--c:${color}"></span><span class="lg-name" title="${esc(name)}">${esc(name)}</span><span class="lg-v">${fmtHours(m)}</span><span class="lg-p">${p}%</span></div>`;
     acc += pct;
   });
   return `<div class="donut"><div class="donut-fig"><svg viewBox="0 0 160 160" role="img" aria-label="Distribución del tiempo por tema">${segs}</svg><div class="donut-c"><b>${fmtHours(total)}</b><span>en total</span></div></div><div class="lg">${legend}</div></div>`;
-}
-
-// ── Distribución por carpeta: barras horizontales, un nivel a la vez ──
-// Sin filtro se ven las carpetas raíz; con un filtro activo, sus hijas directas más
-// una fila con las sesiones que están guardadas en la propia carpeta filtrada (no en
-// ninguna hija). Pulsar una fila baja de nivel con setFilter(); "← …" sube uno.
-function folderDistHTML(recs) {
-  const filterId = S.filterCategoryId;
-  const parentId = filterId ? +filterId : 0;
-  const own = {};
-  recs.forEach(r => { own[+r.category_id] = (own[+r.category_id] || 0) + r.minutes; });
-  const totals = minutesByFolder(recs);   // cada carpeta, sumando ya su subárbol completo
-
-  let entries = S.categories.filter(c => +c.parent_id === parentId).map(c => ({
-    id: c.id, name: c.name, color: c.color, archived: !!c.archived, minutes: totals[c.id] || 0, nav: true,
-  }));
-  if (filterId) {
-    const cat = categoryById(filterId);
-    const direct = own[+filterId] || 0;
-    if (cat && direct > 0) {
-      entries.push({ id: null, name: `(sesiones directas en ${cat.name})`, color: cat.color, archived: false, minutes: direct, nav: false });
-    }
-  }
-  entries = entries.filter(e => e.minutes > 0).sort((a, b) => b.minutes - a.minutes);
-  // Como en la dona: más de 8 carpetas se leen mal, el resto se agrupa en "Otras".
-  if (entries.length > 8) {
-    const rest = entries.slice(7).reduce((a, e) => a + e.minutes, 0);
-    entries = [...entries.slice(0, 7), { id: null, name: 'Otras', color: 'var(--cat-other)', archived: false, minutes: rest, nav: false }];
-  }
-  const total = entries.reduce((a, e) => a + e.minutes, 0);
-
-  let back = '';
-  if (filterId) {
-    const current = categoryById(filterId);
-    const parent = current ? categoryById(current.parent_id) : null;
-    back = `<button type="button" class="fdist-back" data-folder-up>${ic('chev-right', 's12 fdist-back-ic')}${esc(parent ? parent.name : 'Todas las carpetas')}</button>`;
-  }
-
-  if (!entries.length) {
-    return back + `<div class="empty">${ic('stats')}Aún no hay sesiones en este periodo</div>`;
-  }
-
-  const rows = entries.map(e => {
-    const pct = total > 0 ? Math.round(e.minutes / total * 100) : 0;
-    const widthPct = total > 0 ? Math.max(2, e.minutes / total * 100) : 0;
-    const label = e.archived ? `${e.name} (archivada)` : e.name;
-    const inner = `<span class="dot" style="--c:${esc(e.color)}"></span>`
-      + `<span class="fdist-name" title="${esc(label)}">${esc(label)}</span>`
-      + `<span class="fdist-track"><span class="fdist-fill" style="--c:${esc(e.color)};width:${widthPct}%"></span></span>`
-      + `<span class="fdist-time">${fmtHours(e.minutes)}</span>`
-      + `<span class="fdist-pct">${pct}%</span>`;
-    const tip = esc(`${fmtMin(e.minutes)} · ${pct}%|${e.name}`);
-    return e.nav
-      ? `<button type="button" class="fdist-row${e.archived ? ' archived' : ''}" data-folder-nav="${e.id}" data-tip="${tip}">${inner}</button>`
-      : `<div class="fdist-row own" data-tip="${tip}">${inner}</div>`;
-  }).join('');
-
-  return back + `<div class="fdist">${rows}</div>`;
 }
 
 function heatHTML(recs) {
@@ -218,21 +148,16 @@ function heatHTML(recs) {
 }
 
 function render() {
-  // Ventana fija (no la mueve el periodo elegido): hoy, esta semana, racha,
-  // regularidad, últimos 7 días y el calendario de consistencia.
   const recs = studyRecs();
-  // Respeta el periodo elegido (ver S.period / periodRange en store.js).
-  const periodRecs = periodStudyRecs();
-
   const today = localDateStr();
   const week = sumBetween(recs, daysAgoStr(6));
   const prevWeek = sumBetween(recs, daysAgoStr(13), daysAgoStr(7));
-  const total = sumMinutes(periodRecs);
+  const total = sumMinutes(recs);
   const todayRecs = recs.filter(r => r.date === today);
   const streak = computeStreaks(recs);
   const irs = computeIRS(recs);
-  const rda = computeRDA(periodDb());
-  const pomo = sumMinutes(periodRecs.filter(r => r.mode === 'pomodoro'));
+  const rda = computeRDA();
+  const pomo = sumMinutes(recs.filter(r => r.mode === 'pomodoro'));
 
   let delta = 'sin datos de la semana anterior';
   if (prevWeek > 0) {
@@ -247,24 +172,19 @@ function render() {
     kpi('clock', 'Hoy', fmtMin(sumMinutes(todayRecs)), `${todayRecs.length} ${todayRecs.length === 1 ? 'sesión' : 'sesiones'}`),
     kpi('fire', 'Racha', `${streak.current} ${streak.current === 1 ? 'día' : 'días'}`, `máx. ${streak.max} ${streak.max === 1 ? 'día' : 'días'}`),
     kpi('target', 'Regularidad', `${irs.pct}%`, `${irs.active} de 7 días con 20+ min`),
-    kpi('history', 'Total estudiado', fmtHours(total), periodPhrase()),
-    kpi('table', 'Sesiones', String(periodRecs.length), periodPhrase()),
+    kpi('history', 'Total estudiado', fmtHours(total), 'en todo tu historial'),
+    kpi('table', 'Sesiones', String(recs.length), 'de estudio registradas'),
     kpi('coffee', 'Descanso activo', `${rda.ratio}%`, rdaHint),
     kpi('timer', 'Enfoque Pomodoro', `${total ? Math.round(pomo / total * 100) : 0}%`, 'del tiempo estudiado'),
   ].join('');
 
   $('#heat').innerHTML = heatHTML(recs);
-  $('#donut').innerHTML = donutHTML(periodRecs);
-  const donutSub = $('#donut-sub');
-  if (donutSub) donutSub.textContent = periodPhrase();
-  $('#fdist').innerHTML = folderDistHTML(periodRecs);
-  const fdistSub = $('#fdist-sub');
-  if (fdistSub) fdistSub.textContent = periodPhrase();
+  $('#donut').innerHTML = donutHTML(recs);
 
   series.weekDates = [6, 5, 4, 3, 2, 1, 0].map(daysAgoStr);
   const byDate = minutesByDate(recs);
   series.week = series.weekDates.map(d => byDate[d] || 0);
-  series.hour = hoursSeries(periodRecs);
+  series.hour = hoursSeries(recs);
   $$('[data-chart]').forEach(draw);
 
   const hmax = Math.max(0, ...series.hour);
@@ -276,14 +196,7 @@ function render() {
 
 function renderSub() {
   const cat = categoryById(S.filterCategoryId);
-  const parts = [];
-  if (cat) parts.push(`Filtrado por ${cat.path}`);
-  else parts.push('Todas las carpetas');
-  if (S.period !== 'all') {
-    const opt = PERIOD_OPTIONS.find(o => o.value === S.period);
-    parts.push(opt ? opt.label : '');
-  }
-  $('#stats-sub').textContent = parts.filter(Boolean).join(' · ');
+  $('#stats-sub').textContent = cat ? `Filtrado por ${cat.path}` : 'Todas las carpetas';
 }
 
 export function setStatsVisible(v) {
@@ -293,25 +206,6 @@ export function setStatsVisible(v) {
 
 export function initStats() {
   if (ro) $$('[data-chart]').forEach(el => ro.observe(el));
-  $('#fdist').addEventListener('click', e => {
-    const nav = e.target.closest('[data-folder-nav]');
-    if (nav) { setFilter(nav.dataset.folderNav); return; }
-    if (e.target.closest('[data-folder-up]')) {
-      const current = categoryById(S.filterCategoryId);
-      const parentId = current ? +current.parent_id : 0;
-      setFilter(parentId ? parentId : '');   // 0 = raíz: se normaliza a '' (sin filtro)
-    }
-  });
-  $('#donut').addEventListener('click', e => {
-    const btn = e.target.closest('[data-type-menu]');
-    if (!btn) return;
-    const name = btn.dataset.typeMenu;
-    openMenu({
-      anchor: btn, align: 'end', minWidth: 200,
-      items: [{ value: 'rename', label: 'Renombrar tema…', icon: 'rename', action: true }],
-      onSelect: v => { if (v === 'rename') openRenameTypeModal(name); },
-    });
-  });
   on('sessions', () => visible && render());
   on('filter', () => { renderSub(); if (visible) render(); });
   on('categories', renderSub);

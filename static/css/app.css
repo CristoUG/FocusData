@@ -151,6 +151,7 @@ html.has-photo .v-body > .hint b { color: var(--on-photo); }
 .comp-input:focus-visible { outline: none; }
 .comp-sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; flex: none; }
 .comp-tools { display: flex; align-items: center; gap: 2px; }
+.timer-break-actions { display: inline-flex; align-items: center; flex: none; }
 .composer .btn { height: 32px; padding: 0 10px; gap: 6px; font-size: 13px; background: transparent; border-color: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .composer .btn:hover, .composer .btn[aria-expanded="true"] { background: var(--hover); }
 .composer .icon-btn { width: 34px; height: 34px; }
@@ -502,7 +503,7 @@ button.bg-add:disabled { cursor: progress; opacity: .7; }
   .composer { flex-wrap: wrap; padding: 8px 8px 8px 14px; border-radius: 22px; }
   .comp-field { flex-basis: 100%; min-height: 36px; }
   .comp-sep { display: none; }
-  .comp-tools { flex: 1; justify-content: flex-end; }
+  .comp-tools { flex: 1; justify-content: flex-end; flex-wrap: wrap; }
   .home-stats { gap: 14px; }
   .v-head h2 { font-size: 24px; line-height: 30px; }
   .topbar .pill-label { display: none; }

@@ -1,7 +1,7 @@
 // Registro: historial filtrable, reasignación de carpeta, exportación y borrado.
 import { $, ic, esc, toast, on, fmtMin, daysAgoStr, prettyDate } from './util.js';
-import { S, filteredDb, categoryById, reassignSession, clearHistory } from './store.js';
-import { openMenu, confirmDialog } from './ui.js';
+import { S, filteredDb, categoryById, reassignSession, updateSession, deleteSession, clearHistory } from './store.js';
+import { openMenu, confirmDialog, askText } from './ui.js';
 import { folderItems } from './folders.js';
 
 let visible = false;
@@ -46,12 +46,45 @@ function render() {
     box.innerHTML = `<div class="empty">${ic('calendar')}No hay sesiones con estos filtros. Prueba con otra carpeta o un periodo más largo.</div>`;
     return;
   }
-  box.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Hora</th><th class="num">Duración</th><th>Tipo</th><th>Modo</th><th>Carpeta</th></tr></thead><tbody>`
+  box.innerHTML = `<table class="tbl"><thead><tr><th>Fecha</th><th>Hora</th><th class="num">Duración</th><th>Tipo</th><th>Modo</th><th>Carpeta</th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody>`
     + list.map(r => `<tr>
         <td>${prettyDate(r.date)}</td><td class="tnum">${esc(r.time)}</td><td class="num">${fmtMin(r.minutes)}</td>
         <td>${esc(r.type)}</td><td><span class="pill ${esc(r.mode)}">${esc(MODE_LABEL[r.mode] || r.mode)}</span></td>
-        <td>${folderCell(r)}</td></tr>`).join('')
+        <td>${folderCell(r)}</td><td><button type="button" class="icon-btn" data-session-actions="${esc(r.ts)}" aria-label="Opciones de la sesión ${esc(r.type)}" aria-haspopup="menu" aria-expanded="false" title="${r.remote_id == null ? 'Disponible cuando se sincronice la sesión' : 'Opciones de la sesión'}"${r.remote_id == null ? ' disabled' : ''}>${ic('more')}</button></td></tr>`).join('')
     + '</tbody></table>';
+}
+
+function moveSession(rec, anchor) {
+  openMenu({
+    anchor, value: rec.category_id, search: true, minWidth: 260,
+    items: [{ type: 'head', label: 'Mover la sesión a' }, ...folderItems({ archived: 'hide', keepId: rec.category_id })],
+    onSelect: v => { if (+v !== +rec.category_id) reassignSession(rec.ts, v); },
+  });
+}
+
+function sessionMenu(rec, anchor) {
+  openMenu({
+    anchor, align: 'end', label: 'Opciones de la sesión',
+    items: [
+      { value: 'rename', label: 'Renombrar sesión', icon: 'rename', action: true },
+      { value: 'move', label: 'Cambiar de carpeta', icon: 'folder', action: true },
+      { type: 'sep' },
+      { value: 'delete', label: 'Eliminar sesión', icon: 'delete', danger: true, action: true },
+    ],
+    onSelect: async action => {
+      if (action === 'move') { moveSession(rec, anchor); return; }
+      if (action === 'rename') {
+        const name = await askText({ title: 'Renombrar sesión', label: 'Nombre de la sesión', value: rec.type,
+          maxLength: 40, message: 'Solo se cambia el nombre de esta sesión.' });
+        if (name && name !== rec.type) await updateSession(rec.ts, { type: name });
+      } else if (action === 'delete') {
+        const ok = await confirmDialog({ title: 'Eliminar sesión', icon: 'delete', danger: true,
+          confirmLabel: 'Eliminar sesión',
+          message: `Se eliminará <b>${esc(rec.type)}</b> (${fmtMin(rec.minutes)}, ${prettyDate(rec.date)}) del historial y las estadísticas. No se puede deshacer.` });
+        if (ok) await deleteSession(rec.ts);
+      }
+    },
+  });
 }
 
 export function setLogVisible(v) {
@@ -91,15 +124,12 @@ export function initLog() {
     if (ok) clearHistory();
   });
   $('#log-table').addEventListener('click', e => {
-    const btn = e.target.closest('[data-reassign]');
+    const btn = e.target.closest('[data-reassign], [data-session-actions]');
     if (!btn) return;
-    const rec = S.db.find(r => r.ts === btn.dataset.reassign);
-    if (!rec) return;
-    openMenu({
-      anchor: btn, value: rec.category_id, search: true, minWidth: 260,
-      items: [{ type: 'head', label: 'Mover la sesión a' }, ...folderItems({ archived: 'hide', keepId: rec.category_id })],
-      onSelect: v => { if (+v !== +rec.category_id) reassignSession(rec.ts, v); },
-    });
+    const rec = S.db.find(r => r.ts === (btn.dataset.reassign || btn.dataset.sessionActions));
+    if (!rec || rec.remote_id == null) return;
+    if (btn.hasAttribute('data-session-actions')) sessionMenu(rec, btn);
+    else moveSession(rec, btn);
   });
 
   const refresh = () => visible && render();

@@ -900,23 +900,52 @@ def delete_category(cid):
 @app.route("/api/sessions/<int:sid>", methods=["PATCH"])
 @login_required
 def update_session(sid):
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not ({"type", "category_id"} & data.keys()):
+        return jsonify({"error": "Indica el nombre o la carpeta de la sesión"}), 400
+    changes = {}
+    if "type" in data:
+        name = data["type"].strip() if isinstance(data["type"], str) else ""
+        if not name or len(name) > TYPE_MAX:
+            return jsonify({"error": f"El nombre debe tener entre 1 y {TYPE_MAX} caracteres"}), 400
+        changes["type"] = name
+    if "category_id" in data:
+        raw = data["category_id"]
+        if isinstance(raw, bool) or not isinstance(raw, (str, int)):
+            return jsonify({"error": "Carpeta no válida"}), 400
+        try:
+            changes["category_id"] = int(raw)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Carpeta no válida"}), 400
     uid = current_user.id
-    try:
-        cid_req = int(data.get("category_id"))
-    except (TypeError, ValueError):
-        return jsonify({"error": "Carpeta no válida"}), 400
     with closing(get_db()) as conn, conn:
         if not conn.execute("SELECT id FROM sessions WHERE id = ? AND user_id = ?", (sid, uid)).fetchone():
             return jsonify({"error": "Sesión no encontrada"}), 404
-        cat = conn.execute(
-            "SELECT id, name FROM categories WHERE id = ? AND user_id = ?", (cid_req, uid)
+        if "category_id" in changes:
+            cat = conn.execute(
+                "SELECT id FROM categories WHERE id = ? AND user_id = ?", (changes["category_id"], uid)
+            ).fetchone()
+            if not cat:
+                return jsonify({"error": "Carpeta no válida"}), 400
+        fields = ", ".join(f"{key} = ?" for key in changes)
+        conn.execute(f"UPDATE sessions SET {fields} WHERE id = ? AND user_id = ?",
+                     [*changes.values(), sid, uid])
+        row = conn.execute(
+            "SELECT s.type, s.category_id, c.name AS category_name FROM sessions s "
+            "LEFT JOIN categories c ON c.id = s.category_id WHERE s.id = ? AND s.user_id = ?",
+            (sid, uid)
         ).fetchone()
-        if not cat:
-            return jsonify({"error": "Carpeta no válida"}), 400
-        conn.execute("UPDATE sessions SET category_id = ? WHERE id = ? AND user_id = ?", (cat["id"], sid, uid))
-        conn.commit()
-    return jsonify({"ok": True, "category_id": cat["id"], "category_name": cat["name"]})
+    return jsonify({"ok": True, **dict(row)})
+
+
+@app.route("/api/sessions/<int:sid>", methods=["DELETE"])
+@login_required
+def delete_session(sid):
+    with closing(get_db()) as conn, conn:
+        deleted = conn.execute("DELETE FROM sessions WHERE id = ? AND user_id = ?", (sid, current_user.id))
+        if not deleted.rowcount:
+            return jsonify({"error": "Sesión no encontrada"}), 404
+    return jsonify({"ok": True})
 
 # ── Fondos propios ──────────────────────────────────────
 

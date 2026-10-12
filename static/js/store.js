@@ -160,16 +160,33 @@ export async function syncSessions() {
   emit('sessions');
 }
 
-export async function reassignSession(ts, catId) {
+export async function updateSession(ts, changes) {
   const rec = S.db.find(r => r.ts === ts);
-  if (!rec || rec.remote_id == null) return;
-  const { ok, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'PATCH', body: { category_id: +catId } });
-  if (!ok) { toast(data.error || 'No se pudo mover la sesión', 'error'); emit('sessions'); return; }
-  rec.category_id = data.category_id;
-  rec.category_name = data.category_name;
+  if (!rec || rec.remote_id == null) return false;
+  const { ok, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'PATCH', body: changes });
+  if (!ok) { toast(data.error || 'No se pudo actualizar la sesión', 'error'); return false; }
+  const current = S.db.find(r => r.remote_id === rec.remote_id);
+  if (current) Object.assign(current, { type: data.type, category_id: data.category_id, category_name: data.category_name });
   saveDb();
-  toast(`Sesión movida a ${data.category_name}`);
   emit('sessions');
+  toast('Sesión actualizada');
+  return true;
+}
+
+export async function reassignSession(ts, catId) {
+  return updateSession(ts, { category_id: +catId });
+}
+
+export async function deleteSession(ts) {
+  const rec = S.db.find(r => r.ts === ts);
+  if (!rec || rec.remote_id == null) return false;
+  const { ok, status, data } = await api(`/api/sessions/${rec.remote_id}`, { method: 'DELETE' });
+  if (!ok && status !== 404) { toast(data.error || 'No se pudo eliminar la sesión', 'error'); return false; }
+  S.db = S.db.filter(r => r.remote_id !== rec.remote_id);
+  saveDb();
+  emit('sessions');
+  toast('Sesión eliminada');
+  return true;
 }
 
 export async function clearHistory() {

@@ -18,6 +18,7 @@ const T = {
   elapsed: 0, startedAt: null, // solo cronómetro
   type: 'General',
   iv: null,
+  suspendedWork: null,        // trabajo pausado durante un descanso voluntario
   due: null,                   // setTimeout del final de la fase (ver start)
 };
 
@@ -28,7 +29,7 @@ const phaseLabel = () => (T.phase === 'work' ? 'Tiempo de trabajo' : T.phase ===
 
 export function renderClock() {
   let text, pct;
-  if (T.mode === 'cronometro') {
+  if (T.mode === 'cronometro' && T.phase === 'work') {
     const t = T.elapsed, h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
     text = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
     pct = (t % CRONO_CYCLE) / CRONO_CYCLE * 100;
@@ -45,7 +46,7 @@ export function renderClock() {
     pct = (1 - frac) * 100;
     $('#t-phase').textContent = phaseLabel();
     const cycle = Math.min(S.cfg.cycles, (T.cycleCount % S.cfg.cycles) + 1);
-    $('#t-meta').textContent = `Sesión ${T.session} · Ciclo ${cycle} de ${S.cfg.cycles}`;
+    $('#t-meta').textContent = T.suspendedWork ? 'Tu tiempo de estudio está en pausa' : `Sesión ${T.session} · Ciclo ${cycle} de ${S.cfg.cycles}`;
     $('#ring').classList.toggle('is-break', T.phase !== 'work');
   }
   $('#t-time').textContent = text;
@@ -62,7 +63,10 @@ function updateToggle() {
   btn.setAttribute('aria-label', label);
   btn.title = label;
   $('#btn-toggle-icon').setAttribute('href', `${ICONS}#i-${T.running ? 'pause' : 'play'}`);
-  $('#btn-save').hidden = T.mode !== 'cronometro';
+  $('#btn-save').hidden = T.mode !== 'cronometro' || T.phase !== 'work';
+  $('#btn-break').hidden = !T.paused || T.phase !== 'work';
+  $('#btn-skip-break').hidden = T.phase === 'work';
+  $('#timer-break-actions').hidden = !T.paused && T.phase === 'work';
   $('#btn-mode-label').textContent = T.mode === 'cronometro' ? 'Cronómetro' : 'Pomodoro';
   // Todo cambio de estado pasa por aquí: la música se sincroniza con este evento.
   emit('timer', { running: T.running, mode: T.mode, phase: T.phase });
@@ -70,7 +74,7 @@ function updateToggle() {
 
 function tick() {
   if (!T.running) return;
-  if (T.mode === 'cronometro') {
+  if (T.mode === 'cronometro' && T.phase === 'work') {
     T.elapsed = Math.max(0, Math.round((Date.now() - T.startedAt) / 1000));
     renderClock();
     return;
@@ -83,7 +87,7 @@ function tick() {
 
 function start() {
   if (T.running) return;
-  if (T.mode === 'cronometro') {
+  if (T.mode === 'cronometro' && T.phase === 'work') {
     T.startedAt = Date.now() - T.elapsed * 1000;
   } else {
     if (!T.paused) T.phaseTotal = T.remaining;
@@ -96,15 +100,18 @@ function start() {
   // Chrome puede espaciar hasta un minuto los setInterval de una pestaña oculta; un setTimeout
   // creado aquí (desde el clic) no sufre ese recorte, así que la fase termina y avisa a su hora.
   clearTimeout(T.due);
-  if (T.mode === 'pomodoro') T.due = setTimeout(tick, T.remaining * 1000 + 50);
+  if (T.mode === 'pomodoro' || T.phase !== 'work') T.due = setTimeout(tick, T.remaining * 1000 + 50);
   updateToggle();
   renderClock();
 }
 
 function pause() {
+  if (!T.running) return;
+  tick();
+  if (!T.running) return;
   clearInterval(T.iv);
   clearTimeout(T.due);
-  if (T.mode === 'cronometro') T.elapsed = Math.max(0, Math.round((Date.now() - T.startedAt) / 1000));
+  if (T.mode === 'cronometro' && T.phase === 'work') T.elapsed = Math.max(0, Math.round((Date.now() - T.startedAt) / 1000));
   else T.remaining = Math.max(0, Math.round((T.endTime - Date.now()) / 1000));
   T.running = false;
   T.paused = true;
@@ -116,17 +123,65 @@ export function resetTimer() {
   clearInterval(T.iv);
   clearTimeout(T.due);
   Object.assign(T, {
-    running: false, paused: false, phase: 'work', session: 1, cycleCount: 0,
+    running: false, paused: false, phase: 'work', session: 1, cycleCount: 0, suspendedWork: null,
     remaining: S.cfg.work * 60, phaseTotal: S.cfg.work * 60, endTime: null, elapsed: 0, startedAt: null,
   });
   updateToggle();
   renderClock();
 }
 
+// Los descansos voluntarios conservan el Pomodoro parcial o el cronómetro.
+function startBreak() {
+  if (T.running || !T.paused || T.phase !== 'work') return;
+  T.suspendedWork = { remaining: T.remaining, phaseTotal: T.phaseTotal };
+  T.phase = 'short';
+  T.remaining = T.phaseTotal = S.cfg.short * 60;
+  T.paused = false;
+  start();
+}
+
+function returnToWork() {
+  T.running = false;
+  T.endTime = null;
+  T.phase = 'work';
+  if (T.suspendedWork) {
+    Object.assign(T, T.suspendedWork);
+    T.suspendedWork = null;
+    T.paused = true;
+  } else {
+    T.session++;
+    T.remaining = T.phaseTotal = S.cfg.work * 60;
+    T.paused = false;
+  }
+  updateToggle();
+  renderClock();
+}
+
+function skipBreak() {
+  if (T.phase === 'work') return;
+  if (T.running) pause();
+  if (T.phase === 'work') return; // pudo terminar justo antes del clic
+  clearInterval(T.iv);
+  clearTimeout(T.due);
+  // Un descanso omitido no se registra como si hubiera durado todo lo previsto.
+  const minutes = Math.floor((T.phaseTotal - T.remaining) / 60);
+  if (minutes >= 1) logSession(minutes, 'Descanso', 'break');
+  returnToWork();
+  toast('Descanso saltado. Puedes continuar con el estudio.');
+}
+
 function phaseComplete() {
   clearInterval(T.iv);
   clearTimeout(T.due);
   playAlarm();
+  if (T.suspendedWork) {
+    const minutes = Math.max(1, Math.round(T.phaseTotal / 60));
+    logSession(minutes, 'Descanso', 'break');
+    returnToWork();
+    toast('Descanso terminado. Puedes reanudar el estudio.');
+    emit('phase-end', { finished: 'short', minutes, type: T.type, resume: true });
+    return;
+  }
   // Se registra lo que la fase REALMENTE duró, no lo que digan ahora los ajustes.
   const minutes = Math.max(1, Math.round((T.phaseTotal || phaseDuration()) / 60));
   const finished = T.phase;
@@ -153,6 +208,7 @@ function phaseComplete() {
 }
 
 function saveCrono() {
+  if (T.mode !== 'cronometro' || T.phase !== 'work') return;
   if (T.running) pause();
   const mins = Math.round(T.elapsed / 60);
   if (mins < 1) { toast('Muy corto para registrar: el mínimo es 1 minuto', 'error'); return; }
@@ -241,7 +297,7 @@ function openGear(anchor) {
       panel.innerHTML = `
         <div class="pp-head"><b>Pomodoro</b><span data-cfg-summary></span></div>
         ${pomoRowsHTML('gear')}
-        <p class="pp-note"${T.mode === 'cronometro' ? '' : ' hidden'}>En modo Cronómetro estos tiempos no se usan.</p>
+        <p class="pp-note"${T.mode === 'cronometro' ? '' : ' hidden'}>En modo Cronómetro se usa el descanso corto al pausar.</p>
         <div class="pp-foot">
           <button type="button" class="btn sm" data-cfg-reset>Restablecer</button>
           <button type="button" class="btn sm primary" data-menu-close>Listo</button>
@@ -357,6 +413,8 @@ export function initTimer() {
   T.remaining = T.phaseTotal = S.cfg.work * 60;
 
   $('#btn-toggle').addEventListener('click', () => { if (T.running) pause(); else start(); });
+  $('#btn-break').addEventListener('click', startBreak);
+  $('#btn-skip-break').addEventListener('click', skipBreak);
   $('#btn-reset').addEventListener('click', resetTimer);
   $('#btn-save').addEventListener('click', saveCrono);
   $('#btn-mode').addEventListener('click', e => openModeMenu(e.currentTarget));

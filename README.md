@@ -100,7 +100,8 @@ que con la cookie.
 | POST | `/api/categories` | Crear carpeta o subcarpeta: `{name, color?, parent_id?}` (`parent_id: 0` = raíz) |
 | PATCH | `/api/categories/<id>` | Actualizar carpeta (parcial: `name`, `color`, `parent_id`, `archived`). Archivar baja en cascada; restaurar sube a los ancestros |
 | DELETE | `/api/categories/<id>` | Eliminar la carpeta y todo su subárbol: `{content: "move", target_id}` mueve sus sesiones, `{content: "delete"}` las borra |
-| PATCH | `/api/sessions/<id>` | Mover una sesión a otra carpeta: `{category_id}` |
+| PATCH | `/api/sessions/<id>` | Renombrar y/o mover una sesión: `{type?, category_id?}` |
+| DELETE | `/api/sessions/<id>` | Eliminar una sesión propia |
 
 ### Sesiones de estudio _(requieren login)_
 | Método | Ruta | Descripción |

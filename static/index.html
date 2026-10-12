@@ -124,6 +124,10 @@
             <button type="button" class="icon-btn gear" id="btn-gear" aria-haspopup="dialog" aria-expanded="false" aria-label="Tiempos del Pomodoro" title="Tiempos del Pomodoro"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-settings"/></svg></button>
             <button type="button" class="icon-btn" id="btn-save" aria-label="Guardar sesión del cronómetro" title="Guardar sesión" hidden><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-save"/></svg></button>
             <button type="button" class="icon-btn" id="btn-reset" aria-label="Reiniciar" title="Reiniciar"><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-reset"/></svg></button>
+            <span class="timer-break-actions" id="timer-break-actions" hidden>
+              <button type="button" class="icon-btn" id="btn-break" aria-label="Iniciar descanso" title="Iniciar descanso" hidden><svg class="ic" aria-hidden="true"><use href="/static/img/icons.svg#i-coffee"/></svg></button>
+              <button type="button" class="icon-btn" id="btn-skip-break" aria-label="Saltar descanso" title="Saltar descanso" hidden><svg class="ic" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 5 10 7-10 7Z"/><path d="M19 5v14"/></svg></button>
+            </span>
             <button type="button" class="go" id="btn-toggle" aria-label="Iniciar" title="Iniciar"><svg class="ic" aria-hidden="true"><use id="btn-toggle-icon" href="/static/img/icons.svg#i-play"/></svg></button>
           </div>
         </div>
@@ -309,6 +313,7 @@
               <div class="exp-body open" id="help-timer"><div><div class="exp-inner">
                 <p class="help-p">Escribe en qué vas a trabajar en la barra de actividad y pulsa el botón de inicio (o <b>Enter</b>). Las sesiones de menos de un minuto no se registran.</p>
                 <p class="help-p">En el menú de modo eliges <b>Pomodoro</b>, que cuenta hacia atrás y alterna trabajo y descansos con una alarma al terminar cada fase, o <b>Cronómetro</b>, que cuenta hacia adelante sin límite: cuando termines, guárdalo con el botón de disquete. En el cronómetro el anillo da una vuelta por hora.</p>
+                <p class="help-p">Al pausar el cronómetro o un pomodoro, puedes elegir <b>Iniciar descanso</b>: usa la duración del descanso corto y conserva tu tiempo de estudio. Al terminar, pulsa Reanudar para continuar. <b>Saltar descanso</b> permite volver al estudio antes de tiempo; solo se registran los minutos completos que hayas descansado.</p>
                 <p class="help-p">La <b>rueda</b> de la barra ajusta los minutos de trabajo, descanso corto, descanso largo y cuántos ciclos pasan antes del descanso largo. ¿No usaste el temporizador? En el menú de modo está <b>Registrar sesión manual</b>.</p>
                 <p class="help-p">Al terminar un pomodoro o un descanso suena una alarma y, si no estás mirando la app, recibes una <b>notificación</b>. En Chrome y Edge trae un botón para empezar la siguiente fase sin volver a la pestaña. Da el permiso y elige qué avisos quieres en <b>Configuración › Notificaciones</b>.</p>
               </div></div></div>

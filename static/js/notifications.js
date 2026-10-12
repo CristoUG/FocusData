@@ -80,6 +80,8 @@ function onPhaseEnd(e) {
     show('Pomodoro terminado',
       `${fmtMin(e.minutes)} de ${activity}. Toca un descanso ${e.next === 'long' ? 'largo' : 'corto'} de ${fmtMin(e.nextMinutes)}.`,
       { actions: [{ action: 'start', title: 'Empezar descanso' }], data: { phase: e.next } });
+  } else if (e.resume) {
+    show('Descanso terminado', 'Tu tiempo de estudio está guardado en pausa. Vuelve a la app para reanudarlo.');
   } else {
     show('Descanso terminado',
       `Es hora de volver: ${fmtMin(e.nextMinutes)} de ${activity}.`,

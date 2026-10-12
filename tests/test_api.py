@@ -975,3 +975,64 @@ def test_delete_account_rate_limited(client):
 
     r = client.delete("/api/account", json={"password": "clave-incorrecta"})
     assert r.status_code == 429
+
+
+# Edición y eliminación individual del historial.
+def test_edit_session_name_and_folder_preserves_other_data(client):
+    register(client)
+    first = client.post("/api/sessions", json={"minutes": 25, "type": "Original", "mode": "pomodoro", "ts": "2026-10-12T10:00:00"}).get_json()["id"]
+    client.post("/api/sessions", json={"minutes": 15, "type": "Original", "mode": "manual", "ts": "2026-10-12T11:00:00"})
+    before = next(r for r in client.get("/api/sessions").get_json() if r["id"] == first)
+    cat = client.post("/api/categories", json={"name": "Destino"}).get_json()["id"]
+    response = client.patch(f"/api/sessions/{first}", json={"type": "  Nuevo  ", "category_id": cat})
+    assert response.status_code == 200
+    rows = client.get("/api/sessions").get_json()
+    after = next(r for r in rows if r["id"] == first)
+    assert after["type"] == "Nuevo" and after["category_id"] == cat
+    for key in ("minutes", "mode", "ts", "date", "time", "hour"):
+        assert after[key] == before[key]
+    assert next(r for r in rows if r["id"] != first)["type"] == "Original"
+    assert client.patch(f"/api/sessions/{first}", json={"type": "Solo nombre"}).status_code == 200
+    assert client.patch(f"/api/sessions/{first}", json={"category_id": cat}).status_code == 200
+
+
+@pytest.mark.parametrize("payload", [{}, [], [1], {"type": ""}, {"type": "  "}, {"type": 12}, {"type": "x" * 41}, {"category_id": True}, {"category_id": 1.5}, {"category_id": None}])
+def test_edit_session_rejects_invalid_payload(client, payload):
+    register(client)
+    sid = client.post("/api/sessions", json={"minutes": 25, "type": "Original", "mode": "manual"}).get_json()["id"]
+    response = client.patch(f"/api/sessions/{sid}", json=payload)
+    assert response.status_code == 400
+    assert response.is_json
+    assert client.get("/api/sessions").get_json()[0]["type"] == "Original"
+
+
+def test_edit_session_invalid_folder_does_not_partially_rename(client):
+    register(client)
+    sid = client.post("/api/sessions", json={"minutes": 25, "type": "Original", "mode": "manual"}).get_json()["id"]
+    assert client.patch(f"/api/sessions/{sid}", json={"type": "Nuevo", "category_id": 999999}).status_code == 400
+    assert client.get("/api/sessions").get_json()[0]["type"] == "Original"
+
+
+def test_individual_session_mutations_are_isolated(client):
+    register(client, "alice")
+    sid = client.post("/api/sessions", json={"minutes": 25, "type": "Alice", "mode": "manual"}).get_json()["id"]
+    client.get("/logout")
+    assert client.delete(f"/api/sessions/{sid}").status_code == 401
+    assert client.patch(f"/api/sessions/{sid}", json={"type": "Otro"}).status_code == 401
+    register(client, "bob")
+    assert client.patch(f"/api/sessions/{sid}", json={"type": "Otro"}).status_code == 404
+    assert client.delete(f"/api/sessions/{sid}").status_code == 404
+    client.get("/logout")
+    login(client, "alice")
+    assert client.get("/api/sessions").get_json()[0]["type"] == "Alice"
+
+
+def test_delete_one_session_updates_stats_and_preserves_others(client):
+    register(client)
+    sid = client.post("/api/sessions", json={"minutes": 25, "type": "Eliminar", "mode": "manual", "ts": "2026-10-12T10:00:00"}).get_json()["id"]
+    client.post("/api/sessions", json={"minutes": 15, "type": "Conservar", "mode": "manual", "ts": "2026-10-12T11:00:00"})
+    assert client.delete(f"/api/sessions/{sid}").status_code == 200
+    rows = client.get("/api/sessions").get_json()
+    assert len(rows) == 1 and rows[0]["type"] == "Conservar"
+    assert client.get("/api/stats").get_json()["sessions"] == 1
+    assert client.delete(f"/api/sessions/{sid}").status_code == 404

@@ -136,7 +136,76 @@ h1, h2, h3, p { margin: 0; }
 }
 
 /* ── Escena: ambiente de colores + foto opcional con velo ── */
+:root {
+  /* Composiciones compartidas por el fondo, las miniaturas y el selector. */
+  --art-dusk:
+    radial-gradient(ellipse 85% 45% at 12% 111%, #171e38 0 65%, transparent 65.5%),
+    radial-gradient(ellipse 80% 44% at 96% 108%, #35304d 0 68%, transparent 68.5%),
+    radial-gradient(ellipse 75% 35% at 24% 95%, #684359 0 66%, transparent 66.5%),
+    radial-gradient(circle at 73% 40%, #ffedb3 0 5%, #ffc77f 5.2%, transparent 5.7%),
+    radial-gradient(ellipse at 73% 43%, #eb95614d, transparent 42%),
+    linear-gradient(180deg, #172440 0%, #6b4b70 34%, #d58b83 58%, #e8ad82 73%, #59405e 100%);
+  --art-ocean:
+    radial-gradient(ellipse 92% 30% at 10% 109%, #092e42 0 70%, transparent 70.5%),
+    radial-gradient(ellipse 85% 22% at 100% 95%, #14566a 0 64%, transparent 64.5%),
+    radial-gradient(ellipse 100% 16% at 0% 83%, #247f8b 0 60%, transparent 60.8%),
+    radial-gradient(ellipse 85% 12% at 100% 73%, #419d9e 0 60%, transparent 61%),
+    radial-gradient(ellipse 25% 2% at 64% 55%, #d3e7dba6, transparent 95%),
+    linear-gradient(180deg, #122b48 0%, #427d91 38%, #a3c1bc 53%, #51949e 54%, #1b677a 74%, #0c344b 100%);
+  --art-forest:
+    radial-gradient(ellipse 50% 100% at -8% 90%, #0a2522 0 70%, transparent 70.5%),
+    radial-gradient(ellipse 48% 95% at 108% 100%, #0e302c 0 68%, transparent 68.5%),
+    radial-gradient(ellipse 78% 42% at 48% 115%, #204b3e 0 70%, transparent 70.5%),
+    radial-gradient(ellipse 90% 55% at 90% 101%, #376558 0 68%, transparent 68.5%),
+    radial-gradient(ellipse 90% 45% at 12% 85%, #588374 0 62%, transparent 62.5%),
+    radial-gradient(ellipse at 57% 31%, #d3dbad80, transparent 42%),
+    linear-gradient(160deg, #173c38, #709186 46%, #abc0a2 65%, #325d50);
+  --art-nebula:
+    radial-gradient(circle at 15% 23%, #e9e7ffcc 0 1px, transparent 2px),
+    radial-gradient(circle at 72% 16%, #ffffffdd 0 1px, transparent 2px),
+    radial-gradient(circle at 84% 62%, #ddd7ffbb 0 1px, transparent 2px),
+    radial-gradient(circle at 34% 78%, #ffffffaa 0 1px, transparent 2px),
+    radial-gradient(circle at 57% 38%, #f9d6ffcc 0 1px, transparent 2px),
+    radial-gradient(ellipse 48% 22% at 67% 37%, #a15caf77, transparent 75%),
+    radial-gradient(ellipse 62% 32% at 42% 58%, #563da488, transparent 75%),
+    radial-gradient(ellipse 38% 50% at 87% 82%, #24687b66, transparent 75%),
+    linear-gradient(145deg, #080e20, #181830 50%, #0d1e30);
+}
 .scene { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.scene-art {
+  position: absolute; inset: -2%; opacity: 0;
+  background: var(--scene-art, none) center / cover no-repeat;
+  transition: opacity .7s ease;
+}
+html.has-art .scene { background: #101c28; }
+html.has-art .scene-art { opacity: 1; }
+html.has-art .scene-amb { opacity: .12; }
+.scene-art::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 34%, #07122155, transparent 72%),
+    linear-gradient(180deg, #09121e18, #09121e10 45%, #09121e88);
+}
+/* Luz suave en movimiento, sin desplazar el paisaje ni los controles. */
+.scene-art::before {
+  content: ""; position: absolute; inset: -6%; opacity: .4;
+  background: radial-gradient(ellipse 50% 12% at 60% 42%, #fff5dd33, transparent 80%);
+  animation: scene-light 30s ease-in-out infinite alternate;
+}
+html[data-scene="ocean"] .scene-art::before {
+  background: repeating-linear-gradient(177deg, transparent 0 25px, #d4fbff16 26px, transparent 28px 45px);
+  clip-path: polygon(0 56%, 100% 56%, 100% 100%, 0 100%);
+  animation-duration: 18s;
+}
+html[data-scene="forest"] .scene-art::before {
+  inset: 0; opacity: .72; animation: none;
+  background: linear-gradient(180deg, #1b4a3e, #092a25);
+  clip-path: polygon(0 100%, 0 69%, 4% 69%, 0 59%, 4% 59%, 1% 48%, 5% 48%, 3% 39%, 8% 24%, 13% 39%, 11% 39%, 16% 48%, 13% 48%, 19% 59%, 15% 59%, 23% 72%, 17% 72%, 26% 89%, 12% 89%, 12% 100%, 81% 100%, 81% 91%, 70% 91%, 79% 77%, 74% 77%, 82% 65%, 78% 65%, 85% 53%, 82% 53%, 88% 38%, 94% 53%, 91% 53%, 98% 65%, 94% 65%, 100% 75%, 100% 100%);
+}
+html[data-scene="nebula"] .scene-art::before {
+  background: radial-gradient(ellipse 60% 30% at 60% 40%, #ac70ed33, transparent 75%);
+  animation-duration: 40s;
+}
+@keyframes scene-light { to { transform: translate3d(2%, 1%, 0); opacity: .75; } }
 .scene-amb {
   position: absolute; inset: -4%;
   background:

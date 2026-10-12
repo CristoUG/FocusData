@@ -19,11 +19,9 @@ Configuración.
 | ------------------------------------- | --------------------- |
 | `road.jpg` + `road-thumb.jpg`         | Carretera             |
 | `blossom.jpg` + `blossom-thumb.jpg`   | Cerezos               |
-| `dusk.jpg`                            | Atardecer (opcional)  |
-| `ocean.jpg`                           | Océano (opcional)     |
-| `forest.jpg`                          | Bosque (opcional)     |
 
-`Nebulosa` y `Sin escena` no usan foto: son solo color. Si añades una escena
+
+`Atardecer`, `Océano`, `Bosque` y `Nebulosa` usan composiciones CSS definidas en `static/css/tokens.css` (`--art-*`), compartidas por el fondo y las vistas previas. No requieren imágenes ni peticiones adicionales. Sus movimientos suaves respetan la preferencia de movimiento reducido. `Sin escena` mantiene el fondo plano. Si añades una escena
 nueva, regístrala también en `VALID_SCENES` de `app.py`.
 
 ## Especificaciones

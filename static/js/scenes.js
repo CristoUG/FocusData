@@ -10,10 +10,10 @@ export const DEFAULT_SCENE = 'road';
 export const SCENES = [
   { id: 'road',    label: 'Carretera',  photo: true, thumb: true, c: ['#E8875F', '#B77AA8', '#F2B36F'] },
   { id: 'blossom', label: 'Cerezos',    photo: true, thumb: true, c: ['#E59BC4', '#78B4E4', '#B69AD8'] },
-  { id: 'dusk',    label: 'Atardecer',  photo: true, c: ['#FB923C', '#DB2777', '#FBBF24'] },
-  { id: 'ocean',   label: 'Océano',     photo: true, c: ['#38BDF8', '#6366F1', '#2DD4BF'] },
-  { id: 'forest',  label: 'Bosque',     photo: true, c: ['#4ADE80', '#A3E635', '#2DD4BF'] },
-  { id: 'nebula',  label: 'Nebulosa',   c: ['#E879F9', '#A855F7', '#6366F1'] },
+  { id: 'dusk',    label: 'Atardecer',  art: true, c: ['#FB923C', '#DB2777', '#FBBF24'] },
+  { id: 'ocean',   label: 'Océano',     art: true, c: ['#38BDF8', '#6366F1', '#2DD4BF'] },
+  { id: 'forest',  label: 'Bosque',     art: true, c: ['#4ADE80', '#A3E635', '#2DD4BF'] },
+  { id: 'nebula',  label: 'Nebulosa',   art: true, c: ['#E879F9', '#A855F7', '#6366F1'] },
   { id: 'none',    label: 'Sin escena', c: ['#A8A29E', '#78716C', '#D6D3D1'] },
 ];
 
@@ -57,6 +57,10 @@ export function applyScene(id, cached = null) {
   const base = SCENES[0].c;
   ['--s1', '--s2', '--s3'].forEach((v, i) => root.style.setProperty(v, (sc.c && sc.c[i]) || base[i]));
   root.classList.toggle('no-scene', sc.id === 'none');
+  root.classList.toggle('has-art', !!sc.art);
+  root.dataset.scene = sc.id;
+  if (sc.art) root.style.setProperty('--scene-art', `var(--art-${sc.id})`);
+  else root.style.removeProperty('--scene-art');
 
   const url = sc.url || (sc.photo ? `/static/scenes/${sc.id}.jpg` : null);
   const token = ++photoToken;
@@ -214,7 +218,7 @@ function renderGallery() {
         ${ic('image-add')}<b>${uploading ? 'Subiendo…' : 'Subir imagen'}</b><span>o arrástrala aquí</span>
       </button>
       ${S.backgrounds.map(b => tile(`bg:${b.id}`, b.name, `url('${esc(b.thumb_url)}')`, b.id)).join('')}
-      ${SCENES.map(s => tile(s.id, s.label, s.thumb ? `url('/static/scenes/${s.id}-thumb.jpg')` : `linear-gradient(135deg, ${s.c.join(', ')})`)).join('')}
+      ${SCENES.map(s => tile(s.id, s.label, s.thumb ? `url('/static/scenes/${s.id}-thumb.jpg')` : s.art ? `var(--art-${s.id})` : `linear-gradient(135deg, ${s.c.join(', ')})`)).join('')}
     </div>
     <p class="bg-hint">JPG, PNG o WebP. Se reduce a 2560 px antes de subirla y se guarda en tu cuenta, así la ves en todos tus dispositivos (hasta ${MAX_UPLOADS} fondos). El anillo del temporizador toma los colores de la foto.</p>`;
 }
@@ -222,7 +226,7 @@ function renderGallery() {
 function openSceneMenu(anchor) {
   const items = [
     { type: 'head', label: 'Escenas' },
-    ...SCENES.map(s => ({ value: s.id, label: s.label, ...(s.thumb ? { thumb: `/static/scenes/${s.id}-thumb.jpg` } : { color: `linear-gradient(135deg, ${s.c.join(', ')})` }) })),
+    ...SCENES.map(s => ({ value: s.id, label: s.label, ...(s.thumb ? { thumb: `/static/scenes/${s.id}-thumb.jpg` } : { color: s.art ? `var(--art-${s.id})` : `linear-gradient(135deg, ${s.c.join(', ')})` }) })),
   ];
   if (S.backgrounds.length) {
     items.push({ type: 'sep' }, { type: 'head', label: 'Tus fondos' },
